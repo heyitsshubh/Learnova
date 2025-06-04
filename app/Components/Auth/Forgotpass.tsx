@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { FaUser, FaEnvelope, FaLock } from 'react-icons/fa';
+import {  FaEnvelope} from 'react-icons/fa';
 
 const Forgotpassword = () => {
   return (
