@@ -41,13 +41,13 @@ const VerifyOtp = () => {
       </div>
 
       {/* Right Panel */}
-      <div className="w-1/2 h-full px-10 py-14 bg-white flex flex-col justify-center">
+      <div className="w-1/2 h-full px-8 md:px-24 py-10 md:py-20 bg-white flex flex-col justify-center">
         <h2 className="text-2xl font-semibold mb-10 text-gray-800 text-center">Verify OTP</h2>
         <p className="text-md text-gray-600 text-center mb-6">
           Enter the OTP that has been sent to your email
         </p>
 
-         <form className="space-y-4 flex flex-col items-center">
+        <form className="space-y-6 flex flex-col items-center">
           <div className="flex justify-center gap-2">
             {Array.from({ length: 6 }).map((_, idx) => (
               <input
@@ -74,11 +74,10 @@ const VerifyOtp = () => {
           </button>
         </form>
 
-
-        <p className="text-sm mt-4 text-gray-500 text-center">
+        <p className="text-sm mt-6 text-gray-500 text-center">
           Didn't receive the code?{' '}
           <a href="#" className="text-blue-600 hover:underline">
-          Resend OTP
+            Resend OTP
           </a>
         </p>
       </div>
