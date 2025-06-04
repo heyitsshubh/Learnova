@@ -4,17 +4,24 @@ import Image from 'next/image';
 import { useRef } from 'react';
 
 const Otp = () => {
-  const inputs = Array.from({ length: 6 }, () => useRef<HTMLInputElement>(null));
+  const inputRefs = [
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+  ];
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
     const value = e.target.value;
     if (value.length === 1 && idx < 5) {
-      inputs[idx + 1].current?.focus();
+      inputRefs[idx + 1].current?.focus();
     }
     if (value.length === 0 && idx > 0) {
-      inputs[idx - 1].current?.focus();
+      inputRefs[idx - 1].current?.focus();
     }
   };
-
   return (
     <div className="fixed inset-0 w-screen h-screen flex">
       {/* Left Panel */}
@@ -41,7 +48,7 @@ const Otp = () => {
 
       {/* Right Panel */}
       <div className="w-1/2 h-full px-8 md:px-24 py-10 md:py-20 bg-white flex flex-col justify-center">
-        <h2 className="text-2xl font-semibold mb-10 text-gray-800 text-center">You're almost done</h2>
+        <h2 className="text-2xl font-semibold mb-10 text-gray-800 text-center">You&apos;re almost done</h2>
         <p className="text-md text-gray-600 text-center mb-6">
           Enter the OTP that has been sent to your email
         </p>
@@ -51,7 +58,7 @@ const Otp = () => {
             {Array.from({ length: 6 }).map((_, idx) => (
               <input
                 key={idx}
-                ref={inputs[idx]}
+                ref={inputRefs[idx]}
                 type="text"
                 maxLength={1}
                 className="text-center text-2xl border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
