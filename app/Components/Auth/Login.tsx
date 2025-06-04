@@ -14,12 +14,12 @@ const Login = () => {
           style={{ zIndex: 0 }}
         />
         <div className="absolute inset-0 flex flex-col z-10">
-          <div className="text-center px-8 mr-26">
-            <h2 className="text-3xl font-bold text-gray-800 mb-4 m-8">
+          <div className="text-left m-20 ">
+            <h2 className="text-3xl font-bold text-gray-800 mb-4 ">
               Virtual Learning & Collaboration
             </h2>
             <p className="text-lg text-gray-600">
-              Join live classes, share resources, and connect <br />with peers — all from a single platform.
+              Join live classes, share resources, and connect with<br />peers — all from a single platform.
             </p>
           </div>
         </div>
@@ -51,7 +51,7 @@ const Login = () => {
           <button
             type="submit"
             className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition"
-            style={{ width: 400, minWidth: 50 }}
+            style={{ width: 400, minWidth: 50,borderRadius: 40 }}
           >
             Login
           </button>

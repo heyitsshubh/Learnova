@@ -29,8 +29,8 @@ const Otp = () => {
           style={{ zIndex: 0 }}
         />
         <div className="absolute inset-0 flex flex-col z-10">
-          <div className="text-center px-8 mr-26">
-            <h2 className="text-3xl font-bold text-gray-800 mb-4 m-8">
+          <div className="text-left m-20">
+            <h2 className="text-3xl font-bold text-gray-800 mb-4 ">
               Virtual Learning & Collaboration
             </h2>
             <p className="text-lg text-gray-600">
@@ -55,7 +55,8 @@ const Otp = () => {
                 ref={inputs[idx]}
                 type="text"
                 maxLength={1}
-                className="w-12 h-12 text-center text-2xl border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="text-center text-2xl border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{ width: 280, height: 40, minWidth: 40, maxWidth: 40 }}
                 onChange={e => handleChange(e, idx)}
                 inputMode="numeric"
                 pattern="[0-9]*"
@@ -66,12 +67,13 @@ const Otp = () => {
 
           <button
             type="submit"
-            className="bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition"
-            style={{ width: 400, minWidth: 50 }}
+            className="bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition self-center"
+            style={{ width: 289, minWidth: 50, borderRadius: 40, height: 40 }}
           >
             Verify OTP
           </button>
         </form>
+
 
         <p className="text-sm mt-4 text-gray-500 text-center">
           Didn't receive the code?{' '}
