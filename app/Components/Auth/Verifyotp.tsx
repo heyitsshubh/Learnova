@@ -22,12 +22,14 @@ const VerifyOtp = () => {
     <div className="fixed inset-0 w-screen h-screen flex">
       {/* Left Panel */}
       <div className="w-1/2 h-full relative ">
-        <img
-          src="/Illustration.svg"
-          alt="Illustration"
-          className="w-full h-full object-contain object-left"
-          style={{ zIndex: 0 }}
-        />
+       <Image
+              src="/Illustration.svg"
+              alt="Illustration"
+              width={800} // <-- Add a width (adjust as needed)
+              height={600} // <-- Add a height (adjust as needed)
+              className="w-full h-full object-contain object-left"
+              style={{ zIndex: 0 }}
+            />
         <div className="absolute inset-0 flex flex-col z-10">
           <div className="text-left m-20">
             <h2 className="text-3xl font-bold text-gray-800 mb-4 ">

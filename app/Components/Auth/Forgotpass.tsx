@@ -7,9 +7,11 @@ const Forgotpassword = () => {
   return (
     <div className="fixed inset-0 w-screen h-screen flex">
       <div className="w-1/2 h-full relative ">
-        <img
+        <Image
           src="/Illustration.svg"
           alt="Illustration"
+          width={800} // <-- Add a width (adjust as needed)
+          height={600} // <-- Add a height (adjust as needed)
           className="w-full h-full object-contain object-left"
           style={{ zIndex: 0 }}
         />
