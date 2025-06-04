@@ -7,7 +7,6 @@ const VerifyOtp = () => {
   // Create refs for each input
   const inputs = Array.from({ length: 6 }, () => useRef<HTMLInputElement>(null));
 
-  // Handle input change and auto-focus next
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
     const value = e.target.value;
     if (value.length === 1 && idx < 5) {
@@ -77,7 +76,7 @@ const VerifyOtp = () => {
         </form>
 
         <p className="text-sm mt-6 text-gray-500 text-center">
-          Didn't receive the code?{' '}
+           Didn&apos;t receive the code?{' '}
           <a href="#" className="text-blue-600 hover:underline">
             Resend OTP
           </a>

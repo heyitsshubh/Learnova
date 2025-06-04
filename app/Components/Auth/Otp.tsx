@@ -74,7 +74,7 @@ const Otp = () => {
         </form>
 
         <p className="text-sm mt-6 text-gray-500 text-center">
-          Didn't receive the code?{' '}
+          Didn&apos;t receive the code?{' '}
           <a href="#" className="text-blue-600 hover:underline">
             Resend OTP
           </a>
