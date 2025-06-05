@@ -1,20 +1,25 @@
 'use client';
 
 import Image from 'next/image';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
+import { verifyOtp } from '../../services/auth'; // <-- Import your OTP API
+import { useRouter } from 'next/navigation';
 
 const Otp = () => {
-  const inputRefs = [
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-  ];
+  const router = useRouter();
+  const [otp, setOtp] = useState(Array(6).fill(''));
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const inputRefs = Array.from({ length: 6 }, () => useRef<HTMLInputElement>(null));
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
-    const value = e.target.value;
+    const value = e.target.value.replace(/[^0-9]/g, '');
+    if (!value) return;
+    const newOtp = [...otp];
+    newOtp[idx] = value;
+    setOtp(newOtp);
+
     if (value.length === 1 && idx < 5) {
       inputRefs[idx + 1].current?.focus();
     }
@@ -22,18 +27,42 @@ const Otp = () => {
       inputRefs[idx - 1].current?.focus();
     }
   };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      const otpValue = otp.join('');
+      // Replace with the actual email, e.g. from props or context
+      const email = ''; // <-- Set the user's email here
+      await verifyOtp({ email, otp: otpValue });
+      // On success, route to the next page
+      router.push('/success'); // Change to your desired route
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.message ||
+        err?.message ||
+        'OTP verification failed'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 w-screen h-screen flex">
       {/* Left Panel */}
       <div className="w-1/2 h-full relative ">
-          <Image
-                 src="/Illustration.svg"
-                 alt="Illustration"
-                 width={800} // <-- Add a width (adjust as needed)
-                 height={600} // <-- Add a height (adjust as needed)
-                 className="w-full h-full object-contain object-left"
-                 style={{ zIndex: 0 }}
-               />
+        <Image
+          src="/Illustration.svg"
+          alt="Illustration"
+          width={800}
+          height={600}
+          className="w-full h-full object-contain object-left"
+          style={{ zIndex: 0 }}
+        />
         <div className="absolute inset-0 flex flex-col z-10">
           <div className="text-left m-20">
             <h2 className="text-3xl font-bold text-gray-800 mb-4 ">
@@ -53,14 +82,15 @@ const Otp = () => {
           Enter the OTP that has been sent to your email
         </p>
 
-        <form className="space-y-6 flex flex-col items-center">
+        <form className="space-y-6 flex flex-col items-center" onSubmit={handleSubmit}>
           <div className="flex justify-center gap-2">
-            {Array.from({ length: 6 }).map((_, idx) => (
+            {otp.map((digit, idx) => (
               <input
                 key={idx}
                 ref={inputRefs[idx]}
                 type="text"
                 maxLength={1}
+                value={digit}
                 className="text-center text-2xl border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 style={{ width: 40, height: 40, minWidth: 40, maxWidth: 40 }}
                 onChange={e => handleChange(e, idx)}
@@ -71,12 +101,17 @@ const Otp = () => {
             ))}
           </div>
 
+          {error && (
+            <div className="text-red-500 text-sm text-center">{error}</div>
+          )}
+
           <button
             type="submit"
             className="bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition self-center"
             style={{ width: 289, minWidth: 50, borderRadius: 40, height: 40 }}
+            disabled={loading}
           >
-            Verify OTP
+            {loading ? 'Verifying...' : 'Verify OTP'}
           </button>
         </form>
 
