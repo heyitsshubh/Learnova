@@ -39,8 +39,10 @@ const Resetpassword = () => {
     setLoading(true);
     try {
       // Use newPassword as required by your API schema
-      await resetPassword({ newPassword: form.password, resetToken });
+      await resetPassword({ newPassword: form.password }, resetToken);
       localStorage.removeItem('resetToken');
+localStorage.removeItem('accessToken');
+localStorage.removeItem('refreshToken');
       router.push('/login');
     } catch (err: any) {
       setError(

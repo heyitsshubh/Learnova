@@ -59,8 +59,12 @@ export const verifyOtpp = async (payload: VerifyOtpPayload) => {
   return res.data;
 };
 
-export const resetPassword = async (payload: ResetPasswordPayload) => {
-  const res = await axios.put('/reset-password', payload);
+export const resetPassword = async (payload: { newPassword: string }, resetToken: string) => {
+  const res = await axios.put('/reset-password', payload, {
+    headers: {
+      Authorization: `Bearer ${resetToken}`, // Pass the token in the Authorization header
+    },
+  });
   return res.data;
 };
 

@@ -44,7 +44,11 @@ const VerifyOtp = () => {
       const res = await verifyOtpp({ email, otp: otpValue });
   console.log(res);
       if (res?.resetToken) {
-        localStorage.setItem('resetToken', res.resetToken);
+if (res?.resetToken) {
+  localStorage.setItem('resetToken', res.resetToken); // Save only the token
+  console.log('Token set in localStorage:', res.resetToken);
+}
+
          console.log('Token set in localStorage:', res.resetToken);
       }
       router.push('/reset-password');
