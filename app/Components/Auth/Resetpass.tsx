@@ -1,20 +1,69 @@
 'use client';
 
 import Image from 'next/image';
-import {  FaLock } from 'react-icons/fa';
+import { FaLock } from 'react-icons/fa';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { resetPassword } from '../../services/auth';
 
 const Resetpassword = () => {
+  const router = useRouter();
+  const [form, setForm] = useState({
+    password: '',
+    confirmPassword: '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (form.password !== form.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    // Get resetToken from localStorage
+    const resetToken = localStorage.getItem('resetToken');
+    console.log('Reset token from localStorage:', resetToken);
+    if (!resetToken) {
+      setError('Reset token is missing. Please restart the reset process.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Use newPassword as required by your API schema
+      await resetPassword({ newPassword: form.password, resetToken });
+      localStorage.removeItem('resetToken');
+      router.push('/login');
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.message ||
+        err?.message ||
+        'Failed to reset password'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 w-screen h-screen flex">
       <div className="w-1/2 h-full relative ">
-         <Image
-                src="/Illustration.svg"
-                alt="Illustration"
-                width={800} // <-- Add a width (adjust as needed)
-                height={600} // <-- Add a height (adjust as needed)
-                className="w-full h-full object-contain object-left"
-                style={{ zIndex: 0 }}
-              />
+        <Image
+          src="/Illustration.svg"
+          alt="Illustration"
+          width={800}
+          height={600}
+          className="w-full h-full object-contain object-left"
+          style={{ zIndex: 0 }}
+        />
         <div className="absolute inset-0 flex flex-col z-10">
           <div className="text-left m-20">
             <h2 className="text-3xl font-bold text-gray-800 mb-4 ">
@@ -31,31 +80,43 @@ const Resetpassword = () => {
       <div className="w-1/2 h-full px-8 md:px-24 py-10 md:py-20 bg-white flex flex-col justify-center">
         <h2 className="text-2xl font-bold mb-10 text-gray-800 text-center">Reset Password</h2>
 
-        <form className="space-y-6 flex flex-col items-center">
+        <form className="space-y-6 flex flex-col items-center" onSubmit={handleSubmit}>
           <div className="relative w-full flex items-center justify-center" style={{ width: 400, minWidth: 50 }}>
             <FaLock className="absolute left-4 text-gray-400 text-lg" />
             <input
-              type="email"
+              type="password"
+              name="password"
+              value={form.password}
+              onChange={handleChange}
               placeholder="Enter new password"
               className="pl-12 w-[200px] max-w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               style={{ width: 400, minWidth: 50 }}
+              required
             />
           </div>
           <div className="relative w-full flex items-center justify-center" style={{ width: 400, minWidth: 50 }}>
             <FaLock className="absolute left-4 text-gray-400 text-lg" />
             <input
               type="password"
+              name="confirmPassword"
+              value={form.confirmPassword}
+              onChange={handleChange}
               placeholder="Confirm password"
               className="pl-12 w-[200px] max-w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               style={{ width: 400, minWidth: 50 }}
+              required
             />
           </div>
+          {error && (
+            <div className="text-red-500 text-sm text-center">{error}</div>
+          )}
           <button
             type="submit"
             className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition"
             style={{ width: 400, minWidth: 50, borderRadius: 40 }}
+            disabled={loading}
           >
-            Set password
+            {loading ? 'Setting password...' : 'Set password'}
           </button>
         </form>
       </div>

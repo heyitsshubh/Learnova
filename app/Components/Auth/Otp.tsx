@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useRef, useState } from 'react';
-import { verifyOtp } from '../../services/auth'; // <-- Import your OTP API
+import { verifyOtp, resendOtp} from '../../services/auth'; // <-- Import resendOtp
 import { useRouter } from 'next/navigation';
 
 const Otp = () => {
@@ -10,9 +10,13 @@ const Otp = () => {
   const [otp, setOtp] = useState(Array(6).fill(''));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
 
   const inputRefs = Array.from({ length: 6 }, () => useRef<HTMLInputElement>(null));
 
+  // TODO: Replace with actual user email from props, context, or state
+ const [email] = useState(() => localStorage.getItem('email') || '');
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
     const value = e.target.value.replace(/[^0-9]/g, '');
     if (!value) return;
@@ -35,10 +39,14 @@ const Otp = () => {
 
     try {
       const otpValue = otp.join('');
-      // Replace with the actual email, e.g. from props or context
-      const email = ''; // <-- Set the user's email here
-      await verifyOtp({ email, otp: otpValue });
-      // On success, route to the next page
+      const res = await verifyOtp({ email, otp: otpValue });
+        // Set tokens to localStorage after successful verification
+    if (res?.accessToken) {
+      localStorage.setItem('accessToken', res.accessToken);
+    }
+    if (res?.refreshToken) {
+      localStorage.setItem('refreshToken', res.refreshToken);
+    }
       router.push('/success'); // Change to your desired route
     } catch (err: any) {
       setError(
@@ -48,6 +56,25 @@ const Otp = () => {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    setResendLoading(true);
+    setResendMessage(null);
+    setError(null);
+    try {
+      await resendOtp({ email });
+      setResendMessage('OTP resent successfully!');
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.message ||
+        err?.message ||
+        'Failed to resend OTP'
+      );
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -104,6 +131,9 @@ const Otp = () => {
           {error && (
             <div className="text-red-500 text-sm text-center">{error}</div>
           )}
+          {resendMessage && (
+            <div className="text-green-500 text-sm text-center">{resendMessage}</div>
+          )}
 
           <button
             type="submit"
@@ -117,8 +147,13 @@ const Otp = () => {
 
         <p className="text-sm mt-6 text-gray-500 text-center">
           Didn&apos;t receive the code?{' '}
-          <a href="#" className="text-blue-600 hover:underline">
-            Resend OTP
+          <a
+            href="#"
+            className="text-blue-600 hover:underline"
+            onClick={handleResendOtp}
+            style={{ cursor: resendLoading ? 'not-allowed' : 'pointer', pointerEvents: resendLoading ? 'none' : 'auto' }}
+          >
+            {resendLoading ? 'Resending...' : 'Resend OTP'}
           </a>
         </p>
       </div>

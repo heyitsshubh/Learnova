@@ -1,26 +1,80 @@
 'use client';
 
 import Image from 'next/image';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { verifyOtpp, resendOtp } from '../../services/auth'; // <-- Import resendOtp
 
 const VerifyOtp = () => {
-  // ✅ Correct: Declare each useRef separately at the top level
-  const inputRefs = [
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-  ];
+  const router = useRouter();
+  const [otp, setOtp] = useState(Array(6).fill(''));
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
+
+  // Create refs for each input
+  const inputRefs = Array.from({ length: 6 }, () => useRef<HTMLInputElement>(null));
+
+  // TODO: Replace with actual user email from props, context, or state
+   const [email] = useState(() => localStorage.getItem('email') || '');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
-    const value = e.target.value;
+    const value = e.target.value.replace(/[^0-9]/g, '');
+    if (!value) return;
+    const newOtp = [...otp];
+    newOtp[idx] = value;
+    setOtp(newOtp);
+
     if (value.length === 1 && idx < 5) {
       inputRefs[idx + 1].current?.focus();
     }
     if (value.length === 0 && idx > 0) {
       inputRefs[idx - 1].current?.focus();
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      const otpValue = otp.join('');
+      const res = await verifyOtpp({ email, otp: otpValue });
+  console.log(res);
+      if (res?.resetToken) {
+        localStorage.setItem('resetToken', res.resetToken);
+         console.log('Token set in localStorage:', res.resetToken);
+      }
+      router.push('/reset-password');
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.message ||
+        err?.message ||
+        'OTP verification failed'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    setResendLoading(true);
+    setResendMessage(null);
+    setError(null);
+    try {
+      await resendOtp({ email });
+      setResendMessage('OTP resent successfully!');
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.message ||
+        err?.message ||
+        'Failed to resend OTP'
+      );
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -56,17 +110,18 @@ const VerifyOtp = () => {
           Enter the OTP that has been sent to your email
         </p>
 
-        <form className="space-y-6 flex flex-col items-center">
+        <form className="space-y-6 flex flex-col items-center" onSubmit={handleSubmit}>
           <div className="flex justify-center gap-2">
-            {inputRefs.map((ref, idx) => (
+            {otp.map((digit, idx) => (
               <input
                 key={idx}
-                ref={ref}
+                ref={inputRefs[idx]}
                 type="text"
                 maxLength={1}
+                value={digit}
                 className="text-center text-2xl border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 style={{ width: 40, height: 40, minWidth: 40, maxWidth: 40 }}
-                onChange={(e) => handleChange(e, idx)}
+                onChange={e => handleChange(e, idx)}
                 inputMode="numeric"
                 pattern="[0-9]*"
                 autoComplete="one-time-code"
@@ -74,19 +129,32 @@ const VerifyOtp = () => {
             ))}
           </div>
 
+          {error && (
+            <div className="text-red-500 text-sm text-center">{error}</div>
+          )}
+          {resendMessage && (
+            <div className="text-green-500 text-sm text-center">{resendMessage}</div>
+          )}
+
           <button
             type="submit"
             className="bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition self-center"
             style={{ width: 289, borderRadius: 40, height: 40 }}
+            disabled={loading}
           >
-            Verify OTP
+            {loading ? 'Verifying...' : 'Verify OTP'}
           </button>
         </form>
 
         <p className="text-sm mt-6 text-gray-500 text-center">
           Didn&apos;t receive the code?{' '}
-          <a href="#" className="text-blue-600 hover:underline">
-            Resend OTP
+          <a
+            href="#"
+            className="text-blue-600 hover:underline"
+            onClick={handleResendOtp}
+            style={{ cursor: resendLoading ? 'not-allowed' : 'pointer', pointerEvents: resendLoading ? 'none' : 'auto' }}
+          >
+            {resendLoading ? 'Resending...' : 'Resend OTP'}
           </a>
         </p>
       </div>

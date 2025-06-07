@@ -24,6 +24,12 @@ const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
   setError(null);
 
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!form.email || !emailRegex.test(form.email)) {
+    setError('Please enter a valid email address');
+    return;
+  }
+
   if (form.password !== form.confirmPassword) {
     setError('Passwords do not match');
     return;
@@ -31,16 +37,15 @@ const handleSubmit = async (e: React.FormEvent) => {
 
   setLoading(true);
   try {
+    console.log('Submitting:', form); // <-- Add this line
     await signup({
       name: form.name,
       email: form.email,
       password: form.password,
     });
+    localStorage.setItem('email', form.email);
     router.push('/otp');
   } catch (err: any) {
-    // Log the error for debugging
-    console.error('Signup error:', err);
-    // Try to show a more specific error message
     setError(
       err?.response?.data?.message ||
       err?.message ||
