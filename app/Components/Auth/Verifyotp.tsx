@@ -5,6 +5,15 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { verifyOtpp, resendOtp } from '../../services/auth'; // <-- Import resendOtp
 
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+}
+
 const VerifyOtp = () => {
   const router = useRouter();
   const [otp, setOtp] = useState(Array(6).fill(''));
@@ -13,11 +22,11 @@ const VerifyOtp = () => {
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
 
-  // Create refs for each input
-  const inputRefs = Array.from({ length: 6 }, () => useRef<HTMLInputElement>(null));
+  // Move useRef to the top level
+  const inputRefs = Array(6).fill(null).map(() => useRef<HTMLInputElement>(null));
 
   // TODO: Replace with actual user email from props, context, or state
-   const [email] = useState(() => localStorage.getItem('email') || '');
+  const [email] = useState(() => localStorage.getItem('email') || '');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
     const value = e.target.value.replace(/[^0-9]/g, '');
@@ -42,20 +51,17 @@ const VerifyOtp = () => {
     try {
       const otpValue = otp.join('');
       const res = await verifyOtpp({ email, otp: otpValue });
-  console.log(res);
+      console.log(res);
       if (res?.resetToken) {
-if (res?.resetToken) {
-  localStorage.setItem('resetToken', res.resetToken); // Save only the token
-  console.log('Token set in localStorage:', res.resetToken);
-}
-
-         console.log('Token set in localStorage:', res.resetToken);
+        localStorage.setItem('resetToken', res.resetToken); // Save only the token
+        console.log('Token set in localStorage:', res.resetToken);
       }
       router.push('/reset-password');
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const apiError = err as ApiError; // Type assertion
       setError(
-        err?.response?.data?.message ||
-        err?.message ||
+        apiError?.response?.data?.message ||
+        apiError?.message ||
         'OTP verification failed'
       );
     } finally {
@@ -71,10 +77,11 @@ if (res?.resetToken) {
     try {
       await resendOtp({ email });
       setResendMessage('OTP resent successfully!');
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const apiError = err as ApiError; // Type assertion
       setError(
-        err?.response?.data?.message ||
-        err?.message ||
+        apiError?.response?.data?.message ||
+        apiError?.message ||
         'Failed to resend OTP'
       );
     } finally {

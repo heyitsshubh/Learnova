@@ -7,6 +7,15 @@ import { useRouter } from 'next/navigation';
 import { login } from '../../services/auth'; 
 import { setTokens } from '../../utils/token';
 
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+}
+
 const Login = () => {
   const router = useRouter();
   const [form, setForm] = useState({ email: '', password: '' });
@@ -30,10 +39,11 @@ const Login = () => {
       const res = await login(form);
       setTokens(res.accessToken, res.refreshToken);
       router.push('/dashboard');
-    } catch (err: any) {
+    } catch (err: unknown) { // Use `unknown` instead of `any`
+      const apiError = err as ApiError; // Type assertion
       setError(
-        err?.response?.data?.message ||
-        err?.message ||
+        apiError?.response?.data?.message ||
+        apiError?.message ||
         'Login failed'
       );
     } finally {

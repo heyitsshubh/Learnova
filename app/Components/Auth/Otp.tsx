@@ -2,8 +2,17 @@
 
 import Image from 'next/image';
 import { useRef, useState } from 'react';
-import { verifyOtp, resendOtp} from '../../services/auth'; // <-- Import resendOtp
+import { verifyOtp, resendOtp } from '../../services/auth'; // <-- Import resendOtp
 import { useRouter } from 'next/navigation';
+
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+}
 
 const Otp = () => {
   const router = useRouter();
@@ -13,10 +22,12 @@ const Otp = () => {
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
 
-  const inputRefs = Array.from({ length: 6 }, () => useRef<HTMLInputElement>(null));
+  // Move useRef to the top level
+  const inputRefs = Array(6).fill(null).map(() => useRef<HTMLInputElement>(null));
 
   // TODO: Replace with actual user email from props, context, or state
- const [email] = useState(() => localStorage.getItem('email') || '');
+  const [email] = useState(() => localStorage.getItem('email') || '');
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
     const value = e.target.value.replace(/[^0-9]/g, '');
     if (!value) return;
@@ -40,18 +51,19 @@ const Otp = () => {
     try {
       const otpValue = otp.join('');
       const res = await verifyOtp({ email, otp: otpValue });
-        // Set tokens to localStorage after successful verification
-    if (res?.accessToken) {
-      localStorage.setItem('accessToken', res.accessToken);
-    }
-    if (res?.refreshToken) {
-      localStorage.setItem('refreshToken', res.refreshToken);
-    }
+      // Set tokens to localStorage after successful verification
+      if (res?.accessToken) {
+        localStorage.setItem('accessToken', res.accessToken);
+      }
+      if (res?.refreshToken) {
+        localStorage.setItem('refreshToken', res.refreshToken);
+      }
       router.push('/success'); // Change to your desired route
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const apiError = err as ApiError; // Type assertion
       setError(
-        err?.response?.data?.message ||
-        err?.message ||
+        apiError?.response?.data?.message ||
+        apiError?.message ||
         'OTP verification failed'
       );
     } finally {
@@ -67,10 +79,11 @@ const Otp = () => {
     try {
       await resendOtp({ email });
       setResendMessage('OTP resent successfully!');
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const apiError = err as ApiError; // Type assertion
       setError(
-        err?.response?.data?.message ||
-        err?.message ||
+        apiError?.response?.data?.message ||
+        apiError?.message ||
         'Failed to resend OTP'
       );
     } finally {

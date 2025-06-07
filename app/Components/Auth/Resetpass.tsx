@@ -6,6 +6,15 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { resetPassword } from '../../services/auth';
 
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+}
+
 const Resetpassword = () => {
   const router = useRouter();
   const [form, setForm] = useState({
@@ -41,13 +50,14 @@ const Resetpassword = () => {
       // Use newPassword as required by your API schema
       await resetPassword({ newPassword: form.password }, resetToken);
       localStorage.removeItem('resetToken');
-localStorage.removeItem('accessToken');
-localStorage.removeItem('refreshToken');
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
       router.push('/login');
-    } catch (err: any) {
+    } catch (err: unknown) { // Use `unknown` instead of `any`
+      const apiError = err as ApiError; // Type assertion
       setError(
-        err?.response?.data?.message ||
-        err?.message ||
+        apiError?.response?.data?.message ||
+        apiError?.message ||
         'Failed to reset password'
       );
     } finally {

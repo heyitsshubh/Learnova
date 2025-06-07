@@ -27,12 +27,12 @@ interface VerifyOtpPayload {
   otp: string;
 }
 
-interface ResetPasswordPayload {
+// interface ResetPasswordPayload {
 
-  newPassword: string;
-  resetToken: string;
+//   newPassword: string;
+//   resetToken: string;
 
-}
+// }
 
 export const signup = async (payload: SignupPayload) => {
   const res = await axios.post('/signup', payload);

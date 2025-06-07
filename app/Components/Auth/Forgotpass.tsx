@@ -6,6 +6,15 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { forgotPassword } from '../../services/auth'; // <-- Import your forgot password API
 
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+}
+
 const Forgotpassword = () => {
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -18,12 +27,13 @@ const Forgotpassword = () => {
     setLoading(true);
     try {
       await forgotPassword({ email });
-       localStorage.setItem('email', email);
+      localStorage.setItem('email', email);
       router.push('/verify');
-    } catch (err: any) {
+    } catch (err: unknown) { // Use `unknown` instead of `any`
+      const apiError = err as ApiError; // Type assertion
       setError(
-        err?.response?.data?.message ||
-        err?.message ||
+        apiError?.response?.data?.message ||
+        apiError?.message ||
         'Failed to send OTP'
       );
     } finally {

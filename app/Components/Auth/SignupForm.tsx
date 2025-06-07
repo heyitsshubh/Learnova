@@ -6,6 +6,15 @@ import { useState } from 'react';
 import { signup } from '../../services/auth'; 
 import { useRouter } from 'next/navigation'; 
 
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+}
+
 const SignupForm = () => {
   const router = useRouter(); 
   const [form, setForm] = useState({
@@ -20,41 +29,43 @@ const SignupForm = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setError(null);
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!form.email || !emailRegex.test(form.email)) {
-    setError('Please enter a valid email address');
-    return;
-  }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
 
-  if (form.password !== form.confirmPassword) {
-    setError('Passwords do not match');
-    return;
-  }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!form.email || !emailRegex.test(form.email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
 
-  setLoading(true);
-  try {
-    console.log('Submitting:', form); // <-- Add this line
-    await signup({
-      name: form.name,
-      email: form.email,
-      password: form.password,
-    });
-    localStorage.setItem('email', form.email);
-    router.push('/otp');
-  } catch (err: any) {
-    setError(
-      err?.response?.data?.message ||
-      err?.message ||
-      'Signup failed'
-    );
-  } finally {
-    setLoading(false);
-  }
-};
+    if (form.password !== form.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      console.log('Submitting:', form); // <-- Add this line
+      await signup({
+        name: form.name,
+        email: form.email,
+        password: form.password,
+      });
+      localStorage.setItem('email', form.email);
+      router.push('/otp');
+    } catch (err: unknown) { // Use `unknown` instead of `any`
+      const apiError = err as ApiError; // Type assertion
+      setError(
+        apiError?.response?.data?.message ||
+        apiError?.message ||
+        'Signup failed'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 w-screen h-screen flex">
