@@ -6,7 +6,7 @@ import CreateClassModal from '../Components/CreateClassModal';
 import RightSidebar from '../Components/RightSidebar';
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
-import image from 'next/image';
+
 
 
 export default function ClassroomPage() {
