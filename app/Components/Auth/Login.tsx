@@ -34,6 +34,18 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!form.email || !emailRegex.test(form.email)) {
+    setError('Please enter a valid email address');
+    return;
+  }
+
+  // Password validation
+  const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{5,}$/;
+  if (!passwordRegex.test(form.password)) {
+    setError('Password must contain at least 1 special character, 1 number, and be at least 5 characters long');
+    return;
+  }
     setLoading(true);
     try {
       const res = await login(form);

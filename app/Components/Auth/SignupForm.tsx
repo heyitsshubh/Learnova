@@ -39,6 +39,11 @@ const SignupForm = () => {
       setError('Please enter a valid email address');
       return;
     }
+   const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{5,}$/;
+  if (!passwordRegex.test(form.password)) {
+    setError('Password must contain at least 1 special character, 1 number, and be at least 5 characters long');
+    return;
+  }
 
     if (form.password !== form.confirmPassword) {
       setError('Passwords do not match');

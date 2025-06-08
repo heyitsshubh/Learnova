@@ -58,7 +58,7 @@ const Otp = () => {
       if (res?.refreshToken) {
         localStorage.setItem('refreshToken', res.refreshToken);
       }
-      router.push('/success'); // Change to your desired route
+      router.push('/dashboard'); // Change to your desired route
     } catch (err: unknown) {
       const apiError = err as ApiError; // Type assertion
       setError(

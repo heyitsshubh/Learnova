@@ -1,9 +1,9 @@
 'use client';
 
 import AppLayout from '../Components/AppLayout';
-import ClassCard from '../Components/ClassCard';
-import CreateClassModal from '../Components/CreateClassModal';
-import RightSidebar from '../Components/RightSidebar';
+import ClassCard from '../Components/Classroom/ClassCard';
+import CreateClassModal from '../Components/Classroom/CreateClassModal';
+import RightSidebar from '../Components/Classroom/RightSidebar';
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 
