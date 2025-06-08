@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useRef, useState } from 'react';
 import { verifyOtp, resendOtp } from '../../services/auth';
 import { useRouter } from 'next/navigation';
+import { setTokens } from '../../utils/token'; // Import the setTokens utility
 
 interface ApiError {
   response?: {
@@ -22,8 +23,7 @@ const Otp = () => {
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
-
-  const [email] = useState(() => localStorage.getItem('email') || '');
+  const [email] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('email') || '' : ''));
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
     const value = e.target.value.replace(/[^0-9]/g, '');
@@ -48,11 +48,9 @@ const Otp = () => {
     try {
       const otpValue = otp.join('');
       const res = await verifyOtp({ email, otp: otpValue });
-      if (res?.accessToken) {
-        localStorage.setItem('accessToken', `Bearer ${res.accessToken}`);
-      }
-      if (res?.refreshToken) {
-        localStorage.setItem('refreshToken', `Bearer ${res.refreshToken}`);
+      if (res?.accessToken && res?.refreshToken) {
+        // Use the setTokens utility to store tokens
+        setTokens(res.accessToken, res.refreshToken);
       }
       router.push('/dashboard');
     } catch (err: unknown) {
