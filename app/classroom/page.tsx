@@ -3,17 +3,22 @@
 import AppLayout from '../Components/AppLayout';
 import ClassCard from '../Components/Classroom/ClassCard';
 import CreateClassModal from '../Components/Classroom/CreateClassModal';
+import JoinClassModal from '../Components/Classroom/JoinClassModal'; // Import JoinClassModal
 import RightSidebar from '../Components/Classroom/RightSidebar';
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 
-
-
 export default function ClassroomPage() {
   const [modalOpen, setModalOpen] = useState(false);
+  const [joinModalOpen, setJoinModalOpen] = useState(false); // State for Join Class Modal
   const [activeTab, setActiveTab] = useState("All");
 
   const filters = ["All", "Joined", "Created", "Pending Assignment", "Favourites"];
+
+  const handleJoinClass = (classCode: string) => {
+    console.log('Joining class with code:', classCode);
+    // Add logic to join the class using the class code
+  };
 
   return (
     <AppLayout>
@@ -44,7 +49,7 @@ export default function ClassroomPage() {
               onClick={() => {
                 setActiveTab(filter);
                 if (filter === "Created") setModalOpen(true);
-
+                if (filter === "Joined") setJoinModalOpen(true); // Open Join Class Modal
               }}
             >
               {filter}
@@ -80,6 +85,13 @@ export default function ClassroomPage() {
 
       {/* Create Class Modal */}
       <CreateClassModal isOpen={modalOpen} onClose={() => setModalOpen(false)} />
+
+      {/* Join Class Modal */}
+      <JoinClassModal
+        isOpen={joinModalOpen}
+        onClose={() => setJoinModalOpen(false)}
+        onJoin={handleJoinClass}
+      />
     </AppLayout>
   );
 }
