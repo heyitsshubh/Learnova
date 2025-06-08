@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { verifyOtpp, resendOtp } from '../../services/auth';
+import { setResetToken } from '../../utils/token'; // Import the setResetToken utility
 
 interface ApiError {
   response?: {
@@ -22,13 +23,12 @@ const VerifyOtp = () => {
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
 
-  // ✅ FIXED: useRef with an array initialized once
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   if (inputRefs.current.length !== 6) {
     inputRefs.current = Array(6).fill(null);
   }
 
-  const [email] = useState(() => localStorage.getItem('email') || '');
+  const [email] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('email') || '' : ''));
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
     const value = e.target.value.replace(/[^0-9]/g, '');
@@ -53,7 +53,8 @@ const VerifyOtp = () => {
       const res = await verifyOtpp({ email, otp: otpValue });
 
       if (res?.resetToken) {
-        localStorage.setItem('resetToken', res.resetToken);
+        // Use the setResetToken utility to store the reset token
+        setResetToken(res.resetToken);
       }
 
       router.push('/reset-password');

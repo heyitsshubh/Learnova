@@ -5,6 +5,7 @@ import { FaLock } from 'react-icons/fa';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { resetPassword } from '../../services/auth';
+import { getResetToken, removeResetToken, removeTokens } from '../../utils/token'; // Import token utilities
 
 interface ApiError {
   response?: {
@@ -37,9 +38,9 @@ const Resetpassword = () => {
       return;
     }
 
-    // Get resetToken from localStorage
-    const resetToken = localStorage.getItem('resetToken');
-    console.log('Reset token from localStorage:', resetToken);
+    // Get resetToken using the utility function
+    const resetToken = getResetToken();
+    console.log('Reset token:', resetToken);
     if (!resetToken) {
       setError('Reset token is missing. Please restart the reset process.');
       return;
@@ -49,12 +50,14 @@ const Resetpassword = () => {
     try {
       // Use newPassword as required by your API schema
       await resetPassword({ newPassword: form.password }, resetToken);
-      localStorage.removeItem('resetToken');
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
+
+      // Remove tokens using utility functions
+      removeResetToken();
+      removeTokens();
+
       router.push('/login');
-    } catch (err: unknown) { // Use `unknown` instead of `any`
-      const apiError = err as ApiError; // Type assertion
+    } catch (err: unknown) {
+      const apiError = err as ApiError;
       setError(
         apiError?.response?.data?.message ||
         apiError?.message ||
