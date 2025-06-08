@@ -34,9 +34,9 @@ const Sidebar: React.FC = () => {
   const menuItems: MenuItem[] = [
     { name: 'Home', path: '/dashboard', icon: '' },
     { name: 'Classroom', path: '/classroom', icon: '' },
-    { name: 'Community', path: '/community', icon: '', badge: 'New' },
+    { name: 'Community', path: '/community', icon: '' },
     { name: 'Messages', path: '/messages', icon: '' },
-    { name: 'Notifications', path: '/notifications', icon: '', badge: '8' }
+    { name: 'Notifications', path: '/notifications', icon: '' }
   ];
 
   const classes: ClassItem[] = [
