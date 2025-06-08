@@ -22,8 +22,8 @@ const Otp = () => {
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
 
-  // Move useRef to the top level
-  const inputRefs = Array(6).fill(null).map(() => useRef<HTMLInputElement>(null));
+  // Initialize refs at the top level
+  const inputRefs = Array.from({ length: 6 }, () => useRef<HTMLInputElement>(null));
 
   // TODO: Replace with actual user email from props, context, or state
   const [email] = useState(() => localStorage.getItem('email') || '');
