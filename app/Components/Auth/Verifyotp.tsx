@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { verifyOtpp, resendOtp } from '../../services/auth'; // <-- Import resendOtp
+import { verifyOtpp, resendOtp } from '../../services/auth';
 
 interface ApiError {
   response?: {
@@ -22,24 +22,24 @@ const VerifyOtp = () => {
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
 
-  // Initialize refs at the top level
-  const inputRefs = Array.from({ length: 6 }, () => useRef<HTMLInputElement>(null));
+  // ✅ FIXED: useRef with an array initialized once
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  if (inputRefs.current.length !== 6) {
+    inputRefs.current = Array(6).fill(null);
+  }
 
-  // TODO: Replace with actual user email from props, context, or state
   const [email] = useState(() => localStorage.getItem('email') || '');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
     const value = e.target.value.replace(/[^0-9]/g, '');
-    if (!value) return;
     const newOtp = [...otp];
     newOtp[idx] = value;
     setOtp(newOtp);
 
-    if (value.length === 1 && idx < 5) {
-      inputRefs[idx + 1].current?.focus();
-    }
-    if (value.length === 0 && idx > 0) {
-      inputRefs[idx - 1].current?.focus();
+    if (value && idx < 5) {
+      inputRefs.current[idx + 1]?.focus();
+    } else if (!value && idx > 0) {
+      inputRefs.current[idx - 1]?.focus();
     }
   };
 
@@ -51,14 +51,14 @@ const VerifyOtp = () => {
     try {
       const otpValue = otp.join('');
       const res = await verifyOtpp({ email, otp: otpValue });
-      console.log(res);
+
       if (res?.resetToken) {
-        localStorage.setItem('resetToken', res.resetToken); // Save only the token
-        console.log('Token set in localStorage:', res.resetToken);
+        localStorage.setItem('resetToken', res.resetToken);
       }
+
       router.push('/reset-password');
     } catch (err: unknown) {
-      const apiError = err as ApiError; // Type assertion
+      const apiError = err as ApiError;
       setError(
         apiError?.response?.data?.message ||
         apiError?.message ||
@@ -78,7 +78,7 @@ const VerifyOtp = () => {
       await resendOtp({ email });
       setResendMessage('OTP resent successfully!');
     } catch (err: unknown) {
-      const apiError = err as ApiError; // Type assertion
+      const apiError = err as ApiError;
       setError(
         apiError?.response?.data?.message ||
         apiError?.message ||
@@ -126,13 +126,13 @@ const VerifyOtp = () => {
             {otp.map((digit, idx) => (
               <input
                 key={idx}
-                ref={inputRefs[idx]}
+                ref={(el) => { inputRefs.current[idx] = el; }}
                 type="text"
                 maxLength={1}
                 value={digit}
                 className="text-center text-2xl border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 style={{ width: 40, height: 40, minWidth: 40, maxWidth: 40 }}
-                onChange={e => handleChange(e, idx)}
+                onChange={(e) => handleChange(e, idx)}
                 inputMode="numeric"
                 pattern="[0-9]*"
                 autoComplete="one-time-code"
@@ -140,12 +140,8 @@ const VerifyOtp = () => {
             ))}
           </div>
 
-          {error && (
-            <div className="text-red-500 text-sm text-center">{error}</div>
-          )}
-          {resendMessage && (
-            <div className="text-green-500 text-sm text-center">{resendMessage}</div>
-          )}
+          {error && <div className="text-red-500 text-sm text-center">{error}</div>}
+          {resendMessage && <div className="text-green-500 text-sm text-center">{resendMessage}</div>}
 
           <button
             type="submit"
@@ -163,7 +159,10 @@ const VerifyOtp = () => {
             href="#"
             className="text-blue-600 hover:underline"
             onClick={handleResendOtp}
-            style={{ cursor: resendLoading ? 'not-allowed' : 'pointer', pointerEvents: resendLoading ? 'none' : 'auto' }}
+            style={{
+              cursor: resendLoading ? 'not-allowed' : 'pointer',
+              pointerEvents: resendLoading ? 'none' : 'auto'
+            }}
           >
             {resendLoading ? 'Resending...' : 'Resend OTP'}
           </a>

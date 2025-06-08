@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useRef, useState } from 'react';
-import { verifyOtp, resendOtp } from '../../services/auth'; // <-- Import resendOtp
+import { verifyOtp, resendOtp } from '../../services/auth';
 import { useRouter } from 'next/navigation';
 
 interface ApiError {
@@ -21,11 +21,8 @@ const Otp = () => {
   const [error, setError] = useState<string | null>(null);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
+  const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
-  // Initialize refs at the top level
-  const inputRefs = Array.from({ length: 6 }, () => useRef<HTMLInputElement>(null));
-
-  // TODO: Replace with actual user email from props, context, or state
   const [email] = useState(() => localStorage.getItem('email') || '');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
@@ -36,10 +33,10 @@ const Otp = () => {
     setOtp(newOtp);
 
     if (value.length === 1 && idx < 5) {
-      inputRefs[idx + 1].current?.focus();
+      inputRefs.current[idx + 1]?.focus();
     }
     if (value.length === 0 && idx > 0) {
-      inputRefs[idx - 1].current?.focus();
+      inputRefs.current[idx - 1]?.focus();
     }
   };
 
@@ -51,16 +48,15 @@ const Otp = () => {
     try {
       const otpValue = otp.join('');
       const res = await verifyOtp({ email, otp: otpValue });
-      // Set tokens to localStorage after successful verification
       if (res?.accessToken) {
-        localStorage.setItem('accessToken', res.accessToken);
+        localStorage.setItem('accessToken', `Bearer ${res.accessToken}`);
       }
       if (res?.refreshToken) {
-        localStorage.setItem('refreshToken', res.refreshToken);
+        localStorage.setItem('refreshToken', `Bearer ${res.refreshToken}`);
       }
-      router.push('/dashboard'); // Change to your desired route
+      router.push('/dashboard');
     } catch (err: unknown) {
-      const apiError = err as ApiError; // Type assertion
+      const apiError = err as ApiError;
       setError(
         apiError?.response?.data?.message ||
         apiError?.message ||
@@ -80,7 +76,7 @@ const Otp = () => {
       await resendOtp({ email });
       setResendMessage('OTP resent successfully!');
     } catch (err: unknown) {
-      const apiError = err as ApiError; // Type assertion
+      const apiError = err as ApiError;
       setError(
         apiError?.response?.data?.message ||
         apiError?.message ||
@@ -94,7 +90,7 @@ const Otp = () => {
   return (
     <div className="fixed inset-0 w-screen h-screen flex">
       {/* Left Panel */}
-      <div className="w-1/2 h-full relative ">
+      <div className="w-1/2 h-full relative">
         <Image
           src="/Illustration.svg"
           alt="Illustration"
@@ -105,11 +101,12 @@ const Otp = () => {
         />
         <div className="absolute inset-0 flex flex-col z-10">
           <div className="text-left m-20">
-            <h2 className="text-3xl font-bold text-gray-800 mb-4 ">
+            <h2 className="text-3xl font-bold text-gray-800 mb-4">
               Virtual Learning & Collaboration
             </h2>
             <p className="text-lg text-gray-600">
-              Join live classes, share resources, and connect <br />with peers — all from a single platform.
+              Join live classes, share resources, and connect <br />
+              with peers — all from a single platform.
             </p>
           </div>
         </div>
@@ -127,13 +124,13 @@ const Otp = () => {
             {otp.map((digit, idx) => (
               <input
                 key={idx}
-                ref={inputRefs[idx]}
+                ref={(el) => { inputRefs.current[idx] = el; }}
                 type="text"
                 maxLength={1}
                 value={digit}
                 className="text-center text-2xl border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 style={{ width: 40, height: 40, minWidth: 40, maxWidth: 40 }}
-                onChange={e => handleChange(e, idx)}
+                onChange={(e) => handleChange(e, idx)}
                 inputMode="numeric"
                 pattern="[0-9]*"
                 autoComplete="one-time-code"
@@ -141,12 +138,8 @@ const Otp = () => {
             ))}
           </div>
 
-          {error && (
-            <div className="text-red-500 text-sm text-center">{error}</div>
-          )}
-          {resendMessage && (
-            <div className="text-green-500 text-sm text-center">{resendMessage}</div>
-          )}
+          {error && <div className="text-red-500 text-sm text-center">{error}</div>}
+          {resendMessage && <div className="text-green-500 text-sm text-center">{resendMessage}</div>}
 
           <button
             type="submit"
@@ -164,7 +157,10 @@ const Otp = () => {
             href="#"
             className="text-blue-600 hover:underline"
             onClick={handleResendOtp}
-            style={{ cursor: resendLoading ? 'not-allowed' : 'pointer', pointerEvents: resendLoading ? 'none' : 'auto' }}
+            style={{
+              cursor: resendLoading ? 'not-allowed' : 'pointer',
+              pointerEvents: resendLoading ? 'none' : 'auto'
+            }}
           >
             {resendLoading ? 'Resending...' : 'Resend OTP'}
           </a>
