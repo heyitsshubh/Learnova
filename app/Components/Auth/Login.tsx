@@ -6,6 +6,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { login } from '../../services/auth'; 
 import { setTokens } from '../../utils/token';
+import { auth } from '../../utils/firebase'; // Import Firebase auth
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'; // Import Firebase Google auth
 
 interface ApiError {
   response?: {
@@ -31,33 +33,53 @@ const Login = () => {
     router.push('/forgotpassword');
   };
 
-    const handleSignup = (e: React.MouseEvent) => {
+  const handleSignup = (e: React.MouseEvent) => {
     e.preventDefault();
     router.push('/signup'); // Navigate to the signup page
+  };
+
+  const handleGoogleLogin = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      // Store tokens or user info as needed
+      const accessToken = await user.getIdToken();
+      setTokens(accessToken, ''); // Store access token
+      localStorage.setItem('userName', user.displayName || ''); // Store user name
+      localStorage.setItem('userEmail', user.email || ''); // Store user email
+
+      router.push('/dashboard'); // Redirect to dashboard
+    } catch (error) {
+      console.error('Google login failed:', error);
+      setError('Google login failed. Please try again.');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!form.email || !emailRegex.test(form.email)) {
-    setError('Please enter a valid email address');
-    return;
-  }
 
-  // Password validation
-  const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{5,}$/;
-  if (!passwordRegex.test(form.password)) {
-    setError('Password must contain at least 1 special character, 1 number, and be at least 5 characters long');
-    return;
-  }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!form.email || !emailRegex.test(form.email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{5,}$/;
+    if (!passwordRegex.test(form.password)) {
+      setError('Password must contain at least 1 special character, 1 number, and be at least 5 characters long');
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await login(form);
       setTokens(res.accessToken, res.refreshToken);
       router.push('/dashboard');
-    } catch (err: unknown) { // Use `unknown` instead of `any`
-      const apiError = err as ApiError; // Type assertion
+    } catch (err: unknown) {
+      const apiError = err as ApiError;
       setError(
         apiError?.response?.data?.message ||
         apiError?.message ||
@@ -166,6 +188,7 @@ const Login = () => {
         <button
           className="mt-6 flex items-center justify-center gap-3 border border-gray-300 py-2 rounded-md hover:bg-gray-100 transition self-center"
           style={{ width: 400, minWidth: 50 }}
+          onClick={handleGoogleLogin}
         >
           <Image src="google.svg" alt="Google" width={20} height={20} />
           Continue with Google

@@ -5,6 +5,9 @@ import { FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa';
 import { useState } from 'react';
 import { signup } from '../../services/auth';
 import { useRouter } from 'next/navigation';
+import { auth } from '../../utils/firebase'; // Import Firebase auth
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'; // Import Firebase Google auth
+
 
 interface ApiError {
   response?: {
@@ -35,6 +38,25 @@ const SignupForm = () => {
   const handleSignup = (e: React.MouseEvent) => {
     e.preventDefault();
     router.push('/login');
+  };
+
+  const handleGoogleSignup = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      // Store user info as needed
+      const accessToken = await user.getIdToken();
+      localStorage.setItem('accessToken', accessToken); // Store access token
+      localStorage.setItem('userName', user.displayName || ''); // Store user name
+      localStorage.setItem('userEmail', user.email || ''); // Store user email
+
+      router.push('/dashboard'); // Redirect to dashboard
+    } catch (error) {
+      console.error('Google signup failed:', error);
+      setError('Google signup failed. Please try again.');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -206,9 +228,10 @@ const SignupForm = () => {
           <hr className="flex-grow border-t border-gray-300" />
         </div>
 
-        <button
+       <button
           className="mt-6 flex items-center justify-center gap-3 border border-gray-300 py-2 rounded-md hover:bg-gray-100 transition self-center"
           style={{ width: 400, minWidth: 50 }}
+          onClick={handleGoogleSignup}
         >
           <Image src="google.svg" alt="Google" width={20} height={20} />
           Continue with Google
