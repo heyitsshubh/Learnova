@@ -28,7 +28,7 @@ export const removeTokens = () => {
   }
 };
 
-// Add functions for resetToken
+
 export const setResetToken = (resetToken: string) => {
   if (typeof window !== 'undefined') {
     localStorage.setItem('resetToken', resetToken);
@@ -45,5 +45,24 @@ export const getResetToken = () => {
 export const removeResetToken = () => {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('resetToken');
+  }
+};
+
+export const setUserId = (userId: string) => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('userId', userId);
+  }
+};
+
+export const getUserId = () => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('userId');
+  }
+  return null;
+};
+
+export const removeUserId = () => {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('userId');
   }
 };

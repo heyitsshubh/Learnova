@@ -1,10 +1,10 @@
 'use client';
 
 import Image from 'next/image';
-import { FaUser, FaEnvelope, FaLock } from 'react-icons/fa';
+import { FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa';
 import { useState } from 'react';
-import { signup } from '../../services/auth'; 
-import { useRouter } from 'next/navigation'; 
+import { signup } from '../../services/auth';
+import { useRouter } from 'next/navigation';
 
 interface ApiError {
   response?: {
@@ -16,7 +16,7 @@ interface ApiError {
 }
 
 const SignupForm = () => {
-  const router = useRouter(); 
+  const router = useRouter();
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -25,9 +25,16 @@ const SignupForm = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false); // State for toggling password visibility
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false); // State for toggling confirm password visibility
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSignup = (e: React.MouseEvent) => {
+    e.preventDefault();
+    router.push('/login');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -39,11 +46,12 @@ const SignupForm = () => {
       setError('Please enter a valid email address');
       return;
     }
-   const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{5,}$/;
-  if (!passwordRegex.test(form.password)) {
-    setError('Password must contain at least 1 special character, 1 number, and be at least 5 characters long');
-    return;
-  }
+
+    const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{5,}$/;
+    if (!passwordRegex.test(form.password)) {
+      setError('Password must contain at least 1 special character, 1 number, and be at least 5 characters long');
+      return;
+    }
 
     if (form.password !== form.confirmPassword) {
       setError('Passwords do not match');
@@ -52,7 +60,7 @@ const SignupForm = () => {
 
     setLoading(true);
     try {
-      console.log('Submitting:', form); // <-- Add this line
+      console.log('Submitting:', form);
       await signup({
         name: form.name,
         email: form.email,
@@ -60,8 +68,8 @@ const SignupForm = () => {
       });
       localStorage.setItem('email', form.email);
       router.push('/otp');
-    } catch (err: unknown) { // Use `unknown` instead of `any`
-      const apiError = err as ApiError; // Type assertion
+    } catch (err: unknown) {
+      const apiError = err as ApiError;
       setError(
         apiError?.response?.data?.message ||
         apiError?.message ||
@@ -129,7 +137,7 @@ const SignupForm = () => {
           <div className="relative w-full flex items-center justify-center" style={{ width: 400, minWidth: 50 }}>
             <FaLock className="absolute left-4 text-gray-400 text-lg" />
             <input
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               name="password"
               value={form.password}
               onChange={handleChange}
@@ -138,11 +146,18 @@ const SignupForm = () => {
               style={{ width: 400, minWidth: 50 }}
               required
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 text-gray-400 text-lg"
+            >
+              {showPassword ? <FaEyeSlash /> : <FaEye />}
+            </button>
           </div>
           <div className="relative w-full flex items-center justify-center" style={{ width: 400, minWidth: 50 }}>
             <FaLock className="absolute left-4 text-gray-400 text-lg" />
             <input
-              type="password"
+              type={showConfirmPassword ? 'text' : 'password'}
               name="confirmPassword"
               value={form.confirmPassword}
               onChange={handleChange}
@@ -151,6 +166,13 @@ const SignupForm = () => {
               style={{ width: 400, minWidth: 50 }}
               required
             />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-4 text-gray-400 text-lg"
+            >
+              {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+            </button>
           </div>
 
           {error && (
@@ -169,7 +191,11 @@ const SignupForm = () => {
 
         <p className="text-sm mt-6 text-gray-500 text-center">
           Already have an account?{' '}
-          <a href="#" className="text-blue-600 hover:underline text-center">
+          <a
+            href="#"
+            onClick={handleSignup}
+            className="text-blue-600 hover:underline text-center"
+          >
             Sign in
           </a>
         </p>

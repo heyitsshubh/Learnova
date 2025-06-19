@@ -3,27 +3,59 @@
 import AppLayout from '../Components/AppLayout';
 import ClassCard from '../Components/Classroom/ClassCard';
 import CreateClassModal from '../Components/Classroom/CreateClassModal';
-import JoinClassModal from '../Components/Classroom/JoinClassModal'; // Import JoinClassModal
+import JoinClassModal from '../Components/Classroom/JoinClassModal';
 import RightSidebar from '../Components/Classroom/RightSidebar';
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
+import { createClass } from '../services/classroom';
+ import { getUserId } from '../utils/token';
 
 export default function ClassroomPage() {
   const [modalOpen, setModalOpen] = useState(false);
-  const [joinModalOpen, setJoinModalOpen] = useState(false); // State for Join Class Modal
+  const [joinModalOpen, setJoinModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("All");
 
   const filters = ["All", "Joined", "Created", "Pending Assignment", "Favourites"];
 
   const handleJoinClass = (classCode: string) => {
     console.log('Joining class with code:', classCode);
-    // Add logic to join the class using the class code
+    
   };
+
+const handleCreateClass = async (formData: {
+  className: string;
+  subject: string;
+  privacy: 'public' | 'private';
+  createdBy: string;
+}): Promise<string> => {
+  try {
+    const userId = getUserId();
+    if (!userId) {
+      alert('User not authenticated. Please log in again.');
+      throw new Error('User not authenticated');
+    }
+
+    const fullFormData = {
+      ...formData,
+      createdBy: userId,
+    };
+
+    const result = await createClass(fullFormData);
+    console.log('Class created:', result);
+
+    setModalOpen(false);
+
+    // Assuming the API response contains a `classCode` field
+    return result.classCode;
+  } catch (error) {
+    console.error('Failed to create class:', error);
+    throw new Error('Failed to create class');
+  }
+};
 
   return (
     <AppLayout>
-      <div className="pl-64 pr-6 pt-6"> {/* 👈 Adjusts for fixed sidebar */}
-
+      <div className="pl-64 pr-6 pt-6">
         {/* Header Section */}
         <div className="flex justify-between items-center mb-6">
           <div>
@@ -33,12 +65,12 @@ export default function ClassroomPage() {
           <div className="relative w-66">
             <input
               placeholder="Search"
-              className="border rounded px-4 py-2  text-sm w-full"
+              className="border rounded px-4 py-2 text-sm w-full"
             />
           </div>
         </div>
 
-        {/* Filters Section */}
+        {/* Filters */}
         <div className="flex items-center gap-2 mb-6">
           {filters.map((filter) => (
             <button
@@ -49,7 +81,7 @@ export default function ClassroomPage() {
               onClick={() => {
                 setActiveTab(filter);
                 if (filter === "Created") setModalOpen(true);
-                if (filter === "Joined") setJoinModalOpen(true); // Open Join Class Modal
+                if (filter === "Joined") setJoinModalOpen(true);
               }}
             >
               {filter}
@@ -58,7 +90,6 @@ export default function ClassroomPage() {
         </div>
 
         <div className="flex flex-col lg:flex-row">
-          {/* Main Class Cards Section */}
           <div className="flex-1 lg:pr-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -66,15 +97,12 @@ export default function ClassroomPage() {
               ))}
             </div>
           </div>
-
-          {/* Right Sidebar */}
           <div className="hidden lg:block lg:w-64">
             <RightSidebar />
           </div>
         </div>
       </div>
 
-      {/* Floating Button */}
       <button
         className="fixed bottom-6 right-6 text-white p-4 rounded-full shadow-lg"
         style={{ backgroundColor: 'rgba(73, 73, 73, 1)' }}
@@ -83,10 +111,13 @@ export default function ClassroomPage() {
         <Plus />
       </button>
 
-      {/* Create Class Modal */}
-      <CreateClassModal isOpen={modalOpen} onClose={() => setModalOpen(false)} />
+      {/* ✅ Pass onCreate */}
+      <CreateClassModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onCreate={handleCreateClass}
+      />
 
-      {/* Join Class Modal */}
       <JoinClassModal
         isOpen={joinModalOpen}
         onClose={() => setJoinModalOpen(false)}

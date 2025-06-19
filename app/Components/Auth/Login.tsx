@@ -31,6 +31,11 @@ const Login = () => {
     router.push('/forgotpassword');
   };
 
+    const handleSignup = (e: React.MouseEvent) => {
+    e.preventDefault();
+    router.push('/signup'); // Navigate to the signup page
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -143,7 +148,11 @@ const Login = () => {
 
         <p className="text-sm mt-6 text-gray-500 text-center">
           Already have an account?{' '}
-          <a href="#" className="text-blue-600 hover:underline text-center">
+            <a
+            href="#"
+            onClick={handleSignup}
+            className="text-blue-600 hover:underline text-center"
+          >
             Sign up
           </a>
         </p>

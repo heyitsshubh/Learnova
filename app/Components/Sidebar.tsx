@@ -39,14 +39,14 @@ const Sidebar: React.FC = () => {
     { name: 'Notifications', path: '/notifications', icon: '' }
   ];
 
-  const classes: ClassItem[] = [
-    { name: 'UHV', liked: true },
-    { name: 'PPS', liked: true },
-    { name: 'Yoga', liked: true },
-    { name: 'Physical Education 7-1', liked: true },
-    { name: 'Chemistry', liked: true },
-    { name: 'Laser', liked: true }
-  ];
+  // const classes: ClassItem[] = [
+  //   { name: 'UHV', liked: true },
+  //   { name: 'PPS', liked: true },
+  //   { name: 'Yoga', liked: true },
+  //   { name: 'Physical Education 7-1', liked: true },
+  //   { name: 'Chemistry', liked: true },
+  //   { name: 'Laser', liked: true }
+  // ];
 
   const isActivePath = (path: string): boolean => {
     return pathname === path; // Compare the current path with the menu item's path
@@ -65,8 +65,8 @@ const Sidebar: React.FC = () => {
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 px-2 py-4">
-        <ul className="space-y-0">
+      <nav className="flex-1 px-4 py-4">
+        <ul className="space-y-7">
           {menuItems.map((item: MenuItem) => (
             <li key={item.name}>
               <Link 
@@ -98,7 +98,7 @@ const Sidebar: React.FC = () => {
         </ul>
 
         {/* My Classes Section */}
-        <div className="mt-8">
+        {/* <div className="mt-8">
           <h3 className="text-lg font-semibold mb-4 text-gray-200">My classes</h3>
           <ul className="space-y-0">
             {classes.map((classItem: ClassItem) => (
@@ -119,7 +119,7 @@ const Sidebar: React.FC = () => {
               </li>
             ))}
           </ul>
-        </div>
+        </div> */}
       </nav>
 
       {/* User Profile */}
