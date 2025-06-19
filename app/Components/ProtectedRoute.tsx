@@ -14,7 +14,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
     } else {
       setCheckingAuth(false); 
     }
-  }, []);
+  }, [router]);
 
   if (checkingAuth) return <div>No Token Provided..</div>; 
 

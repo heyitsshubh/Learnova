@@ -12,10 +12,10 @@ interface MenuItem {
   badge?: string;
 }
 
-interface ClassItem {
-  name: string;
-  liked: boolean;
-}
+// interface ClassItem {
+//   name: string;
+//   liked: boolean;
+// }
 
 interface User {
   name: string;
@@ -52,9 +52,9 @@ const Sidebar: React.FC = () => {
     return pathname === path; // Compare the current path with the menu item's path
   };
 
-  const formatClassPath = (className: string): string => {
-    return `/class/${className.toLowerCase().replace(/\s+/g, '-')}`;
-  };
+  // const formatClassPath = (className: string): string => {
+  //   return `/class/${className.toLowerCase().replace(/\s+/g, '-')}`;
+  // };
 
   return (
     <div className="fixed left-0 top-0 h-full w-64 text-white flex flex-col z-50"

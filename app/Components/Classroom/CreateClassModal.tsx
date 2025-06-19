@@ -36,13 +36,14 @@ const CreateClassModal: React.FC<Props> = ({ isOpen, onClose, onCreate }) => {
       return;
     }
 
-    try {
-      setError(null);
-      const classCode = await onCreate({ className, subject, privacy, createdBy });
-      setCreatedClassCode(classCode); // Show generated class code
-    } catch (err) {
-      setError('Failed to create class. Please try again.');
-    }
+   try {
+  setError(null);
+  const classCode = await onCreate({ className, subject, privacy, createdBy });
+  setCreatedClassCode(classCode); // Show generated class code
+} catch (err) {
+  console.error('Error creating class:', err);
+  setError('Failed to create class. Please try again.');
+}
   };
 
   const handleClose = () => {
