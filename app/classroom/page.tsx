@@ -5,6 +5,7 @@ import ClassCard from '../Components/Classroom/ClassCard';
 import CreateClassModal from '../Components/Classroom/CreateClassModal';
 import JoinClassModal from '../Components/Classroom/JoinClassModal';
 import RightSidebar from '../Components/Classroom/RightSidebar';
+import { FaSearch } from 'react-icons/fa';
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { createClass } from '../services/classroom';
@@ -62,12 +63,14 @@ const handleCreateClass = async (formData: {
             <h1 className="text-2xl font-semibold">Classroom</h1>
             <p className="text-sm text-gray-500">Ayush Jaiswal / classroom</p>
           </div>
-          <div className="relative w-66">
-            <input
-              placeholder="Search"
-              className="border rounded px-4 py-2 text-sm w-full"
-            />
-          </div>
+             <div className="relative w-66 max-w-md">
+      <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg" />
+      <input
+        type="text"
+        placeholder="Search..."
+        className="pl-12 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
         </div>
 
         {/* Filters */}
