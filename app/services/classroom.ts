@@ -1,23 +1,26 @@
 
+
+// services/classroom.ts
 import axios from 'axios';
 
-export const createClass = async (data: {
+const API_URL = 'https://project2-zphf.onrender.com/api/class/';
+
+export const createClass = async (formData: {
   className: string;
   subject: string;
   privacy: 'public' | 'private';
-  createdBy: string;
 }) => {
-  const token = localStorage.getItem('accessToken'); 
+  const token = localStorage.getItem('accessToken'); // make sure this is set
 
-  const response = await axios.post(
-    'https://project2-zphf.onrender.com/api/class',
-    data,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`, 
-      },
-    }
-  );
+  if (!token) {
+    throw new Error('No access token found.');
+  }
+
+  const response = await axios.post(API_URL, formData, {
+    headers: {
+      Authorization: `Bearer ${token}`, // 💥 this is required
+    },
+  });
 
   return response.data;
 };

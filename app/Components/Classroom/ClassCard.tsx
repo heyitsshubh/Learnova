@@ -1,46 +1,52 @@
 import Image from 'next/image';
 
-const ClassCard = () => {
+interface ClassCardProps {
+  classData: {
+    className: string;
+    subject: string;
+    createdByName?: string; // Optional
+    tags?: string[]; // e.g., ['UHV', 'Universal']
+  };
+}
+
+const ClassCard: React.FC<{ classData: ClassCardProps['classData'] }> = ({ classData }) => {
   return (
     <div
       className="bg-white rounded-md overflow-hidden shadow-sm border"
-      style={{ width: '306px', height: '251px' }} // Fixed width and height
+      style={{ width: '306px', height: '251px' }}
     >
       {/* Image Section */}
-      <div className="relative h-2/3 bg-[#001C27] flex justify-end items-center pr-2"> {/* Align image to the right */}
+      <div className="relative h-2/3 bg-[#001C27] flex justify-end items-center pr-2">
         <Image
-          src="/card.svg" // ✅ Place your image in the public folder
+          src="/card.svg"
           alt="Class Illustration"
-          width={80} // Reduced width
-          height={80} // Reduced height
+          width={80}
+          height={80}
           className="object-contain"
         />
-        {/* UHV Box */}
-        <div
-          className="absolute top-8 left-4 text-white text-xs font-medium px-2 py-1 rounded"
-          style={{ backgroundColor: 'rgba(13, 64, 89, 0.35)' }} // Apply rgba color here
-        >
-          UHV
-        </div>
-        {/* Universal Box */}
-        <div
-          className="absolute top-16 left-4 text-white text-xs font-medium px-2 py-1 rounded"
-          style={{ backgroundColor: 'rgba(45, 156, 219, 0.28)' }} // Apply rgba color here
-        >
-          Universal
-        </div>
+
+        {/* Dynamic Tags */}
+        {classData?.tags?.map((tag, index) => (
+          <div
+            key={index}
+            className={`absolute top-${8 + index * 8} left-4 text-white text-xs font-medium px-2 py-1 rounded`}
+            style={{ backgroundColor: index === 0 ? 'rgba(13, 64, 89, 0.35)' : 'rgba(45, 156, 219, 0.28)' }}
+          >
+            {tag}
+          </div>
+        ))}
       </div>
 
       {/* Details Section */}
-         <div className="p-3 flex items-center justify-between">
+      <div className="p-3 flex items-center justify-between">
         <div>
-          <h3 className="font-semibold text-sm">UHV</h3>
-          <p className="text-gray-700 text-sm">Gopal Babu</p>
+          <h3 className="font-semibold text-sm">{classData.className}</h3>
+          <p className="text-gray-700 text-sm">{classData.subject}</p>
         </div>
         <Image
-          src="/profile.svg" // ✅ Replace with your profile image path
+          src="/profile.svg"
           alt="Profile"
-          width={62} // Profile image size
+          width={62}
           height={62}
           className="rounded-full"
         />

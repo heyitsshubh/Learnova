@@ -9,50 +9,36 @@ import { FaSearch } from 'react-icons/fa';
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { createClass } from '../services/classroom';
- import { getUserId } from '../utils/token';
 
 export default function ClassroomPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [joinModalOpen, setJoinModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("All");
+  const [classes, setClasses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const filters = ["All", "Joined", "Created", "Pending Assignment", "Favourites"];
 
   const handleJoinClass = (classCode: string) => {
-    console.log('Joining class with code:', classCode);
-    
+    console.log('Joining class with code:', classCode);    
   };
 
 const handleCreateClass = async (formData: {
   className: string;
   subject: string;
   privacy: 'public' | 'private';
-  createdBy: string;
 }): Promise<string> => {
   try {
-    const userId = getUserId();
-    if (!userId) {
-      alert('User not authenticated. Please log in again.');
-      throw new Error('User not authenticated');
-    }
-
-    const fullFormData = {
-      ...formData,
-      createdBy: userId,
-    };
-
-    const result = await createClass(fullFormData);
+    const result = await createClass(formData);
     console.log('Class created:', result);
-
     setModalOpen(false);
-
-    // Assuming the API response contains a `classCode` field
     return result.classCode;
   } catch (error) {
     console.error('Failed to create class:', error);
     throw new Error('Failed to create class');
   }
 };
+
 
   return (
     <AppLayout>
@@ -63,14 +49,14 @@ const handleCreateClass = async (formData: {
             <h1 className="text-2xl font-semibold">Classroom</h1>
             <p className="text-sm text-gray-500">Ayush Jaiswal / classroom</p>
           </div>
-             <div className="relative w-66 max-w-md">
-      <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg" />
-      <input
-        type="text"
-        placeholder="Search..."
-        className="pl-12 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
-    </div>
+          <div className="relative w-66 max-w-md">
+            <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg" />
+            <input
+              type="text"
+              placeholder="Search..."
+              className="pl-12 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
         </div>
 
         {/* Filters */}
@@ -95,37 +81,51 @@ const handleCreateClass = async (formData: {
         <div className="flex flex-col lg:flex-row">
           <div className="flex-1 lg:pr-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <ClassCard key={i} />
-              ))}
+              {loading ? (
+                <p className="text-white">Loading classes...</p>
+              ) : classes.length === 0 ? (
+                <p className="text-white">No classes found.</p>
+              ) : (
+                classes.map((cls) => (
+                  <ClassCard
+                    key={cls._id}
+                    classData={{
+                      className: cls.className,
+                      subject: cls.subject,
+                      createdByName: cls.createdByName,
+                      tags: ['UHV', 'Universal'], // dynamic if needed
+                    }}
+                  />
+                ))
+              )}
             </div>
           </div>
           <div className="hidden lg:block lg:w-64">
             <RightSidebar />
           </div>
         </div>
+
+        <button
+          className="fixed bottom-6 right-6 text-white p-4 rounded-full shadow-lg"
+          style={{ backgroundColor: 'rgba(73, 73, 73, 1)' }}
+          onClick={() => setModalOpen(true)}
+        >
+          <Plus />
+        </button>
+
+        {/* ✅ Pass onCreate */}
+        <CreateClassModal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          onCreate={handleCreateClass}
+        />
+
+        <JoinClassModal
+          isOpen={joinModalOpen}
+          onClose={() => setJoinModalOpen(false)}
+          onJoin={handleJoinClass}
+        />
       </div>
-
-      <button
-        className="fixed bottom-6 right-6 text-white p-4 rounded-full shadow-lg"
-        style={{ backgroundColor: 'rgba(73, 73, 73, 1)' }}
-        onClick={() => setModalOpen(true)}
-      >
-        <Plus />
-      </button>
-
-      {/* ✅ Pass onCreate */}
-      <CreateClassModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onCreate={handleCreateClass}
-      />
-
-      <JoinClassModal
-        isOpen={joinModalOpen}
-        onClose={() => setJoinModalOpen(false)}
-        onJoin={handleJoinClass}
-      />
     </AppLayout>
   );
 }

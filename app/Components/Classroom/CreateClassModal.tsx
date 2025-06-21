@@ -1,6 +1,5 @@
 'use client';
 import React, { useState } from 'react';
-import { getUserId } from '../../utils/token';
 
 interface Props {
   isOpen: boolean;
@@ -9,8 +8,7 @@ interface Props {
     className: string;
     subject: string;
     privacy: 'public' | 'private';
-    createdBy: string;
-  }) => Promise<string>; 
+  }) => Promise<string>;
 }
 
 const CreateClassModal: React.FC<Props> = ({ isOpen, onClose, onCreate }) => {
@@ -25,25 +23,19 @@ const CreateClassModal: React.FC<Props> = ({ isOpen, onClose, onCreate }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const createdBy = getUserId(); 
-    if (!createdBy) {
-      setError('User not authenticated. Please log in again.');
-      return;
-    }
-
     if (!className || !subject) {
       setError('All fields are required.');
       return;
     }
 
-   try {
-  setError(null);
-  const classCode = await onCreate({ className, subject, privacy, createdBy });
-  setCreatedClassCode(classCode); // Show generated class code
-} catch (err) {
-  console.error('Error creating class:', err);
-  setError('Failed to create class. Please try again.');
-}
+    try {
+      setError(null);
+      const classCode = await onCreate({ className, subject, privacy });
+      setCreatedClassCode(classCode);
+    } catch (err) {
+      console.error('Error creating class:', err);
+      setError('Failed to create class. Please try again.');
+    }
   };
 
   const handleClose = () => {
@@ -68,14 +60,14 @@ const CreateClassModal: React.FC<Props> = ({ isOpen, onClose, onCreate }) => {
               placeholder="Enter class name"
               value={className}
               onChange={(e) => setClassName(e.target.value)}
-              className="w-full border p-2 rounded mb-4 text-white"
+              className="w-full border p-2 rounded mb-4 text-white bg-transparent"
             />
             <input
               type="text"
               placeholder="Enter subject name"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              className="w-full border p-2 rounded mb-4 text-white"
+              className="w-full border p-2 rounded mb-4 text-white bg-transparent"
             />
             <select
               value={privacy}
@@ -107,7 +99,7 @@ const CreateClassModal: React.FC<Props> = ({ isOpen, onClose, onCreate }) => {
               Class created successfully!
             </p>
             <p className="text-sm mb-2">Share this class code with others to join:</p>
-            <div className="text-lg font-mono bg-gray-100 px-4 py-2 rounded inline-block mb-4">
+            <div className="text-lg font-mono bg-gray-100 px-4 py-2 rounded inline-block mb-4 text-black">
               {createdClassCode}
             </div>
             <button
