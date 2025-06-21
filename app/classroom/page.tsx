@@ -6,21 +6,21 @@ import CreateClassModal from '../Components/Classroom/CreateClassModal';
 import JoinClassModal from '../Components/Classroom/JoinClassModal';
 import RightSidebar from '../Components/Classroom/RightSidebar';
 import { FaSearch } from 'react-icons/fa';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
-import { createClass } from '../services/classroom';
+import { createClass, getClassByCode } from '../services/classroom';
 
 export default function ClassroomPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [joinModalOpen, setJoinModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("All");
+  const [activeTab, setActiveTab] = useState('All');
   const [classes, setClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const filters = ["All", "Joined", "Created", "Pending Assignment", "Favourites"];
+  const filters = ['All', 'Joined', 'Created', 'Pending Assignment', 'Favourites'];
 
   const handleJoinClass = (classCode: string) => {
-    console.log('Joining class with code:', classCode);    
+    console.log('Joining class with code:', classCode);
   };
 
 const handleCreateClass = async (formData: {
@@ -30,20 +30,34 @@ const handleCreateClass = async (formData: {
 }): Promise<string> => {
   try {
     const result = await createClass(formData);
-    console.log('Class created:', result);
+    console.log('Class created:', result); // Debugging
+
+    const classCode = result.class?.classCode; // Access classCode correctly
+    if (!classCode) {
+      throw new Error('Class code is undefined.');
+    }
+
+    console.log('Class Code:', classCode); // Debugging
+
+    const fetched = await getClassByCode(classCode);
+    if (fetched?.class) {
+      setClasses((prev) => [fetched.class, ...prev]);
+    } else {
+      console.error('Class not found.');
+    }
+
     setModalOpen(false);
-    return result.classCode;
+    return classCode;
   } catch (error) {
     console.error('Failed to create class:', error);
     throw new Error('Failed to create class');
   }
 };
 
-
   return (
     <AppLayout>
       <div className="pl-64 pr-6 pt-6">
-        {/* Header Section */}
+        {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-2xl font-semibold">Classroom</h1>
@@ -65,12 +79,12 @@ const handleCreateClass = async (formData: {
             <button
               key={filter}
               className={`px-3 py-1 rounded-full text-sm border ${
-                activeTab === filter ? "bg-[rgba(45,156,219,0.5)] text-white" : "bg-white"
+                activeTab === filter ? 'bg-[rgba(45,156,219,0.5)] text-white' : 'bg-white'
               }`}
               onClick={() => {
                 setActiveTab(filter);
-                if (filter === "Created") setModalOpen(true);
-                if (filter === "Joined") setJoinModalOpen(true);
+                if (filter === 'Created') setModalOpen(true);
+                if (filter === 'Joined') setJoinModalOpen(true);
               }}
             >
               {filter}
@@ -78,6 +92,7 @@ const handleCreateClass = async (formData: {
           ))}
         </div>
 
+        {/* Class Cards */}
         <div className="flex flex-col lg:flex-row">
           <div className="flex-1 lg:pr-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -92,19 +107,21 @@ const handleCreateClass = async (formData: {
                     classData={{
                       className: cls.className,
                       subject: cls.subject,
-                      createdByName: cls.createdByName,
-                      tags: ['UHV', 'Universal'], // dynamic if needed
+                      createdByName: cls.createdBy?.name,
+                      tags: ['UHV', 'Universal'],
                     }}
                   />
                 ))
               )}
             </div>
           </div>
+
           <div className="hidden lg:block lg:w-64">
             <RightSidebar />
           </div>
         </div>
 
+        {/* Floating Create Button */}
         <button
           className="fixed bottom-6 right-6 text-white p-4 rounded-full shadow-lg"
           style={{ backgroundColor: 'rgba(73, 73, 73, 1)' }}
@@ -113,7 +130,7 @@ const handleCreateClass = async (formData: {
           <Plus />
         </button>
 
-        {/* ✅ Pass onCreate */}
+        {/* Modals */}
         <CreateClassModal
           isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
