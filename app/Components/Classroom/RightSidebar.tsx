@@ -14,7 +14,6 @@ const classmates = [
 export default function RightSidebar() {
   return (
     <div className="space-y-6">
-      {/* Class Coordinators Box */}
       <div className="bg-white border rounded-lg p-4 shadow-sm">
         <h2 className="text-sm font-semibold mb-2">Class coordinators</h2>
         <ul className="space-y-2">

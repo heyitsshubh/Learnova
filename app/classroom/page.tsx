@@ -6,7 +6,7 @@ import CreateClassModal from '../Components/Classroom/CreateClassModal';
 import JoinClassModal from '../Components/Classroom/JoinClassModal';
 import RightSidebar from '../Components/Classroom/RightSidebar';
 import { FaSearch } from 'react-icons/fa';
-import { useEffect, useState } from 'react';
+import {  useState } from 'react';
 import { Plus } from 'lucide-react';
 import { createClass, getClassByCode } from '../services/classroom';
 
@@ -17,7 +17,7 @@ export default function ClassroomPage() {
   const [classes, setClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const filters = ['All', 'Joined', 'Created', 'Pending Assignment', 'Favourites'];
+  const filters = [ 'Joined', 'Created', 'Pending Assignment', 'Favourites'];
 
   const handleJoinClass = (classCode: string) => {
     console.log('Joining class with code:', classCode);
@@ -29,6 +29,7 @@ const handleCreateClass = async (formData: {
   privacy: 'public' | 'private';
 }): Promise<string> => {
   try {
+    setLoading(true);
     const result = await createClass(formData);
     console.log('Class created:', result); // Debugging
 
@@ -78,7 +79,7 @@ const handleCreateClass = async (formData: {
           {filters.map((filter) => (
             <button
               key={filter}
-              className={`px-3 py-1 rounded-full text-sm border ${
+              className={`px-3 py-1 rounded-full text-m border ${
                 activeTab === filter ? 'bg-[rgba(45,156,219,0.5)] text-white' : 'bg-white'
               }`}
               onClick={() => {
@@ -97,9 +98,9 @@ const handleCreateClass = async (formData: {
           <div className="flex-1 lg:pr-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {loading ? (
-                <p className="text-white">Loading classes...</p>
+                <p className="text-black-500 text-center">Loading classes...</p>
               ) : classes.length === 0 ? (
-                <p className="text-white">No classes found.</p>
+                <p className="text-black-500 text-center">No classes found.</p>
               ) : (
                 classes.map((cls) => (
                   <ClassCard

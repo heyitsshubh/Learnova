@@ -48,7 +48,7 @@ const CreateClassModal: React.FC<Props> = ({ isOpen, onClose, onCreate }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-[rgba(51,51,51,0.04)] flex justify-center items-center z-50">
+    <div className="fixed inset-0 flex justify-center items-center z-50">
       <div className="bg-[rgba(51,51,51,1)] p-6 rounded-md w-full max-w-md">
         <h2 className="text-xl font-semibold mb-4 text-white">Create Class</h2>
         {error && <div className="text-red-500 text-sm mb-4">{error}</div>}
@@ -58,21 +58,24 @@ const CreateClassModal: React.FC<Props> = ({ isOpen, onClose, onCreate }) => {
             <input
               type="text"
               placeholder="Enter class name"
+               style={{backgroundColor: 'rgba(165, 159, 159, 0.35)',color: 'white'}}
               value={className}
               onChange={(e) => setClassName(e.target.value)}
-              className="w-full border p-2 rounded mb-4 text-white bg-transparent"
+              className="w-full border p-2 rounded mb-4  text-white"
             />
             <input
               type="text"
               placeholder="Enter subject name"
+               style={{backgroundColor: 'rgba(165, 159, 159, 0.35)',color: 'white'}}
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              className="w-full border p-2 rounded mb-4 text-white bg-transparent"
+              className="w-full border p-2 rounded mb-4 text-white]"
             />
             <select
               value={privacy}
               onChange={(e) => setPrivacy(e.target.value as 'public' | 'private')}
-              className="w-full border p-2 rounded mb-4"
+              className="w-full border p-2 rounded mb-4 placeholder:text-[rgba(165,159,159,0.35)]"
+               style={{backgroundColor: 'rgba(165, 159, 159, 0.35)',color: 'white'}}
             >
               <option value="public">Public</option>
               <option value="private">Private</option>
