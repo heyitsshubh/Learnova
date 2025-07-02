@@ -53,13 +53,13 @@ const ClassCard: React.FC<{ classData: ClassCardProps['classData']; onDelete?: (
       onClick={(e) => {
         e.stopPropagation();
         setMenuOpen(false);
-        onDelete && onDelete();
+        if (onDelete) onDelete();
       }}
     >
       Delete Class
     </button>
   </div>
-     )}
+)}
       </div>
 
       {/* Top Image Section */}
