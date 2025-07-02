@@ -47,19 +47,19 @@ const ClassCard: React.FC<{ classData: ClassCardProps['classData']; onDelete?: (
           <BsThreeDotsVertical size={22} className="text-white" />
         </button>
         {menuOpen && (
-          <div className="absolute right-0 mt-2 w-32 bg-white border rounded shadow-lg z-20">
-            <button
-              className="block w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
-              onClick={(e) => {
-                e.stopPropagation();
-                setMenuOpen(false);
-                onDelete && onDelete();
-              }}
-            >
-              Delete Class
-            </button>
-          </div>
-        )}
+  <div className="absolute right-0 mt-2 w-32 bg-white border rounded shadow-lg z-20">
+    <button
+      className="block w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
+      onClick={(e) => {
+        e.stopPropagation();
+        setMenuOpen(false);
+        onDelete && onDelete();
+      }}
+    >
+      Delete Class
+    </button>
+  </div>
+     )}
       </div>
 
       {/* Top Image Section */}

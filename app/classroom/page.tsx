@@ -200,7 +200,8 @@ const handleDeleteClass = async (classId: string) => {
                
 
   <ClassCard
-    classData={{
+   key={cls._id} 
+    classData={{      
       _id: cls._id,
       className: cls.className,
       subject: cls.subject,
