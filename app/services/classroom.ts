@@ -67,12 +67,14 @@ export const deleteClass = async (classId: string) => {
 };
 
 
+
 export const getClassmates = async (classId: string) => {
+  if (!classId) throw new Error('classId is required');
   const token = localStorage.getItem('accessToken');
   const res = await axios.get(
     `/api/class/classmates/${classId}`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
-  return res.data.classmates; // Adjust if your API returns a different structure
+  return res.data.classmates;
 };
 

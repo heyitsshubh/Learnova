@@ -1,19 +1,12 @@
-'use client';
+"use client";
 
 import Image from 'next/image';
 import RightSidebar2 from '../../Components/Classroom/RightSidebar2';
 import { Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import Sidebarmenu from '../../Components/Classroom/Sidebarmenu'; // <-- Import your component
 
-function MaterialCard({
-  title,
-  subtitle,
-  icon,
-}: {
-  title: string;
-  subtitle: string;
-  icon: React.ReactNode;
-}) {
+function MaterialCard({ title, subtitle, icon }: { title: string; subtitle: string; icon: React.ReactNode }) {
   return (
     <div className="bg-white p-4 rounded-xl shadow hover:shadow-lg transition flex items-center gap-4">
       <div className="text-3xl text-purple-600 flex-shrink-0">{icon}</div>
@@ -27,6 +20,7 @@ function MaterialCard({
 
 export default function ClassDetailPage() {
   const [userName, setUserName] = useState('');
+  const [sidebarMenuOpen, setSidebarMenuOpen] = useState(false); // <-- State for menu
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -56,9 +50,7 @@ export default function ClassDetailPage() {
             priority
           />
           <div className="absolute inset-0  bg-opacity-30 flex items-center justify-center">
-            <h2 className="text-white text-2xl font-bold">
-              {/* Welcome to {className} Classroom */}
-            </h2>
+            <h2 className="text-white text-2xl font-bold"></h2>
           </div>
         </div>
         {/* Cards */}
@@ -107,15 +99,22 @@ export default function ClassDetailPage() {
 
       {/* Right Sidebar */}
       <div className="hidden lg:block lg:w-64">
-       <RightSidebar2  />
+        <RightSidebar2 />
       </div>
 
+      {/* Floating Plus Button */}
       <button
         className="fixed bottom-6 right-6 text-white p-4 rounded-full shadow-lg"
         style={{ backgroundColor: 'rgba(73, 73, 73, 1)' }}
+        onClick={() => setSidebarMenuOpen(true)} // <-- Open menu on click
       >
         <Plus />
       </button>
+
+      {/* Sidebar Menu Drawer */}
+         {sidebarMenuOpen && (
+        <Sidebarmenu open={sidebarMenuOpen} onClose={() => setSidebarMenuOpen(false)} />
+      )}
     </div>
   );
 }
