@@ -1,22 +1,22 @@
 interface SidebarmenuProps {
   open: boolean;
   onClose: () => void;
+  onCreateAssignment?: () => void;
 }
 
-export default function Sidebarmenu({ open, onClose }: SidebarmenuProps) {
+export default function Sidebarmenu({ open, onClose, onCreateAssignment }: SidebarmenuProps) {
   if (!open) return null;
 
   const items = [
-    'Attendence',
-    'Create Meet',
-    'Create Assignment',
-    'Test',
-    'Make Announcement',
+    { label: 'Attendence' },
+    { label: 'Create Meet' },
+    { label: 'Create Assignment', action: onCreateAssignment },
+    { label: 'Make Announcement' },
   ];
 
   return (
     <div className="fixed bottom-24 right-8 z-50">
-      <div className="w-64 bg-[#333333] text-white rounded-lg shadow-lg flex flex-col">
+      <div className="w-64 bg-[#333333] text-white rounded-lg shadow-lg flex flex-col relative">
         <button
           className="absolute top-2 right-2 text-gray-400 hover:text-white"
           onClick={onClose}
@@ -28,8 +28,12 @@ export default function Sidebarmenu({ open, onClose }: SidebarmenuProps) {
             <div
               key={index}
               className="px-2 py-2 border-b border-gray-700 hover:bg-gray-700 cursor-pointer text-sm last:border-b-0"
+              onClick={() => {
+                if (item.action) item.action();
+                onClose();
+              }}
             >
-              {item}
+              {item.label}
             </div>
           ))}
         </div>

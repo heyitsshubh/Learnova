@@ -5,6 +5,7 @@ import RightSidebar2 from '../../Components/Classroom/RightSidebar2';
 import { Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Sidebarmenu from '../../Components/Classroom/Sidebarmenu'; // <-- Import your component
+import CreateAssignment from '../../Components/Classroom/CreateAssignment';
 
 function MaterialCard({ title, subtitle, icon }: { title: string; subtitle: string; icon: React.ReactNode }) {
   return (
@@ -21,6 +22,7 @@ function MaterialCard({ title, subtitle, icon }: { title: string; subtitle: stri
 export default function ClassDetailPage() {
   const [userName, setUserName] = useState('');
   const [sidebarMenuOpen, setSidebarMenuOpen] = useState(false); // <-- State for menu
+   const [createAssignmentOpen, setCreateAssignmentOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -112,9 +114,24 @@ export default function ClassDetailPage() {
       </button>
 
       {/* Sidebar Menu Drawer */}
-         {sidebarMenuOpen && (
-        <Sidebarmenu open={sidebarMenuOpen} onClose={() => setSidebarMenuOpen(false)} />
-      )}
+       {sidebarMenuOpen && (
+  <Sidebarmenu
+    open={sidebarMenuOpen}
+    onClose={() => setSidebarMenuOpen(false)}
+    onCreateAssignment={() => {
+      setSidebarMenuOpen(false);
+      setCreateAssignmentOpen(true);
+    }}
+  />
+)}
+
+{createAssignmentOpen && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center  bg-opacity-40">
+    <div className="bg-white rounded-lg shadow-lg p-8">
+      <CreateAssignment onClose={() => setCreateAssignmentOpen(false)} />
+    </div>
+  </div>
+)}
     </div>
   );
 }
