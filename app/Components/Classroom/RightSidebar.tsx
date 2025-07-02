@@ -1,17 +1,31 @@
 import Image from 'next/image';
 import ClassmatesBox from './ClassmatesBox';
+import { useEffect, useState } from 'react';
+import { getClassmates } from '../../services/classroom'; // Adjust path if needed
+
 const coordinators = [
   { name: 'Arman', msg: 'Hi Sarah, I have scheduled our next lesson...', img: '/avatar1.png' },
   { name: 'Divy', msg: 'Hi Sarah, I have scheduled our next lesson...', img: '/avatar2.png' },
- 
 ];
 
-const classmates = [
-  { name: 'Shubh', msg: 'Hi Sarah, I have scheduled our next lesson...', img: '/avatar4.png' },
- 
-];
+export default function RightSidebar({ classId }: { classId: string }) {
+  const [classmates, setClassmates] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-export default function RightSidebar() {
+  useEffect(() => {
+    const fetchClassmates = async () => {
+      try {
+        const data = await getClassmates(classId);
+        setClassmates(data);
+      } catch (error) {
+        console.error('Failed to fetch classmates:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (classId) fetchClassmates();
+  }, [classId]);
+
   return (
     <div className="space-y-6">
       <div className="bg-white border-[1px] border-[#EBEBEB] rounded-lg p-4 shadow-sm">
@@ -36,7 +50,11 @@ export default function RightSidebar() {
       </div>
 
       {/* Classmates Box */}
-       <ClassmatesBox classmates={classmates} count={80} />
+      {loading ? (
+        <div>Loading classmates...</div>
+      ) : (
+        <ClassmatesBox classmates={classmates} count={classmates.length} />
+      )}
     </div>
   );
 }

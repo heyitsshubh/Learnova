@@ -7,6 +7,7 @@ import JoinClassModal from '../Components/Classroom/JoinClassModal';
 import RightSidebar from '../Components/Classroom/RightSidebar';
 import { FaSearch } from 'react-icons/fa';
 import { useEffect, useState } from 'react';
+import { toast } from 'react-hot-toast';
 import { Plus } from 'lucide-react';
 
 import {
@@ -76,15 +77,18 @@ export default function ClassroomPage() {
         _id: result.class._id || result.class.classCode || Math.random().toString(),
       };
       setJoinedClasses((prev) => {
-        if (prev.some((cls) => cls._id === classObj._id)) return prev;
+        if (prev.some((cls) => cls._id === classObj._id)) {
+          toast.error('You have already joined the class!');
+          return prev;
+        }
         return [classObj, ...prev];
       });
       setJoinModalOpen(false);
     } else {
-      alert('Class not found!');
+      toast.error('Class not found!');
     }
   } catch (error) {
-    alert('Failed to join class!');
+    toast.error('Failed to join class!');
     console.error('Join class error:', error);
   } finally {
     setLoading(false);
@@ -225,7 +229,7 @@ const handleDeleteClass = async (classId: string) => {
             </div>
           </div>
           <div className="hidden lg:block lg:w-64">
-            <RightSidebar />
+            <RightSidebar classId={displayedClasses[0]?._id || ''} />
           </div>
         </div>
 
