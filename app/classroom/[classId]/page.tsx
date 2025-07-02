@@ -1,6 +1,5 @@
 'use client';
 
-import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import RightSidebar2 from '../../Components/Classroom/RightSidebar2';
 import { Plus } from 'lucide-react';
@@ -108,7 +107,7 @@ export default function ClassDetailPage() {
 
       {/* Right Sidebar */}
       <div className="hidden lg:block lg:w-64">
-        <RightSidebar2 />
+       <RightSidebar2  />
       </div>
 
       <button
