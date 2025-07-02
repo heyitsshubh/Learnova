@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useRef, useState } from 'react';
 import { verifyOtp, resendOtp } from '../../services/auth';
 import { useRouter } from 'next/navigation';
+import { toast } from 'react-hot-toast';
 import { setTokens } from '../../utils/token'; // Import the setTokens utility
 
 interface ApiError {
@@ -40,30 +41,31 @@ const Otp = () => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError(null);
+  setLoading(true);
 
-    try {
-      const otpValue = otp.join('');
-      const res = await verifyOtp({ email, otp: otpValue });
-      if (res?.accessToken && res?.refreshToken) {
-        // Use the setTokens utility to store tokens
-        setTokens(res.accessToken, res.refreshToken);
-      }
-      router.push('/dashboard');
-    } catch (err: unknown) {
-      const apiError = err as ApiError;
-      setError(
-        apiError?.response?.data?.message ||
-        apiError?.message ||
-        'OTP verification failed'
-      );
-    } finally {
-      setLoading(false);
+  try {
+    const otpValue = otp.join('');
+    const res = await verifyOtp({ email, otp: otpValue });
+    if (res?.accessToken && res?.refreshToken) {
+      setTokens(res.accessToken, res.refreshToken);
     }
-  };
+    toast.success('OTP verified successfully!'); // Success toast
+    router.push('/dashboard');
+  } catch (err: unknown) {
+    const apiError = err as ApiError;
+    const errorMsg =
+      apiError?.response?.data?.message ||
+      apiError?.message ||
+      'OTP verification failed';
+    setError(errorMsg);
+    toast.error(errorMsg); // Error toast
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleResendOtp = async (e: React.MouseEvent) => {
     e.preventDefault();

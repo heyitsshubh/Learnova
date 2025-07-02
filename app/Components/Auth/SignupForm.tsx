@@ -5,6 +5,7 @@ import { FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa';
 import { useState } from 'react';
 import { signup } from '../../services/auth';
 import { useRouter } from 'next/navigation';
+import { toast } from 'react-hot-toast';
 import { auth } from '../../utils/firebase'; // Import Firebase auth
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'; // Import Firebase Google auth
 
@@ -60,48 +61,52 @@ const SignupForm = () => {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
+  e.preventDefault();
+  setError(null);
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!form.email || !emailRegex.test(form.email)) {
-      setError('Please enter a valid email address');
-      return;
-    }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!form.email || !emailRegex.test(form.email)) {
+    setError('Please enter a valid email address');
+    toast.error('Please enter a valid email address');
+    return;
+  }
 
-    const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{5,}$/;
-    if (!passwordRegex.test(form.password)) {
-      setError('Password must contain at least 1 special character, 1 number, and be at least 5 characters long');
-      return;
-    }
+  const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{5,}$/;
+  if (!passwordRegex.test(form.password)) {
+    setError('Password must contain at least 1 special character, 1 number, and be at least 5 characters long');
+    toast.error('Password must contain at least 1 special character, 1 number, and be at least 5 characters long');
+    return;
+  }
 
-    if (form.password !== form.confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
+  if (form.password !== form.confirmPassword) {
+    setError('Passwords do not match');
+    toast.error('Passwords do not match');
+    return;
+  }
 
-    setLoading(true);
-    try {
-      console.log('Submitting:', form);
-      await signup({
-        name: form.name,
-        email: form.email,
-        password: form.password,
-      });
-      localStorage.setItem('userName', form.name);
-      localStorage.setItem('email', form.email);
-      router.push('/otp');
-    } catch (err: unknown) {
-      const apiError = err as ApiError;
-      setError(
-        apiError?.response?.data?.message ||
-        apiError?.message ||
-        'Signup failed'
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+  setLoading(true);
+  try {
+    await signup({
+      name: form.name,
+      email: form.email,
+      password: form.password,
+    });
+    localStorage.setItem('userName', form.name);
+    localStorage.setItem('email', form.email);
+    toast.success('Signup successful!');
+    router.push('/otp');
+  } catch (err: unknown) {
+    const apiError = err as ApiError;
+    const errorMsg =
+      apiError?.response?.data?.message ||
+      apiError?.message ||
+      'Signup failed';
+    setError(errorMsg);
+    toast.error(errorMsg);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="fixed inset-0 w-screen h-screen flex">

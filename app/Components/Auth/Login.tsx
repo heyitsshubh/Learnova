@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { login } from '../../services/auth'; 
 import { setTokens } from '../../utils/token';
+import { toast } from 'react-hot-toast';
 import { auth } from '../../utils/firebase'; // Import Firebase auth
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'; // Import Firebase Google auth
 
@@ -38,58 +39,64 @@ const Login = () => {
     router.push('/signup'); // Navigate to the signup page
   };
 
-  const handleGoogleLogin = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
+ const handleGoogleLogin = async () => {
+  const provider = new GoogleAuthProvider();
+  try {
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
 
-      // Store tokens or user info as needed
-      const accessToken = await user.getIdToken();
-      setTokens(accessToken, ''); // Store access token
-      localStorage.setItem('userName', user.displayName || ''); // Store user name
-      localStorage.setItem('userEmail', user.email || ''); // Store user email
+    // Store tokens or user info as needed
+    const accessToken = await user.getIdToken();
+    setTokens(accessToken, ''); // Store access token
+    localStorage.setItem('userName', user.displayName || ''); // Store user name
+    localStorage.setItem('userEmail', user.email || ''); // Store user email
 
-      router.push('/dashboard'); // Redirect to dashboard
-    } catch (error) {
-      console.error('Google login failed:', error);
-      setError('Google login failed. Please try again.');
-    }
-  };
+    toast.success('Logged in successfully!'); // <-- Success toast
+    router.push('/dashboard'); // Redirect to dashboard
+  } catch (error) {
+    console.error('Google login failed:', error);
+    setError('Google login failed. Please try again.');
+    toast.error('Google login failed. Please try again.'); // <-- Error toast
+  }
+};
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError(null);
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!form.email || !emailRegex.test(form.email)) {
-      setError('Please enter a valid email address');
-      return;
-    }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!form.email || !emailRegex.test(form.email)) {
+    setError('Please enter a valid email address');
+    toast.error('Please enter a valid email address'); // <-- Error toast
+    return;
+  }
 
-    const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{5,}$/;
-    if (!passwordRegex.test(form.password)) {
-      setError('Password must contain at least 1 special character, 1 number, and be at least 5 characters long');
-      return;
-    }
+  const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{5,}$/;
+  if (!passwordRegex.test(form.password)) {
+    setError('Password must contain at least 1 special character, 1 number, and be at least 5 characters long');
+    toast.error('Password must contain at least 1 special character, 1 number, and be at least 5 characters long'); // <-- Error toast
+    return;
+  }
 
-    setLoading(true);
-    try {
-      const res = await login(form);
-      setTokens(res.accessToken, res.refreshToken);
-       localStorage.setItem('userName', res.user?.name || '');
-      router.push('/dashboard');
-    } catch (err: unknown) {
-      const apiError = err as ApiError;
-      setError(
-        apiError?.response?.data?.message ||
-        apiError?.message ||
-        'Login failed'
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+  setLoading(true);
+  try {
+    const res = await login(form);
+    setTokens(res.accessToken, res.refreshToken);
+    localStorage.setItem('userName', res.user?.name || '');
+    toast.success('Logged in successfully!'); // <-- Success toast
+    router.push('/dashboard');
+  } catch (err: unknown) {
+    const apiError = err as ApiError;
+    const errorMsg =
+      apiError?.response?.data?.message ||
+      apiError?.message ||
+      'Login failed';
+    setError(errorMsg);
+    toast.error(errorMsg); // <-- Error toast
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="fixed inset-0 w-screen h-screen flex">
