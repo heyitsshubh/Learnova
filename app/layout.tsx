@@ -1,6 +1,7 @@
 // app/layout.tsx
 import SidebarWrapper from './Components/SidebarWrapper';
 import './globals.css';
+import MainWrapper from './Components/MainWrapper';
 
 export const metadata = {
   title: 'Your App Name',
@@ -10,13 +11,10 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className=" ">
+      <body>
         <SidebarWrapper />
-        <main className="ml-64 min-h-screen">
-          {children}
-        </main>
+        <MainWrapper>{children}</MainWrapper>
       </body>
     </html>
   );
 }
-

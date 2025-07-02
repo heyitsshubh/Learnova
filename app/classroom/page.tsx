@@ -31,6 +31,13 @@ export default function ClassroomPage() {
   const [classes, setClasses] = useState<ClassData[]>([]);
   const [joinedClasses, setJoinedClasses] = useState<ClassData[]>([]);
   const [loading, setLoading] = useState(false);
+    const [userName, setUserName] = useState('');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setUserName(localStorage.getItem('userName') || '');
+    }
+  }, []);
 
   // TODO: Replace with actual userId from auth context or user state
   const userId = '6841eba5c87625328c5b3c7';
@@ -148,9 +155,11 @@ const handleDeleteClass = async (classId: string) => {
       <div className="pl-64 pr-6 pt-6">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
-          <div>
+       <div>
             <h1 className="text-2xl font-semibold">Classroom</h1>
-            <p className="text-sm text-gray-500">Ayush Jaiswal / classroom</p>
+            <p className="text-sm text-gray-500">
+              {userName ? `${userName} / classroom` : 'Classroom'}
+            </p>
           </div>
           <div className="relative w-66 max-w-md">
             <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg" />

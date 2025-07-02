@@ -77,6 +77,7 @@ const Login = () => {
     try {
       const res = await login(form);
       setTokens(res.accessToken, res.refreshToken);
+       localStorage.setItem('userName', res.user?.name || '');
       router.push('/dashboard');
     } catch (err: unknown) {
       const apiError = err as ApiError;

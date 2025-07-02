@@ -88,6 +88,7 @@ const SignupForm = () => {
         email: form.email,
         password: form.password,
       });
+      localStorage.setItem('userName', form.name);
       localStorage.setItem('email', form.email);
       router.push('/otp');
     } catch (err: unknown) {

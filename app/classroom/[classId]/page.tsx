@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import RightSidebar2 from '../../Components/Classroom/RightSidebar2';
 import { Plus } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 function MaterialCard({
   title,
@@ -28,6 +29,13 @@ function MaterialCard({
 export default function ClassDetailPage() {
   const { classId } = useParams();
   const className = decodeURIComponent(String(classId)).toUpperCase();
+  const [userName, setUserName] = useState('');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setUserName(localStorage.getItem('userName') || '');
+    }
+  }, []);
 
   return (
     <div className="flex p-6 gap-6">
@@ -36,7 +44,9 @@ export default function ClassDetailPage() {
         {/* Heading */}
         <div className="mb-6">
           <h1 className="text-xl font-semibold text-gray-800">Classroom</h1>
-          <p className="text-sm text-gray-500">Ayush Jaiswal / Classroom / {className}</p>
+          <p className="text-sm text-gray-500">
+            {userName ? `${userName} / Classroom` : 'Classroom'}
+          </p>
         </div>
 
         {/* Banner */}
@@ -55,14 +65,13 @@ export default function ClassDetailPage() {
           </div>
         </div>
         {/* Cards */}
-              {/* Cards */}
         <div className="grid grid-rows-1 sm:grid-cols-3 gap-4">
           <MaterialCard
             title="Unit 1"
             subtitle="Study Material"
             icon={
               <Image
-                src="/books.svg" // replbooace with your image path
+                src="/books.svg"
                 alt="Unit 1"
                 width={70}
                 height={70}
@@ -75,7 +84,7 @@ export default function ClassDetailPage() {
             subtitle="Study Material"
             icon={
               <Image
-                src="/books.svg" 
+                src="/books.svg"
                 alt="Unit 2"
                 width={70}
                 height={70}
@@ -100,17 +109,16 @@ export default function ClassDetailPage() {
       </div>
 
       {/* Right Sidebar */}
-        <div className="hidden lg:block lg:w-64">
-            <RightSidebar2 />
-          </div>
-        
-        <button
-          className="fixed bottom-6 right-6 text-white p-4 rounded-full shadow-lg"
-          style={{ backgroundColor: 'rgba(73, 73, 73, 1)' }} 
-        >
-          <Plus />
-        </button>
+      <div className="hidden lg:block lg:w-64">
+        <RightSidebar2 />
+      </div>
 
+      <button
+        className="fixed bottom-6 right-6 text-white p-4 rounded-full shadow-lg"
+        style={{ backgroundColor: 'rgba(73, 73, 73, 1)' }}
+      >
+        <Plus />
+      </button>
     </div>
   );
 }
