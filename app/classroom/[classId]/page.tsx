@@ -28,7 +28,6 @@ function MaterialCard({
 
 export default function ClassDetailPage() {
   const { classId } = useParams();
-  const className = decodeURIComponent(String(classId)).toUpperCase();
   const [userName, setUserName] = useState('');
 
   useEffect(() => {
