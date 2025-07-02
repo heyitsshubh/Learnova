@@ -49,7 +49,7 @@ const Forgotpassword = () => {
     <div className="fixed inset-0 w-screen h-screen flex">
       <div className="w-1/2 h-full relative ">
         <Image
-          src="/Illustration.svg"
+          src="/Component.svg"
           alt="Illustration"
           width={800}
           height={600}
@@ -59,10 +59,11 @@ const Forgotpassword = () => {
         <div className="absolute inset-0 flex flex-col z-10">
           <div className="text-left m-20">
             <h2 className="text-3xl font-bold text-gray-800 mb-4 ">
-              Virtual Learning & Collaboration
+            Reset Password
             </h2>
-            <p className="text-lg text-gray-600">
-              Join live classes, share resources, and connect <br />with peers — all from a single platform.
+            <p className="text-lg text-black-600">
+            Don't remember your password? 
+ <br />Don't worry!!!we are here to help you.
             </p>
           </div>
         </div>

@@ -122,7 +122,7 @@ const SignupForm = () => {
         <div className="absolute inset-0 flex flex-col z-10">
           <div className="text-left m-20">
             <h2 className="text-3xl font-bold text-gray-800 mb-4 ">
-              Virtual Learning & Collaboration
+              Virtual Learning 
             </h2>
             <p className="text-lg text-gray-600">
               Join live classes, share resources, and connect <br />with peers — all from a single platform.
