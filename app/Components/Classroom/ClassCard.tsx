@@ -1,9 +1,11 @@
 import Image from 'next/image';
 import { useState } from 'react';
 import { BsThreeDotsVertical } from 'react-icons/bs';
+import { useRouter } from 'next/navigation';
 
 interface ClassCardProps {
   classData: {
+    _id: string;
     className: string;
     subject: string;
     createdByName?: string;
@@ -11,7 +13,7 @@ interface ClassCardProps {
     studentsCount?: number;
     tags?: string[];
   };
-  onDelete?: () => void; // Optional: callback for delete
+  onDelete?: () => void;
 }
 
 const ClassCard: React.FC<{ classData: ClassCardProps['classData']; onDelete?: () => void }> = ({
@@ -19,25 +21,37 @@ const ClassCard: React.FC<{ classData: ClassCardProps['classData']; onDelete?: (
   onDelete,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const router = useRouter();
+
+  // Prevent card click when clicking the 3-dot menu
+  const handleCardClick = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('.menu-btn')) return;
+    router.push(`/classroom/${classData._id}`);
+  };
 
   return (
     <div
-      className="bg-white rounded-md overflow-hidden shadow-sm border relative"
+      className="bg-white rounded-md overflow-hidden shadow-sm border relative cursor-pointer"
       style={{ width: '306px', height: '251px' }}
+      onClick={handleCardClick}
     >
       {/* 3-dot menu */}
       <div className="absolute top-2 right-2 z-10">
         <button
-          onClick={() => setMenuOpen((v) => !v)}
-          className="p-1 rounded-full "
+          onClick={(e) => {
+            e.stopPropagation();
+            setMenuOpen((v) => !v);
+          }}
+          className="p-1 rounded-full menu-btn"
         >
-          <BsThreeDotsVertical size={22} className="text-white"  />
+          <BsThreeDotsVertical size={22} className="text-white" />
         </button>
         {menuOpen && (
           <div className="absolute right-0 mt-2 w-32 bg-white border rounded shadow-lg z-20">
             <button
               className="block w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 setMenuOpen(false);
                 onDelete && onDelete();
               }}

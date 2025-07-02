@@ -34,7 +34,7 @@ export default function ClassDetailPage() {
       {/* Main Content */}
       <div className="flex-1">
         {/* Heading */}
-        <div className="mb-4">
+        <div className="mb-6">
           <h1 className="text-xl font-semibold text-gray-800">Classroom</h1>
           <p className="text-sm text-gray-500">Ayush Jaiswal / Classroom / {className}</p>
         </div>

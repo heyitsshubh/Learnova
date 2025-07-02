@@ -56,3 +56,13 @@ export const getCreatedClasses = async (userId: string) => {
   return res.data;
 };
 
+export const deleteClass = async (classId: string) => {
+  const token = localStorage.getItem('accessToken');
+  if (!token) throw new Error('No access token found.');
+  const res = await axios.delete(
+    `https://project2-zphf.onrender.com/api/class/${classId}`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return res.data;
+};
+

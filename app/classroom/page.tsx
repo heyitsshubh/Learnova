@@ -8,11 +8,13 @@ import RightSidebar from '../Components/Classroom/RightSidebar';
 import { FaSearch } from 'react-icons/fa';
 import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
+
 import {
   createClass,
   getCreatedClasses,
   getJoinedClasses,
   joinClassByCode,
+  deleteClass
 } from '../services/classroom';
 
 interface ClassData {
@@ -31,7 +33,7 @@ export default function ClassroomPage() {
   const [loading, setLoading] = useState(false);
 
   // TODO: Replace with actual userId from auth context or user state
-  const userId = '6841eba5c87625328c5b3c7f';
+  const userId = '6841eba5c87625328c5b3c7';
 
   const filters = ['Joined', 'Created', 'Pending Assignment', 'Favourites'];
 
@@ -57,30 +59,44 @@ export default function ClassroomPage() {
 
   // Handle joining a class by code
   const handleJoinClass = async (classCode: string) => {
-    try {
-      setLoading(true);
-      // Join the class using the API
-      const result = await joinClassByCode(classCode);
-      if (result?.class) {
-        const classObj: ClassData = {
-          ...result.class,
-          _id: result.class._id || result.class.classCode || Math.random().toString(),
-        };
-        setJoinedClasses((prev) => {
-          if (prev.some((cls) => cls._id === classObj._id)) return prev;
-          return [classObj, ...prev];
-        });
-        setJoinModalOpen(false);
-      } else {
-        alert('Class not found!');
-      }
-    } catch (error) {
-      alert('Failed to join class!');
-      console.error(error);
-    } finally {
-      setLoading(false);
+  try {
+    setLoading(true);
+    const result = await joinClassByCode(classCode);
+    console.log('Join class result:', result);
+    if (result?.class) {
+      const classObj: ClassData = {
+        ...result.class,
+        _id: result.class._id || result.class.classCode || Math.random().toString(),
+      };
+      setJoinedClasses((prev) => {
+        if (prev.some((cls) => cls._id === classObj._id)) return prev;
+        return [classObj, ...prev];
+      });
+      setJoinModalOpen(false);
+    } else {
+      alert('Class not found!');
     }
-  };
+  } catch (error) {
+    alert('Failed to join class!');
+    console.error('Join class error:', error);
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleDeleteClass = async (classId: string) => {
+  setLoading(true);
+  try {
+    await deleteClass(classId);
+    setClasses((prev) => prev.filter((cls) => cls._id !== classId));
+    setJoinedClasses((prev) => prev.filter((cls) => cls._id !== classId));
+  } catch (error) {
+    // Optionally handle error (no alert)
+    console.error('Delete class error:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Handle creating a class
   const handleCreateClass = async (formData: {
@@ -97,6 +113,7 @@ export default function ClassroomPage() {
           _id: result.class._id || result.class.classCode || Math.random().toString(),
         };
         setClasses((prev) => [classObj, ...prev]);
+          localStorage.setItem('classCode', result.class.classCode);
         setModalOpen(false);
         return result.class.classCode;
       } else {
@@ -180,15 +197,19 @@ export default function ClassroomPage() {
                 </p>
               ) : (
                 displayedClasses.map((cls) => (
-                  <ClassCard
-                    key={cls._id}
-                    classData={{
-                      className: cls.className,
-                      subject: cls.subject,
-                      createdByName: cls.createdBy?.name,
-                      tags: ['UHV', 'Universal'],
-                    }}
-                  />
+               
+
+  <ClassCard
+    classData={{
+      _id: cls._id,
+      className: cls.className,
+      subject: cls.subject,
+      createdByName: cls.createdBy?.name,
+      tags: ['UHV', 'Universal'],
+    }}
+      onDelete={() => handleDeleteClass(cls._id)}
+  />
+
                 ))
               )}
             </div>
