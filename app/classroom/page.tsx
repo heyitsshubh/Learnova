@@ -6,54 +6,125 @@ import CreateClassModal from '../Components/Classroom/CreateClassModal';
 import JoinClassModal from '../Components/Classroom/JoinClassModal';
 import RightSidebar from '../Components/Classroom/RightSidebar';
 import { FaSearch } from 'react-icons/fa';
-import {  useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
-import { createClass, getClassByCode } from '../services/classroom';
+import {
+  createClass,
+  getCreatedClasses,
+  getJoinedClasses,
+  joinClassByCode,
+} from '../services/classroom';
+
+interface ClassData {
+  _id: string;
+  className: string;
+  subject: string;
+  createdBy?: { name?: string };
+}
 
 export default function ClassroomPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [joinModalOpen, setJoinModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('All');
-  const [classes, setClasses] = useState<any[]>([]);
+  const [classes, setClasses] = useState<ClassData[]>([]);
+  const [joinedClasses, setJoinedClasses] = useState<ClassData[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const filters = [ 'Joined', 'Created', 'Pending Assignment', 'Favourites'];
+  // TODO: Replace with actual userId from auth context or user state
+  const userId = '6841eba5c87625328c5b3c7f';
 
-  const handleJoinClass = (classCode: string) => {
-    console.log('Joining class with code:', classCode);
+  const filters = ['Joined', 'Created', 'Pending Assignment', 'Favourites'];
+
+  // Fetch created and joined classes on mount
+  useEffect(() => {
+    const fetchClasses = async () => {
+      setLoading(true);
+      try {
+        const [createdRes, joinedRes] = await Promise.all([
+          getCreatedClasses(userId),
+          getJoinedClasses(userId),
+        ]);
+        setClasses(createdRes.classes || []);
+        setJoinedClasses(joinedRes.classes || []);
+      } catch (error) {
+        console.error('Failed to fetch classes:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchClasses();
+  }, [userId]);
+
+  // Handle joining a class by code
+  const handleJoinClass = async (classCode: string) => {
+    try {
+      setLoading(true);
+      // Join the class using the API
+      const result = await joinClassByCode(classCode);
+      if (result?.class) {
+        const classObj: ClassData = {
+          ...result.class,
+          _id: result.class._id || result.class.classCode || Math.random().toString(),
+        };
+        setJoinedClasses((prev) => {
+          if (prev.some((cls) => cls._id === classObj._id)) return prev;
+          return [classObj, ...prev];
+        });
+        setJoinModalOpen(false);
+      } else {
+        alert('Class not found!');
+      }
+    } catch (error) {
+      alert('Failed to join class!');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-const handleCreateClass = async (formData: {
-  className: string;
-  subject: string;
-  privacy: 'public' | 'private';
-}): Promise<string> => {
-  try {
-    setLoading(true);
-    const result = await createClass(formData);
-    console.log('Class created:', result); // Debugging
-
-    const classCode = result.class?.classCode; // Access classCode correctly
-    if (!classCode) {
-      throw new Error('Class code is undefined.');
+  // Handle creating a class
+  const handleCreateClass = async (formData: {
+    className: string;
+    subject: string;
+    privacy: 'public' | 'private';
+  }): Promise<string> => {
+    try {
+      setLoading(true);
+      const result = await createClass(formData);
+      if (result?.class) {
+        const classObj: ClassData = {
+          ...result.class,
+          _id: result.class._id || result.class.classCode || Math.random().toString(),
+        };
+        setClasses((prev) => [classObj, ...prev]);
+        setModalOpen(false);
+        return result.class.classCode;
+      } else {
+        throw new Error('Class creation failed.');
+      }
+    } catch (error) {
+      console.error('Failed to create class:', error);
+      throw new Error('Failed to create class');
+    } finally {
+      setLoading(false);
     }
+  };
 
-    console.log('Class Code:', classCode); // Debugging
-
-    const fetched = await getClassByCode(classCode);
-    if (fetched?.class) {
-      setClasses((prev) => [fetched.class, ...prev]);
-    } else {
-      console.error('Class not found.');
-    }
-
-    setModalOpen(false);
-    return classCode;
-  } catch (error) {
-    console.error('Failed to create class:', error);
-    throw new Error('Failed to create class');
+  // Decide which classes to show
+  let displayedClasses: ClassData[] = [];
+  if (activeTab === 'Joined') {
+    displayedClasses = joinedClasses;
+  } else if (activeTab === 'Created') {
+    displayedClasses = classes;
+  } else if (activeTab === 'All') {
+    // Merge and deduplicate by _id
+    const all = [...classes, ...joinedClasses];
+    displayedClasses = all.filter(
+      (cls, idx, arr) => arr.findIndex(c => c._id === cls._id) === idx
+    );
+  } else {
+    displayedClasses = [];
   }
-};
 
   return (
     <AppLayout>
@@ -99,10 +170,16 @@ const handleCreateClass = async (formData: {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {loading ? (
                 <p className="text-black-500 text-center">Loading classes...</p>
-              ) : classes.length === 0 ? (
-                <p className="text-black-500 text-center">No classes found.</p>
+              ) : displayedClasses.length === 0 ? (
+                <p className="text-black-500 text-center">
+                  {activeTab === 'Joined'
+                    ? 'No joined classes found.'
+                    : activeTab === 'Created'
+                    ? 'No created classes found.'
+                    : 'No classes found.'}
+                </p>
               ) : (
-                classes.map((cls) => (
+                displayedClasses.map((cls) => (
                   <ClassCard
                     key={cls._id}
                     classData={{
@@ -116,7 +193,6 @@ const handleCreateClass = async (formData: {
               )}
             </div>
           </div>
-
           <div className="hidden lg:block lg:w-64">
             <RightSidebar />
           </div>
