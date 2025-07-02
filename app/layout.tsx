@@ -12,7 +12,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className=" ">
         <SidebarWrapper />
-        <main className="">
+        <main className="ml-64 min-h-screen">
           {children}
         </main>
       </body>
