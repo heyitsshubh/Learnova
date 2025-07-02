@@ -38,21 +38,6 @@ export const joinClassByCode = async (classCode: string) => {
   return res.data; // Adjust based on your API's response
 };
 
-// export const getClassByCode = async (classCode: string) => {
-//   const token = localStorage.getItem('accessToken');
-
-//   if (!token) throw new Error('Not authenticated');
-
-//   const res = await axios.get(`${API_URL}code/${classCode}`, {
-//     headers: {
-//       Authorization: `Bearer ${token}`,
-//     },
-//   });
-
-//   return res.data; // ✅ contains class object
-// };
-
-
 export const getJoinedClasses = async (userId: string) => {
   const token = localStorage.getItem('accessToken');
   const res = await axios.get(
@@ -68,6 +53,6 @@ export const getCreatedClasses = async (userId: string) => {
     `https://project2-zphf.onrender.com/api/class/all?userId=${userId}&filter=created`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
-  return res.data; // Should return { classes: [...] }
+  return res.data;
 };
 

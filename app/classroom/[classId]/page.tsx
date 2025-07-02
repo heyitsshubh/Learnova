@@ -3,6 +3,7 @@
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import RightSidebar2 from '../../Components/Classroom/RightSidebar2';
+import { Plus } from 'lucide-react';
 
 function MaterialCard({
   title,
@@ -74,7 +75,7 @@ export default function ClassDetailPage() {
             subtitle="Study Material"
             icon={
               <Image
-                src="/books.svg" // replace with your image path
+                src="/books.svg" 
                 alt="Unit 2"
                 width={70}
                 height={70}
@@ -87,7 +88,7 @@ export default function ClassDetailPage() {
             subtitle="Download PDFs"
             icon={
               <Image
-                src="/books.svg" // replace with your image path
+                src="/books.svg"
                 alt="PDF"
                 width={70}
                 height={70}
@@ -99,9 +100,17 @@ export default function ClassDetailPage() {
       </div>
 
       {/* Right Sidebar */}
-  <div className="hidden lg:block lg:w-64">
+        <div className="hidden lg:block lg:w-64">
             <RightSidebar2 />
           </div>
+        
+        <button
+          className="fixed bottom-6 right-6 text-white p-4 rounded-full shadow-lg"
+          style={{ backgroundColor: 'rgba(73, 73, 73, 1)' }} 
+        >
+          <Plus />
+        </button>
+
     </div>
   );
 }

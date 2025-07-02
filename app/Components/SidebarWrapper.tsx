@@ -6,7 +6,7 @@ import Sidebar from './Sidebar';
 export default function SidebarWrapper() {
   const pathname = usePathname();
   const hideSidebar = pathname === '/login'|| pathname === '/signup' || pathname === '/forgot-password' || pathname === '/reset-password' 
-  || pathname === '/verify' || pathname === '/otp'; 
+  || pathname === '/verify' || pathname === '/otp' || pathname === '/'; 
 
 
   if (hideSidebar) return null;

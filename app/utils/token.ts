@@ -13,7 +13,21 @@ export const getAccessToken = () => {
   }
   return null;
 };
+import axios from 'axios';
 
+export const refreshAccessToken = async () => {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) throw new Error('No refresh token found');
+  const res = await axios.post('https://project2-zphf.onrender.com/api/auth/refresh', {
+    refreshToken,
+  });
+  const { accessToken } = res.data;
+  if (accessToken) {
+    localStorage.setItem('accessToken', accessToken);
+    return accessToken;
+  }
+  throw new Error('Failed to refresh access token');
+};
 export const getRefreshToken = () => {
   if (typeof window !== 'undefined') {
     return localStorage.getItem('refreshToken');
