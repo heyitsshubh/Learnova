@@ -1,21 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation'; // Use usePathname instead of useRouter
+import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-
+import { FaHome, FaBook, FaUsers, FaEnvelope, FaBell } from 'react-icons/fa';
 
 interface MenuItem {
   name: string;
   path: string;
-  icon: string;
+  icon: React.ReactNode;
   badge?: string;
 }
-
-// interface ClassItem {
-//   name: string;
-//   liked: boolean;
-// }
 
 interface User {
   name: string;
@@ -23,45 +18,31 @@ interface User {
 }
 
 const Sidebar: React.FC = () => {
-  const pathname = usePathname(); // Get the current path
+  const pathname = usePathname();
 
   const [user] = useState<User>({
     name: "Ayush Jaiswal",
-  
     initials: "AJ"
   });
 
   const menuItems: MenuItem[] = [
-    { name: 'Home', path: '/dashboard', icon: '' },
-    { name: 'Classroom', path: '/classroom', icon: '' },
-    { name: 'Community', path: '/community', icon: '' },
-    { name: 'Messages', path: '/messages', icon: '' },
-    { name: 'Notifications', path: '/notifications', icon: '' }
+    { name: 'Home', path: '/dashboard', icon: <FaHome /> },
+    { name: 'Classroom', path: '/classroom', icon: <FaBook /> },
+    { name: 'Community', path: '/community', icon: <FaUsers /> },
+    { name: 'Messages', path: '/messages', icon: <FaEnvelope /> },
+    { name: 'Notifications', path: '/notifications', icon: <FaBell /> }
   ];
 
-  // const classes: ClassItem[] = [
-  //   { name: 'UHV', liked: true },
-  //   { name: 'PPS', liked: true },
-  //   { name: 'Yoga', liked: true },
-  //   { name: 'Physical Education 7-1', liked: true },
-  //   { name: 'Chemistry', liked: true },
-  //   { name: 'Laser', liked: true }
-  // ];
-
   const isActivePath = (path: string): boolean => {
-    return pathname === path; // Compare the current path with the menu item's path
+    return pathname === path;
   };
-
-  // const formatClassPath = (className: string): string => {
-  //   return `/class/${className.toLowerCase().replace(/\s+/g, '-')}`;
-  // };
 
   return (
     <div className="fixed left-0 top-0 h-full w-64 text-white flex flex-col z-50"
      style={{ backgroundColor: '#333333' }}>
       {/* Logo Section */}
       <div className="flex items-center justify-center h-16 border-b border-gray-700">
-        <h1 className="text-xl font-bold text-white">Learnova</h1> {/* Replace with your logo */}
+        <h1 className="text-xl font-bold text-white">Learnova</h1>
       </div>
 
       {/* Navigation Menu */}
@@ -69,57 +50,33 @@ const Sidebar: React.FC = () => {
         <ul className="space-y-7">
           {menuItems.map((item: MenuItem) => (
             <li key={item.name}>
-              <Link 
-                href={item.path}
-                className={`flex items-center justify-between px-3 py-2 rounded-lg transition-colors duration-200 ${
-                  isActivePath(item.path)
-                    ? 'bg-[rgba(187,134,252,0.2)] text-white'
-                    : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <span className="text-lg">{item.icon}</span>
-                  <span className="font-medium">{item.name}</span>
-                </div>
-                {item.badge && (
-                  <span 
-                    className={`text-xs px-2 py-1 rounded-full font-semibold ${
-                      item.badge === 'New' 
-                        ? 'bg-green-500 text-white' 
-                        : 'bg-red-500 text-white'
-                    }`}
-                  >
-                    {item.badge}
-                  </span>
-                )}
-              </Link>
+      <Link 
+  href={item.path}
+  className={`flex items-center justify-between px-3 py-2 rounded-lg transition-colors duration-200 ${
+    isActivePath(item.path)
+      ? 'bg-[#BB86FC33] text-white'
+      : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+  }`}
+>
+  <div className="flex items-center space-x-3">
+    <span className="text-lg">{item.icon}</span>
+    <span className="font-medium">{item.name}</span>
+  </div>
+  {item.badge && (
+    <span 
+      className={`text-xs px-2 py-1 rounded-full font-semibold ${
+        item.badge === 'New' 
+          ? 'bg-green-500 text-white' 
+          : 'bg-red-500 text-white'
+      }`}
+    >
+      {item.badge}
+    </span>
+  )}
+</Link>
             </li>
           ))}
         </ul>
-
-        {/* My Classes Section */}
-        {/* <div className="mt-8">
-          <h3 className="text-lg font-semibold mb-4 text-gray-200">My classes</h3>
-          <ul className="space-y-0">
-            {classes.map((classItem: ClassItem) => (
-              <li key={classItem.name}>
-                <Link 
-                  href={formatClassPath(classItem.name)}
-                  className={`flex items-center justify-between px-3 py-2 rounded-lg transition-colors duration-200 ${
-                    pathname === formatClassPath(classItem.name)
-                      ? 'bg-purple-600 text-white'
-                      : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                  }`}
-                >
-                  <span className="font-medium">{classItem.name}</span>
-                  {classItem.liked && (
-                    <span className="text-pink-500 text-lg"></span>
-                  )}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div> */}
       </nav>
 
       {/* User Profile */}
@@ -132,7 +89,6 @@ const Sidebar: React.FC = () => {
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-medium text-white truncate">{user.name}</p>
-            {/* <p className="text-sm text-gray-400">{user.role}</p> */}
           </div>
           <button className="text-gray-400 hover:text-white transition-colors">
             <svg 

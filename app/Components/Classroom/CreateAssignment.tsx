@@ -5,6 +5,7 @@ import { X, Upload, File } from 'lucide-react';
 
 export default function CreateAssignmentModal({ onClose }: { onClose: () => void }) {
   const [assignmentName, setAssignmentName] = useState('');
+   const [descriptionName, setDescriptionName] = useState('');
   const [deadline, setDeadline] = useState('2035-06-06');
   const [file, setFile] = useState<File | null>(null);
 
@@ -31,6 +32,15 @@ export default function CreateAssignmentModal({ onClose }: { onClose: () => void
           type="text"
           value={assignmentName}
           onChange={(e) => setAssignmentName(e.target.value)}
+          placeholder="Enter class name"
+          className="w-full p-2 bg-gray-700 rounded text-sm mb-4 focus:outline-none"
+        />
+
+          <label className="text-sm mb-1 block">Description</label>
+        <input
+          type="text"
+          value={descriptionName}
+          onChange={(e) => setDescriptionName(e.target.value)}
           placeholder="Enter class name"
           className="w-full p-2 bg-gray-700 rounded text-sm mb-4 focus:outline-none"
         />

@@ -73,30 +73,40 @@ const ClassCard: React.FC<{ classData: ClassCardProps['classData']; onDelete?: (
         />
 
         {/* Tags */}
-        {[classData.className, classData.subject].map((tag, index) => (
-          <div
-            key={index}
-            className={`absolute left-4 text-white text-xs font-medium px-14 py-1 rounded mt-8`}
-            style={{
-              top: `${8 + index * 28}px`,
-              backgroundColor:
-                index === 0
-                  ? 'rgba(13, 64, 89, 0.35)'
-                  : 'rgba(45, 156, 219, 0.28)',
-              color: index === 0 ? '#05E6F2' : '#FFFFFF',
-              width: index === 0 ? '125px' : '170px',
-              height: index === 0 ? '24px' : '40px',
-              fontSize: index === 0 ? '16px' : '14px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            {tag}
-          </div>
-        ))}
-      </div>
-
+  
+<div className="absolute left-4 top-4 flex flex-col gap-2">
+  <div
+    className="text-xs font-medium rounded"
+    style={{
+      backgroundColor: 'rgba(13, 64, 89, 0.35)',
+      color: '#05E6F2',
+      width: '125px',
+      height: '32px',
+      fontSize: '16px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}
+  >
+    {classData.className}
+  </div>
+  <div
+    className="text-xs font-medium rounded"
+    style={{
+      backgroundColor: 'rgba(45, 156, 219, 0.28)',
+      color: '#FFFFFF',
+      width: '170px',
+      height: '40px',
+      fontSize: '16px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}
+  >
+    {classData.subject}
+  </div>
+</div>
+</div>
       {/* Bottom Details Section */}
       <div className="p-3 flex items-center justify-between">
         <div>
