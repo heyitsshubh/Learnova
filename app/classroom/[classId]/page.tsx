@@ -27,7 +27,6 @@ function MaterialCard({
 }
 
 export default function ClassDetailPage() {
-  const { classId } = useParams();
   const [userName, setUserName] = useState('');
 
   useEffect(() => {
