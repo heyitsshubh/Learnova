@@ -78,3 +78,14 @@ export const getClassmates = async (classId: string) => {
   return res.data.classmates;
 };
 
+export const leaveClass = async (classId: string) => {
+  const token = localStorage.getItem('accessToken');
+  if (!token) throw new Error('No access token found.');
+  const res = await axios.post(
+    'https://project2-zphf.onrender.com/api/class/leave',
+    { classId },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return res.data;
+};
+

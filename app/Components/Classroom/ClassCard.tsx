@@ -14,11 +14,15 @@ interface ClassCardProps {
     tags?: string[];
   };
   onDelete?: () => void;
+    deleteLabel?: string;
 }
 
-const ClassCard: React.FC<{ classData: ClassCardProps['classData']; onDelete?: () => void }> = ({
+const ClassCard: React.FC<{ classData: ClassCardProps['classData']; onDelete?: () => void; deleteLabel?: string }> = ({
   classData,
   onDelete,
+  deleteLabel,
+  
+    
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const router = useRouter();
@@ -56,7 +60,7 @@ const ClassCard: React.FC<{ classData: ClassCardProps['classData']; onDelete?: (
         if (onDelete) onDelete();
       }}
     >
-      Delete Class
+      {deleteLabel || 'Delete Class'}
     </button>
   </div>
 )}
