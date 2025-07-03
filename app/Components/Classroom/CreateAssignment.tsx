@@ -18,15 +18,12 @@ export default function CreateAssignmentModal({ onClose }: { onClose: () => void
   return (
     <div className="fixed inset-0 flex items-center justify-center  bg-opacity-40 z-50">
       <div className="bg-[#1f1f1f] w-96 p-5 rounded-md shadow-md relative text-white border border-gray-500">
-        {/* Header */}
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold">Create Assignment</h2>
           <button onClick={onClose}>
             <X className="w-5 h-5" />
           </button>
         </div>
-
-        {/* Assignment Name */}
         <label className="text-sm mb-1 block">Assignment name</label>
         <input
           type="text"
@@ -45,7 +42,6 @@ export default function CreateAssignmentModal({ onClose }: { onClose: () => void
           className="w-full p-2 bg-gray-700 rounded text-sm mb-4 focus:outline-none"
         />
 
-        {/* Deadline */}
         <label className="text-sm mb-1 block">Select deadline</label>
         <input
           type="date"
@@ -54,7 +50,7 @@ export default function CreateAssignmentModal({ onClose }: { onClose: () => void
           className="w-full p-2 bg-gray-700 rounded text-sm mb-4 focus:outline-none"
         />
 
-        {/* File Upload */}
+  
         <label className="text-sm mb-1 block">Attach documents</label>
         <div className="w-full bg-gray-800 rounded-md h-28 flex items-center justify-center mb-3 cursor-pointer relative">
           <input
@@ -65,7 +61,7 @@ export default function CreateAssignmentModal({ onClose }: { onClose: () => void
           <Upload className="w-6 h-6 text-gray-300" />
         </div>
 
-        {/* File Preview */}
+  
         {file && (
           <div className="flex items-center justify-between bg-gray-700 px-3 py-2 rounded mb-3">
             <div className="flex items-center gap-2">
@@ -81,7 +77,6 @@ export default function CreateAssignmentModal({ onClose }: { onClose: () => void
           </div>
         )}
 
-        {/* Submit Button */}
         <button className="bg-gray-900 text-sm w-full py-2 rounded border border-gray-600 hover:bg-gray-800 transition">
           Create
         </button>

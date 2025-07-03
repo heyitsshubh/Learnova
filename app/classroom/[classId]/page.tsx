@@ -32,9 +32,8 @@ export default function ClassDetailPage() {
 
   return (
     <div className="flex p-6 gap-6">
-      {/* Main Content */}
+ 
       <div className="flex-1">
-        {/* Heading */}
         <div className="mb-6">
           <h1 className="text-xl font-semibold text-gray-800">Classroom</h1>
           <p className="text-sm text-gray-500">
@@ -42,7 +41,6 @@ export default function ClassDetailPage() {
           </p>
         </div>
 
-        {/* Banner */}
         <div className="relative h-48 rounded-2xl overflow-hidden shadow mb-6">
           <Image
             src="/Banner.svg"
@@ -55,7 +53,6 @@ export default function ClassDetailPage() {
             <h2 className="text-white text-2xl font-bold"></h2>
           </div>
         </div>
-        {/* Cards */}
         <div className="grid grid-rows-1 sm:grid-cols-3 gap-4">
           <MaterialCard
             title="Unit 1"
@@ -99,21 +96,19 @@ export default function ClassDetailPage() {
         </div>
       </div>
 
-      {/* Right Sidebar */}
+    
       <div className="hidden lg:block lg:w-64">
         <RightSidebar2 />
       </div>
 
-      {/* Floating Plus Button */}
       <button
         className="fixed bottom-6 right-6 text-white p-4 rounded-full shadow-lg"
         style={{ backgroundColor: 'rgba(73, 73, 73, 1)' }}
-        onClick={() => setSidebarMenuOpen(true)} // <-- Open menu on click
+        onClick={() => setSidebarMenuOpen(true)} 
       >
         <Plus />
       </button>
 
-      {/* Sidebar Menu Drawer */}
        {sidebarMenuOpen && (
   <Sidebarmenu
     open={sidebarMenuOpen}

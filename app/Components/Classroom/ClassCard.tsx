@@ -26,20 +26,16 @@ const ClassCard: React.FC<{ classData: ClassCardProps['classData']; onDelete?: (
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const router = useRouter();
-
-  // Prevent card click when clicking the 3-dot menu
   const handleCardClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.menu-btn')) return;
     router.push(`/classroom/${classData._id}`);
   };
-
   return (
     <div
       className="bg-white rounded-md overflow-hidden shadow-sm border relative cursor-pointer"
       style={{ width: '306px', height: '251px' }}
       onClick={handleCardClick}
     >
-      {/* 3-dot menu */}
       <div className="absolute top-2 right-2 z-10">
         <button
           onClick={(e) => {
@@ -65,8 +61,6 @@ const ClassCard: React.FC<{ classData: ClassCardProps['classData']; onDelete?: (
   </div>
 )}
       </div>
-
-      {/* Top Image Section */}
       <div className="relative h-2/3 bg-[#001C27] flex justify-end items-center pr-2">
         <Image
           src="/card.svg"
@@ -75,8 +69,6 @@ const ClassCard: React.FC<{ classData: ClassCardProps['classData']; onDelete?: (
           height={80}
           className="object-contain"
         />
-
-        {/* Tags */}
   
 <div className="absolute left-4 top-4 flex flex-col gap-2">
   <div
@@ -111,7 +103,6 @@ const ClassCard: React.FC<{ classData: ClassCardProps['classData']; onDelete?: (
   </div>
 </div>
 </div>
-      {/* Bottom Details Section */}
       <div className="p-3 flex items-center justify-between">
         <div>
           <h3 className="font-semibold text-[24px] truncate w-[150px] ">

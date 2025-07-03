@@ -2,10 +2,6 @@ import Image from 'next/image';
 import ClassmatesBox from './ClassmatesBox';
 import { useEffect, useState } from 'react';
 
-// const coordinators = [
-//   { name: 'Arman', msg: 'Hi Sarah, I have scheduled our next lesson...', img: '/avatar1.png' },
-//   { name: 'Divy', msg: 'Hi Sarah, I have scheduled our next lesson...', img: '/avatar2.png' },
-// ];
 
 export default function RightSidebar({ classId }: { classId: string }) {
   const [userName, setUserName] = useState('');
@@ -24,7 +20,6 @@ export default function RightSidebar({ classId }: { classId: string }) {
         <h2 className="text-sm font-semibold mb-2">Class coordinator</h2>
              <hr className="mb-3 border-t border-gray-300" /> 
         <ul className="space-y-2">
-          {/* Show user as first coordinator */}
           <li className="flex items-center space-x-4">
             <Image
               src={profileImg}
@@ -57,7 +52,6 @@ export default function RightSidebar({ classId }: { classId: string }) {
         </ul>
       </div>
 
-      {/* Classmates Box */}
       <ClassmatesBox classId={classId} />
     </div>
   );

@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onJoin: (classCode: string) => void; // Callback to handle joining the class
+  onJoin: (classCode: string) => void; 
 }
 
 const JoinClassModal: React.FC<Props> = ({ isOpen, onClose, onJoin }) => {
@@ -16,8 +16,8 @@ const JoinClassModal: React.FC<Props> = ({ isOpen, onClose, onJoin }) => {
       alert('Please enter a valid class code');
       return;
     }
-    onJoin(classCode); // Call the onJoin callback with the class code
-    onClose(); // Close the modal after joining
+    onJoin(classCode); 
+    onClose(); 
   };
 
   return (

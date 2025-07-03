@@ -41,12 +41,11 @@ export default function ClassroomPage() {
     }
   }, []);
 
-  // TODO: Replace with actual userId from auth context or user state
+
   const userId = '6841eba5c87625328c5b3c7';
 
   const filters = ['Joined', 'Created', ];
 
-  // Fetch created and joined classes on mount
   useEffect(() => {
     const fetchClasses = async () => {
       setLoading(true);
@@ -66,7 +65,6 @@ export default function ClassroomPage() {
     fetchClasses();
   }, [userId]);
 
-  // Handle joining a class by code
   const handleJoinClass = async (classCode: string) => {
   try {
     setLoading(true);
@@ -104,7 +102,6 @@ const handleDeleteClass = async (classId: string) => {
     setJoinedClasses((prev) => prev.filter((cls) => cls._id !== classId));
      toast.success('Class deleted successfully!');
   } catch (error) {
-    // Optionally handle error (no alert)
     console.error('Delete class error:', error);
   } finally {
     setLoading(false);
@@ -125,7 +122,6 @@ const handleLeaveClass = async (classId: string) => {
   }
 };
 
-  // Handle creating a class
   const handleCreateClass = async (formData: {
     className: string;
     subject: string;
@@ -155,14 +151,12 @@ const handleLeaveClass = async (classId: string) => {
     }
   };
 
-  // Decide which classes to show
   let displayedClasses: ClassData[] = [];
   if (activeTab === 'Joined') {
     displayedClasses = joinedClasses;
   } else if (activeTab === 'Created') {
     displayedClasses = classes;
   } else if (activeTab === 'All') {
-    // Merge and deduplicate by _id
     const all = [...classes, ...joinedClasses];
     displayedClasses = all.filter(
       (cls, idx, arr) => arr.findIndex(c => c._id === cls._id) === idx
@@ -174,7 +168,6 @@ const handleLeaveClass = async (classId: string) => {
   return (
     <AppLayout>
 <div className="pl-64 pr-6 pt-6">
-  {/* Header */}
   <div className="flex justify-between items-center mb-6">
     <div>
       <h1 className="text-2xl font-semibold">Classroom</h1>
@@ -197,11 +190,10 @@ const handleLeaveClass = async (classId: string) => {
           className="pl-12 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
-      {/* Notification and Settings Icons */}
     </div>
   </div>
 
-  {/* Filters */}
+
   <div className="flex items-center gap-2 mb-6">
     {filters.map((filter) => (
       <button
@@ -220,7 +212,6 @@ const handleLeaveClass = async (classId: string) => {
     ))}
   </div>
 
-  {/* Class Cards */}
   <div className="flex flex-col lg:flex-row">
     <div className="flex-1 lg:pr-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -236,7 +227,6 @@ const handleLeaveClass = async (classId: string) => {
           </p>
         ) : (
           displayedClasses.map((cls) => {
-            // User created this class if it exists in `classes`
             const isCreated = classes.some((c) => c._id === cls._id);
 
             return (
@@ -266,7 +256,6 @@ const handleLeaveClass = async (classId: string) => {
     </div>
   </div>
 
-  {/* Floating Create Button */}
   <button
     className="fixed bottom-6 right-6 text-white p-4 rounded-full shadow-lg"
     style={{ backgroundColor: 'rgba(73, 73, 73, 1)' }}
@@ -275,7 +264,6 @@ const handleLeaveClass = async (classId: string) => {
     <Plus />
   </button>
 
-  {/* Modals */}
   <CreateClassModal
     isOpen={modalOpen}
     onClose={() => setModalOpen(false)}

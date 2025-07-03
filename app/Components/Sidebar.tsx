@@ -56,12 +56,11 @@ const Sidebar: React.FC = () => {
   return (
     <div className="fixed left-0 top-0 h-full w-64 text-white flex flex-col z-50"
      style={{ backgroundColor: '#333333' }}>
-      {/* Logo Section */}
+
       <div className="flex items-center justify-center h-16 border-b border-gray-700">
         <h1 className="text-xl font-bold text-white">Learnova</h1>
       </div>
 
-      {/* Navigation Menu */}
       <nav className="flex-1 px-4 py-4">
         <ul className="space-y-7">
           {menuItems.map((item: MenuItem) => (
@@ -95,7 +94,7 @@ const Sidebar: React.FC = () => {
         </ul>
       </nav>
 
-      {/* User Profile */}
+
       <div className="p-4 border-t border-gray-700">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center flex-shrink-0">

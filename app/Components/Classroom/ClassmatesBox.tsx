@@ -3,17 +3,14 @@ import { getClassmates } from '../../services/classroom'; // Adjust path if need
 
 interface Classmate {
   name: string;
-  // Add other fields if needed
 }
 
 interface ApiClassmate {
   name: string;
-  // Add other fields from API if needed
 }
 
 interface ApiResponse {
   classmates: ApiClassmate[];
-  // Add other fields from API response if needed
 }
 
 interface ClassmatesBoxProps {
@@ -30,7 +27,6 @@ export default function ClassmatesBox({ classId }: ClassmatesBoxProps) {
       setLoading(true);
       try {
         const data: ApiResponse = await getClassmates(classId);
-        // Only keep the name field
         const mapped: Classmate[] = (data.classmates || []).map((c) => ({
           name: c.name,
         }));
