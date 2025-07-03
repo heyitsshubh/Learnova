@@ -85,6 +85,7 @@ export default function ClassroomPage() {
         return [classObj, ...prev];
       });
       setJoinModalOpen(false);
+      toast.success('Class joined successfully!');
     } else {
       toast.error('Class not found!');
     }
@@ -146,6 +147,7 @@ const handleLeaveClass = async (classId: string) => {
         throw new Error('Class creation failed.');
       }
     } catch (error) {
+       toast.error('Failed to create class!');
       console.error('Failed to create class:', error);
       throw new Error('Failed to create class');
     } finally {
