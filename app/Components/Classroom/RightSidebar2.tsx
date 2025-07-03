@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import { FiVideo, FiSend, FiPaperclip } from 'react-icons/fi';
+import { FaSearch, } from 'react-icons/fa';
 import ClassmatesBox from './ClassmatesBox';
 
 const classmates = [
@@ -8,7 +9,19 @@ const classmates = [
 
 export default function RightSidebar() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 mt-2">
+        <div className="flex items-center gap-4">
+          <div className="relative w-66 max-w-md">
+            <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg" />
+            <input
+              type="text"
+              placeholder="Search..."
+              className="pl-12 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          {/* Notification and Settings Icons */}
+          
+        </div>
       {/* Chat Box */}
       <div className="bg-white border-[1px] border-[#EBEBEB] rounded-lg shadow-sm">
         {/* Header with Avatar + Name + Video icon */}
@@ -44,7 +57,7 @@ export default function RightSidebar() {
       </div>
 
       {/* Classmates Box - Do not modify */}
-      <ClassmatesBox classmates={classmates} count={80} />
+       <ClassmatesBox classId="1" />
     </div>
   );
 }

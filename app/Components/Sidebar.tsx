@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FaHome, FaBook, FaUsers, FaEnvelope, FaBell } from 'react-icons/fa';
 
 interface MenuItem {
@@ -20,10 +20,26 @@ interface User {
 const Sidebar: React.FC = () => {
   const pathname = usePathname();
 
-  const [user] = useState<User>({
-    name: "Ayush Jaiswal",
-    initials: "AJ"
+  const [user, setUser] = useState<User>({
+    name: '',
+    initials: ''
   });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedName = localStorage.getItem('userName') || '';
+      setUser({
+        name: storedName,
+        initials: storedName
+          ? storedName
+              .split(' ')
+              .map((n) => n[0])
+              .join('')
+              .toUpperCase()
+          : ''
+      });
+    }
+  }, []);
 
   const menuItems: MenuItem[] = [
     { name: 'Home', path: '/dashboard', icon: <FaHome /> },

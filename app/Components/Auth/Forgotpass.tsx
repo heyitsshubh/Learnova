@@ -62,8 +62,8 @@ const Forgotpassword = () => {
             Reset Password
             </h2>
             <p className="text-lg text-black-600">
-            Don't remember your password? 
- <br />Don't worry!!!we are here to help you.
+            Don&pos;t remember your password? 
+ <br />Don&pos;t worry!!!we are here to help you.
             </p>
           </div>
         </div>

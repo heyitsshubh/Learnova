@@ -5,7 +5,7 @@ import ClassCard from '../Components/Classroom/ClassCard';
 import CreateClassModal from '../Components/Classroom/CreateClassModal';
 import JoinClassModal from '../Components/Classroom/JoinClassModal';
 import RightSidebar from '../Components/Classroom/RightSidebar';
-import { FaSearch } from 'react-icons/fa';
+import { FaSearch, FaBell, FaCog } from 'react-icons/fa';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Plus } from 'lucide-react';
@@ -43,7 +43,7 @@ export default function ClassroomPage() {
   // TODO: Replace with actual userId from auth context or user state
   const userId = '6841eba5c87625328c5b3c7';
 
-  const filters = ['Joined', 'Created', 'Pending Assignment', 'Favourites'];
+  const filters = ['Joined', 'Created', ];
 
   // Fetch created and joined classes on mount
   useEffect(() => {
@@ -101,6 +101,7 @@ const handleDeleteClass = async (classId: string) => {
     await deleteClass(classId);
     setClasses((prev) => prev.filter((cls) => cls._id !== classId));
     setJoinedClasses((prev) => prev.filter((cls) => cls._id !== classId));
+     toast.success('Class deleted successfully!');
   } catch (error) {
     // Optionally handle error (no alert)
     console.error('Delete class error:', error);
@@ -126,6 +127,7 @@ const handleDeleteClass = async (classId: string) => {
         setClasses((prev) => [classObj, ...prev]);
           localStorage.setItem('classCode', result.class.classCode);
         setModalOpen(false);
+         toast.success('Class created successfully!'); 
         return result.class.classCode;
       } else {
         throw new Error('Class creation failed.');
@@ -159,28 +161,38 @@ const handleDeleteClass = async (classId: string) => {
       <div className="pl-64 pr-6 pt-6">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
-       <div>
-            <h1 className="text-2xl font-semibold">Classroom</h1>
-            <p className="text-sm text-gray-500">
-              {userName ? `${userName} / classroom` : 'Classroom'}
-            </p>
-          </div>
-          <div className="relative w-66 max-w-md">
-            <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg" />
-            <input
-              type="text"
-              placeholder="Search..."
-              className="pl-12 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </div>
+  <div>
+    <h1 className="text-2xl font-semibold">Classroom</h1>
+    <p className="text-sm text-gray-500">
+      {userName ? `${userName} / classroom` : 'Classroom'}
+    </p>
+  </div>
+  <div className="flex items-center gap-4">
+    <button className="p-2 rounded-full hover:bg-gray-200 transition-colors">
+      <FaBell className="text-xl text-gray-400" />
+    </button>
+    <button className="p-2 rounded-full hover:bg-gray-200 transition-colors">
+      <FaCog className="text-xl text-gray-400" />
+    </button>
+    <div className="relative w-66 max-w-md">
+      <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg" />
+      <input
+        type="text"
+        placeholder="Search..."
+        className="pl-12 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
+    {/* Notification and Settings Icons */}
+    
+  </div>
+</div>
 
         {/* Filters */}
         <div className="flex items-center gap-2 mb-6">
           {filters.map((filter) => (
             <button
               key={filter}
-              className={`px-3 py-1 rounded-full text-m border ${
+              className={`px-3 py-1 rounded-full text-m border border-gray-300 ${
                 activeTab === filter ? 'bg-[rgba(45,156,219,0.5)] text-white' : 'bg-white'
               }`}
               onClick={() => {
