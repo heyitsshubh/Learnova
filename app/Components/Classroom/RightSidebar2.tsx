@@ -3,9 +3,9 @@ import { FiVideo, FiSend, FiPaperclip } from 'react-icons/fi';
 import { FaSearch, } from 'react-icons/fa';
 import ClassmatesBox from './ClassmatesBox';
 
-const classmates = [
-  { name: 'Shubh', msg: 'Hi Sarah, I have scheduled our next lesson...', img: '/avatar4.png' },
-];
+// const classmates = [
+//   { name: 'Shubh', msg: 'Hi Sarah, I have scheduled our next lesson...', img: '/avatar4.png' },
+// ];
 
 export default function RightSidebar() {
   return (

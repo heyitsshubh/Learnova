@@ -23,8 +23,8 @@ export default function ClassmatesBox({ classId }: ClassmatesBoxProps) {
       try {
         const data = await getClassmates(classId);
          console.log('Fetched classmates:', data);
-       setClassmates(data.classmates);
-      } catch (error) {
+         setClassmates(data.classmates);
+      } catch {
         setClassmates([]);
       } finally {
         setLoading(false);
