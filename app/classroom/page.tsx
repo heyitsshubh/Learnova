@@ -9,6 +9,7 @@ import { FaSearch, FaBell, FaCog } from 'react-icons/fa';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Plus } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 import {
   createClass,
@@ -27,13 +28,14 @@ interface ClassData {
 }
 
 export default function ClassroomPage() {
+  const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
   const [joinModalOpen, setJoinModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('All');
   const [classes, setClasses] = useState<ClassData[]>([]);
   const [joinedClasses, setJoinedClasses] = useState<ClassData[]>([]);
   const [loading, setLoading] = useState(false);
-    const [userName, setUserName] = useState('');
+  const [userName, setUserName] = useState('');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -245,6 +247,13 @@ const handleLeaveClass = async (classId: string) => {
                     : handleLeaveClass(cls._id)
                 }
                 deleteLabel={isCreated ? 'Delete' : 'Leave Class'}
+       onCardClick={() => {
+          if (isCreated) {
+            router.push(`/classroom/${cls._id}`);
+          } else {
+            router.push(`/dashboard/${cls._id}`);
+          }
+        }}
               />
             );
           })
@@ -255,7 +264,6 @@ const handleLeaveClass = async (classId: string) => {
       <RightSidebar classId={displayedClasses[0]?._id || ''} />
     </div>
   </div>
-
   <button
     className="fixed bottom-6 right-6 text-white p-4 rounded-full shadow-lg"
     style={{ backgroundColor: 'rgba(73, 73, 73, 1)' }}
