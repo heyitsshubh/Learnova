@@ -1,11 +1,8 @@
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
 import { getClassmates } from '../../services/classroom'; // Adjust path if needed
 
 interface Classmate {
   name: string;
-  msg: string;
-  img: string;
 }
 
 interface ClassmatesBoxProps {
@@ -22,8 +19,11 @@ export default function ClassmatesBox({ classId }: ClassmatesBoxProps) {
       setLoading(true);
       try {
         const data = await getClassmates(classId);
-         console.log('Fetched classmates:', data);
-         setClassmates(data.classmates);
+        // Only keep the name field
+        const mapped = (data.classmates || []).map((c: any) => ({
+          name: c.name,
+        }));
+        setClassmates(mapped);
       } catch {
         setClassmates([]);
       } finally {
@@ -38,27 +38,18 @@ export default function ClassmatesBox({ classId }: ClassmatesBoxProps) {
       <h2 className="text-sm font-semibold mb-2">
         Classmates <span className="text-blue-500">({classmates.length})</span>
       </h2>
+      <hr className="mb-3 border-t border-gray-300" />
       {loading ? (
         <p className="text-gray-400 text-sm">Loading...</p>
       ) : (
         <ul className="space-y-2">
           {classmates.map((person, idx) => (
-            <li key={idx} className="flex items-center space-x-2">
-              <Image
-                src={person.img}
-                alt={person.name}
-                width={32}
-                height={32}
-                className="rounded-full object-cover"
-              />
-              <div>
-                <p className="text-sm font-medium">{person.name}</p>
-                <p className="text-xs text-gray-500 truncate w-40">{person.msg}</p>
-              </div>
+            <li key={idx} className="text-sm font-medium">
+              {person.name}
             </li>
           ))}
         </ul>
       )}
     </div>
   );
-}
+  }
