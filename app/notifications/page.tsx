@@ -1,7 +1,6 @@
 'use client';
 import AppLayout from '../Components/AppLayout';
 import { FaSearch, FaBell, FaCog } from 'react-icons/fa';
-import { useState } from 'react';
 
 const notifications = () => {
   const data = [
