@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { refreshAccessToken } from '../utils/token';
 
 const API_URL = 'https://project2-zphf.onrender.com/api/class/';
@@ -35,8 +35,9 @@ export const createClass = async (formData: {
       },
     });
     return response.data;
-  } catch (error: any) {
-    if (error.response?.status === 401) {
+  } catch (error) {
+    const err = error as AxiosError;
+    if (err.response?.status === 401) {
       const newToken = await refreshAccessToken();
       const response = await axios.post(API_URL, formData, {
         headers: { Authorization: `Bearer ${newToken}` },
@@ -60,8 +61,9 @@ export const joinClassByCode = async (classCode: string) => {
       }
     );
     return res.data;
-  } catch (error: any) {
-    if (error.response?.status === 401) {
+  } catch (error) {
+    const err = error as AxiosError;
+    if (err.response?.status === 401) {
       const newToken = await refreshAccessToken();
       const res = await axios.post(
         'https://project2-zphf.onrender.com/api/class/join-by-code',
@@ -82,8 +84,9 @@ export const getJoinedClasses = async (userId: string) => {
       { headers: { Authorization: `Bearer ${token}` } }
     );
     return res.data;
-  } catch (error: any) {
-    if (error.response?.status === 401) {
+  } catch (error) {
+    const err = error as AxiosError;
+    if (err.response?.status === 401) {
       const newToken = await refreshAccessToken();
       const res = await axios.get(
         `https://project2-zphf.onrender.com/api/class/all?userId=${userId}&filter=joined`,
@@ -103,8 +106,9 @@ export const getCreatedClasses = async (userId: string) => {
       { headers: { Authorization: `Bearer ${token}` } }
     );
     return res.data;
-  } catch (error: any) {
-    if (error.response?.status === 401) {
+  } catch (error) {
+    const err = error as AxiosError;
+    if (err.response?.status === 401) {
       const newToken = await refreshAccessToken();
       const res = await axios.get(
         `https://project2-zphf.onrender.com/api/class/all?userId=${userId}&filter=created`,
@@ -124,8 +128,9 @@ export const deleteClass = async (classId: string) => {
       { headers: { Authorization: `Bearer ${token}` } }
     );
     return res.data;
-  } catch (error: any) {
-    if (error.response?.status === 401) {
+  } catch (error) {
+    const err = error as AxiosError;
+    if (err.response?.status === 401) {
       const newToken = await refreshAccessToken();
       const res = await axios.delete(
         `https://project2-zphf.onrender.com/api/class/${classId}`,
@@ -146,8 +151,9 @@ export const getClassmates = async (classId: string) => {
       { headers: { Authorization: `Bearer ${token}` } }
     );
     return res.data.classmates;
-  } catch (error: any) {
-    if (error.response?.status === 401) {
+  } catch (error) {
+    const err = error as AxiosError;
+    if (err.response?.status === 401) {
       const newToken = await refreshAccessToken();
       const res = await axios.get(
         `/api/class/classmates/${classId}`,
@@ -168,8 +174,9 @@ export const leaveClass = async (classId: string) => {
       { headers: { Authorization: `Bearer ${token}` } }
     );
     return res.data;
-  } catch (error: any) {
-    if (error.response?.status === 401) {
+  } catch (error) {
+    const err = error as AxiosError;
+    if (err.response?.status === 401) {
       const newToken = await refreshAccessToken();
       const res = await axios.post(
         'https://project2-zphf.onrender.com/api/class/leave',
@@ -180,4 +187,4 @@ export const leaveClass = async (classId: string) => {
     }
     throw error;
   }
-}
+};
