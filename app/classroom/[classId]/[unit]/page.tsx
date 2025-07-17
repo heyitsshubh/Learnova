@@ -6,6 +6,7 @@ import RightSidebar2 from '../../../Components/Classroom/RightSidebar2';
 import { Plus } from 'lucide-react';
 import Sidebarmenu from '../../../Components/Classroom/Sidebarmenu';
 import CreateAssignment from '../../../Components/Classroom/CreateAssignment';
+import Announcement from '../../../Components/Classroom/Announcement';
 
 const unitData: Record<string, string[]> = {
   'unit-1': ['unit1-part1.pdf', 'unit1-part2.pdf', 'assignment1.pdf'],
@@ -45,6 +46,7 @@ export default function UnitPdfPage({
   const [userName, setUserName] = useState('');
   const [sidebarMenuOpen, setSidebarMenuOpen] = useState(false);
   const [createAssignmentOpen, setCreateAssignmentOpen] = useState(false);
+  const [announcementOpen, setAnnouncementOpen] = useState(false);
 
   const files = unitData[params.unit];
 
@@ -118,6 +120,10 @@ export default function UnitPdfPage({
             setSidebarMenuOpen(false);
             setCreateAssignmentOpen(true);
           }}
+             onAnnouncement={() => {
+            setSidebarMenuOpen(false);
+            setAnnouncementOpen(true);
+          }}
         />
       )}
 
@@ -125,6 +131,15 @@ export default function UnitPdfPage({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-opacity-40">
           <div className="bg-white rounded-lg shadow-lg p-8">
             <CreateAssignment onClose={() => setCreateAssignmentOpen(false)} />
+          </div>
+        </div>
+      )}
+
+          {/* Announcement Modal */}
+      {announcementOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-lg p-8">
+            <Announcement onClose={() => setAnnouncementOpen(false)} />
           </div>
         </div>
       )}

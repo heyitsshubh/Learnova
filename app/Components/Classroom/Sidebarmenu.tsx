@@ -2,16 +2,17 @@ interface SidebarmenuProps {
   open: boolean;
   onClose: () => void;
   onCreateAssignment?: () => void;
+  onAnnouncement?: () => void;
 }
 
-export default function Sidebarmenu({ open, onClose, onCreateAssignment }: SidebarmenuProps) {
+export default function Sidebarmenu({ open, onClose, onCreateAssignment,onAnnouncement }: SidebarmenuProps) {
   if (!open) return null;
 
   const items = [
     { label: 'Attendence' },
     { label: 'Create Meet' },
     { label: 'Create Assignment', action: onCreateAssignment },
-    { label: 'Make Announcement' },
+    { label: 'Make Announcement', action: onAnnouncement },
   ];
 
   return (
@@ -24,18 +25,21 @@ export default function Sidebarmenu({ open, onClose, onCreateAssignment }: Sideb
           ✕
         </button>
         <div className="py-4 px-4">
-          {items.map((item, index) => (
-            <div
-              key={index}
-              className="px-2 py-2 border-b border-gray-700 hover:bg-gray-700 cursor-pointer text-sm last:border-b-0"
-              onClick={() => {
-                if (item.action) item.action();
-                onClose();
-              }}
-            >
-              {item.label}
-            </div>
-          ))}
+         {items.map((item, index) => (
+  <div
+    key={index}
+    className="px-2 py-2 border-b border-gray-700 hover:bg-gray-700 cursor-pointer text-sm last:border-b-0"
+    onClick={() => {
+      if (item.action) {
+        item.action();
+      } else {
+        onClose();
+      }
+    }}
+  >
+    {item.label}
+  </div>
+))}
         </div>
       </div>
     </div>

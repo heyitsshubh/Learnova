@@ -1,31 +1,17 @@
+'use client';
+
 import { useState } from 'react';
 import { X, Upload, File } from 'lucide-react';
-import { createAssignment } from '../../services/assignment'; // <-- Import the API
 
-export default function CreateAssignmentModal({ onClose }: { onClose: () => void }) {
+export default function Announcement({ onClose }: { onClose: () => void }) {
   const [assignmentName, setAssignmentName] = useState('');
-  const [descriptionName, setDescriptionName] = useState('');
-  const [deadline, setDeadline] = useState('2035-06-06');
+//    const [descriptionName, setDescriptionName] = useState('');
+//   const [deadline, setDeadline] = useState('2035-06-06');
   const [file, setFile] = useState<File | null>(null);
-  const [loading, setLoading] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       setFile(e.target.files[0]);
-    }
-  };
-
-  const handleCreateAssignment = async () => {
-    setLoading(true);
-    try {
-      await createAssignment(assignmentName, descriptionName, deadline, file || undefined);
-      alert('Assignment created successfully!');
-      onClose();
-    } catch (error) {
-      alert('Failed to create assignment!');
-      console.error(error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -46,24 +32,25 @@ export default function CreateAssignmentModal({ onClose }: { onClose: () => void
           placeholder="Enter class name"
           className="w-full p-2 bg-gray-700 rounded text-sm mb-4 focus:outline-none"
         />
-
-        <label className="text-sm mb-1 block">Description</label>
+{/* 
+          <label className="text-sm mb-1 block">Description</label>
         <input
           type="text"
           value={descriptionName}
           onChange={(e) => setDescriptionName(e.target.value)}
           placeholder="Enter class name"
           className="w-full p-2 bg-gray-700 rounded text-sm mb-4 focus:outline-none"
-        />
+        /> */}
 
-        <label className="text-sm mb-1 block">Select deadline</label>
+        {/* <label className="text-sm mb-1 block">Select deadline</label>
         <input
           type="date"
           value={deadline}
           onChange={(e) => setDeadline(e.target.value)}
           className="w-full p-2 bg-gray-700 rounded text-sm mb-4 focus:outline-none"
-        />
+        /> */}
 
+  
         <label className="text-sm mb-1 block">Attach documents</label>
         <div className="w-full bg-gray-800 rounded-md h-28 flex items-center justify-center mb-3 cursor-pointer relative">
           <input
@@ -74,6 +61,7 @@ export default function CreateAssignmentModal({ onClose }: { onClose: () => void
           <Upload className="w-6 h-6 text-gray-300" />
         </div>
 
+  
         {file && (
           <div className="flex items-center justify-between bg-gray-700 px-3 py-2 rounded mb-3">
             <div className="flex items-center gap-2">
@@ -89,12 +77,8 @@ export default function CreateAssignmentModal({ onClose }: { onClose: () => void
           </div>
         )}
 
-        <button
-          className="bg-gray-900 text-sm w-full py-2 rounded border border-gray-600 hover:bg-gray-800 transition"
-          onClick={handleCreateAssignment}
-          disabled={loading}
-        >
-          {loading ? 'Creating...' : 'Create'}
+        <button className="bg-gray-900 text-sm w-full py-2 rounded border border-gray-600 hover:bg-gray-800 transition">
+          Announce
         </button>
       </div>
     </div>

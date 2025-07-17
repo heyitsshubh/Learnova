@@ -1,5 +1,5 @@
 // utils/token.ts
-
+import axios from 'axios';
 export const setTokens = (access: string, refresh: string) => {
   if (typeof window !== 'undefined') {
     localStorage.setItem('accessToken', access);
@@ -13,21 +13,36 @@ export const getAccessToken = () => {
   }
   return null;
 };
-import axios from 'axios';
 
 export const refreshAccessToken = async () => {
   const refreshToken = getRefreshToken();
-  if (!refreshToken) throw new Error('No refresh token found');
-  const res = await axios.post('https://project2-zphf.onrender.com/api/auth/refresh', {
-    refreshToken,
-  });
-  const { accessToken } = res.data;
-  if (accessToken) {
-    localStorage.setItem('accessToken', accessToken);
-    return accessToken;
+  if (!refreshToken) {
+    redirectToLogin();
+    throw new Error('No refresh token found');
   }
-  throw new Error('Failed to refresh access token');
+  try {
+    const res = await axios.post('https://project2-zphf.onrender.com/api/auth/refresh', {
+      refreshToken,
+    });
+    const { accessToken } = res.data;
+    if (accessToken) {
+      localStorage.setItem('accessToken', accessToken);
+      return accessToken;
+    }
+    redirectToLogin();
+    throw new Error('Failed to refresh access token');
+  } catch (error) {
+    redirectToLogin();
+    throw error;
+  }
 };
+
+const redirectToLogin = () => {
+  if (typeof window !== 'undefined') {
+    window.location.href = '/login';
+  }
+};
+
 export const getRefreshToken = () => {
   if (typeof window !== 'undefined') {
     return localStorage.getItem('refreshToken');
@@ -41,7 +56,6 @@ export const removeTokens = () => {
     localStorage.removeItem('refreshToken');
   }
 };
-
 
 export const setResetToken = (resetToken: string) => {
   if (typeof window !== 'undefined') {

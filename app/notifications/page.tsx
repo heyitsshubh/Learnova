@@ -90,12 +90,13 @@ const notifications = () => {
         {/* Notifications */}
         {data.map((section, i) => (
           <div key={i} className="mb-8">
-            <p className="text-right font-semibold mb-3">{section.date}</p>
+            <p className="text-right font-bold mb-3">{section.date}</p>
             <div className="space-y-3">
               {section.items.map((item, j) => (
                 <div
                   key={j}
-                  className="flex items-start gap-3 border rounded-md p-4 bg-white shadow-sm"
+                  className="flex items-start gap-3 border  rounded-md p-4 bg-white shadow-sm"
+                    style={{ border: '1px solid rgba(201, 201, 201, 0.25)' }}
                 >
                   <div
                     className={`w-8 h-8 flex items-center justify-center rounded-full ${item.iconColor}`}
