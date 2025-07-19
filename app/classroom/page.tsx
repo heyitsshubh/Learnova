@@ -44,7 +44,7 @@ export default function ClassroomPage() {
   }, []);
 
 
-  const userId = '6841eba5c87625328c5b3c7';
+  const userId = '';
 
   const filters = ['Joined', 'Created', ];
 

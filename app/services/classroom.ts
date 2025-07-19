@@ -144,22 +144,23 @@ export const deleteClass = async (classId: string) => {
 
 export const getClassmates = async (classId: string) => {
   if (!classId) throw new Error('classId is required');
+  console.log('Fetching classmates for classId:', classId);
   const token = await getTokenOrRefresh();
   try {
     const res = await axios.get(
-      `/api/class/classmates/${classId}`,
+      `https://project2-zphf.onrender.com/api/class/classmates/${classId}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
-    return res.data.classmates;
+   return Array.isArray(res.data) ? res.data : res.data.classmates;
   } catch (error) {
     const err = error as AxiosError;
     if (err.response?.status === 401) {
       const newToken = await refreshAccessToken();
       const res = await axios.get(
-        `/api/class/classmates/${classId}`,
+        `https://project2-zphf.onrender.com/api/class/classmates/${classId}`,
         { headers: { Authorization: `Bearer ${newToken}` } }
       );
-      return res.data.classmates;
+     return Array.isArray(res.data) ? res.data : res.data.classmates;
     }
     throw error;
   }
