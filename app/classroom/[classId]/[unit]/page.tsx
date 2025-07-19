@@ -99,7 +99,7 @@ export default function UnitPdfPage({
 
       {/* Right Sidebar */}
       <div className="hidden lg:block lg:w-64">
-        <RightSidebar2 />
+        <RightSidebar2 classId={params.classId} />
       </div>
 
       {/* Floating + Button */}
@@ -130,7 +130,7 @@ export default function UnitPdfPage({
       {createAssignmentOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-opacity-40">
           <div className="bg-white rounded-lg shadow-lg p-8">
-            <CreateAssignment onClose={() => setCreateAssignmentOpen(false)} />
+            <CreateAssignment onClose={() => setCreateAssignmentOpen(false)} classId={params.classId} />
           </div>
         </div>
       )}

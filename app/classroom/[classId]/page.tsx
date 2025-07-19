@@ -38,10 +38,11 @@ export default function ClassDetailPage() {
   const [sidebarMenuOpen, setSidebarMenuOpen] = useState(false);
   const [createAssignmentOpen, setCreateAssignmentOpen] = useState(false);
 
-  const params = useParams();
-  const router = useRouter();
-
-  const classid = params.classid;
+const params = useParams();
+const router = useRouter();
+const classid = params.classId;
+console.log('params:', params);
+console.log('classid:', classid);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -125,7 +126,7 @@ export default function ClassDetailPage() {
 
       {/* Right Sidebar */}
       <div className="hidden lg:block lg:w-64">
-        <RightSidebar2 />
+        <RightSidebar2 classId={classid as string} />
       </div>
 
       {/* Floating Plus Button */}
@@ -153,7 +154,7 @@ export default function ClassDetailPage() {
       {createAssignmentOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-opacity-40">
           <div className="bg-white rounded-lg shadow-lg p-8">
-            <CreateAssignment onClose={() => setCreateAssignmentOpen(false)} />
+            <CreateAssignment onClose={() => setCreateAssignmentOpen(false)} classId={classid as string} />
           </div>
         </div>
       )}

@@ -9,10 +9,6 @@ interface ApiClassmate {
   name: string;
 }
 
-interface ApiResponse {
-  classmates: ApiClassmate[];
-}
-
 interface ClassmatesBoxProps {
   classId: string;
   count?: number;
@@ -22,25 +18,25 @@ export default function ClassmatesBox({ classId }: ClassmatesBoxProps) {
   const [classmates, setClassmates] = useState<Classmate[]>([]);
   const [loading, setLoading] = useState(true);
 
- useEffect(() => {
-  const fetchClassmates = async () => {
-    setLoading(true);
-    try {
-      const data = await getClassmates(classId);
-      console.log(data);
-      // If data is an array, use it directly
-      const mapped: Classmate[] = (Array.isArray(data) ? data : data.classmates || []).map((c: ApiClassmate) => ({
-        name: c.name,
-      }));
-      setClassmates(mapped);
-    } catch {
-      setClassmates([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-  if (classId) fetchClassmates();
-}, [classId]);
+  useEffect(() => {
+    const fetchClassmates = async () => {
+      setLoading(true);
+      try {
+        const data = await getClassmates(classId);
+        console.log(data);
+        // If data is an array, use it directly
+        const mapped: Classmate[] = (Array.isArray(data) ? data : data.classmates || []).map((c: ApiClassmate) => ({
+          name: c.name,
+        }));
+        setClassmates(mapped);
+      } catch {
+        setClassmates([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (classId) fetchClassmates();
+  }, [classId]);
 
   return (
     <div className="bg-white border-[1px] border-[#EBEBEB] rounded-lg p-4 shadow-sm h-96">

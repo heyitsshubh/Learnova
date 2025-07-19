@@ -156,9 +156,9 @@ const handleLeaveClass = async (classId: string) => {
   };
 
   let displayedClasses: ClassData[] = [];
-  if (activeTab === 'Joined') {
+  if (activeTab === 'Join') {
     displayedClasses = joinedClasses;
-  } else if (activeTab === 'Created') {
+  } else if (activeTab === 'Create') {
     displayedClasses = classes;
   } else if (activeTab === 'All') {
     const all = [...classes, ...joinedClasses];
@@ -262,9 +262,12 @@ const handleLeaveClass = async (classId: string) => {
         )}
       </div>
     </div>
-    <div className="hidden lg:block lg:w-64">
-      <RightSidebar classId={displayedClasses[0]?._id || ''} />
-    </div>
+  <div className="hidden lg:block lg:w-64">
+  {displayedClasses[0]?._id
+    ? <RightSidebar classId={displayedClasses[0]._id} />
+    : <div className="text-gray-400 p-4">No class selected</div>
+  }
+</div>
   </div>
   <button
     className="fixed bottom-6 right-6 text-white p-4 rounded-full shadow-lg"

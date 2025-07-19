@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { X, Upload, File } from 'lucide-react';
 import { createAssignment } from '../../services/assignment'; // <-- Import the API
+import { toast, Toaster } from 'react-hot-toast';
 
-export default function CreateAssignmentModal({ onClose }: { onClose: () => void }) {
+export default function CreateAssignmentModal({ onClose, classId }: { onClose: () => void; classId: string }) {
   const [assignmentName, setAssignmentName] = useState('');
   const [descriptionName, setDescriptionName] = useState('');
   const [deadline, setDeadline] = useState('2035-06-06');
@@ -15,14 +16,32 @@ export default function CreateAssignmentModal({ onClose }: { onClose: () => void
     }
   };
 
-  const handleCreateAssignment = async () => {
+const handleCreateAssignment = async () => {
+   console.log('assignmentName:', assignmentName);
+  console.log('descriptionName:', descriptionName);
+  console.log('classId:', classId);
+  console.log('deadline:', deadline);
+  if (!assignmentName.trim() || !descriptionName.trim() || !classId || classId === '1' || classId === 'undefined') {
+    alert('Please fill in assignment name, description, and class ID.');
+    return;
+  }
     setLoading(true);
     try {
-      await createAssignment(assignmentName, descriptionName, deadline, file || undefined);
-      alert('Assignment created successfully!');
-      onClose();
+      await createAssignment(
+        assignmentName,
+        descriptionName,
+        classId,
+        deadline,
+        100,
+        '', // instructions
+        false,
+        'assignment',
+        file || undefined
+      );
+      toast.success('Assignment created successfully!');
+      setTimeout(onClose, 1500);
     } catch (error) {
-      alert('Failed to create assignment!');
+      toast.error('Failed to create assignment!');
       console.error(error);
     } finally {
       setLoading(false);
@@ -31,6 +50,7 @@ export default function CreateAssignmentModal({ onClose }: { onClose: () => void
 
   return (
     <div className="fixed inset-0 flex items-center justify-center  bg-opacity-40 z-50">
+      <Toaster position="top-center" />
       <div className="bg-[#1f1f1f] w-96 p-5 rounded-md shadow-md relative text-white border border-gray-500">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold">Create Assignment</h2>
