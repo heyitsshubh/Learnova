@@ -40,9 +40,11 @@ const handleCreateAssignment = async () => {
       );
       toast.success('Assignment created successfully!');
       setTimeout(onClose, 1500);
-    } catch (error) {
-      toast.error('Failed to create assignment!');
-      console.error(error);
+    } catch (error: any) {
+  const message = error?.response?.data?.message || 'Failed to create assignment!';
+  toast.error(message);
+  console.error(error);
+
     } finally {
       setLoading(false);
     }

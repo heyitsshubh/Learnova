@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getClassmates } from '../../services/classroom'; 
+import Image from 'next/image';
 
 interface Classmate {
   name: string;
@@ -47,13 +48,23 @@ export default function ClassmatesBox({ classId }: ClassmatesBoxProps) {
       {loading ? (
         <p className="text-gray-400 text-sm">Loading...</p>
       ) : (
-        <ul className="space-y-2">
-          {classmates.map((person, idx) => (
-            <li key={idx} className="text-sm font-medium">
-              {person.name}
-            </li>
-          ))}
-        </ul>
+         <ul className="space-y-4">
+        {classmates.map((person, idx) => (
+          <li key={idx} className="flex items-center space-x-4">
+            <Image
+              src={'/profilee.svg'} // fallback to a default avatar
+              alt={person.name}
+              width={40}
+              height={40}
+              className="rounded-full object-cover"
+            />
+            <div>
+              <p className="text-m font-medium">{person.name}</p>
+              <p className="text-xs text-gray-500 truncate w-40"></p>
+            </div>
+          </li>
+        ))}
+      </ul>
       )}
     </div>
   );

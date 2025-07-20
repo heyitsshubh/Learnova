@@ -46,7 +46,7 @@ export default function ClassroomPage() {
 
   const userId = '';
 
-  const filters = ['Joined', 'Created', ];
+  const filters = ['Join', 'Create', ];
 
   useEffect(() => {
     const fetchClasses = async () => {
@@ -207,8 +207,8 @@ const handleLeaveClass = async (classId: string) => {
         }`}
         onClick={() => {
           setActiveTab(filter);
-          if (filter === 'Created') setModalOpen(true);
-          if (filter === 'Joined') setJoinModalOpen(true);
+          if (filter === 'Create') setModalOpen(true);
+          if (filter === 'Join') setJoinModalOpen(true);
         }}
       >
         {filter}
@@ -223,7 +223,7 @@ const handleLeaveClass = async (classId: string) => {
           <p className="text-black-500 text-center">Loading classes...</p>
         ) : displayedClasses.length === 0 ? (
           <p className="text-black-500 text-center">
-            {activeTab === 'Joined'
+            {activeTab === 'Join'
               ? 'No joined classes found.'
               : activeTab === 'Created'
               ? 'No created classes found.'
@@ -262,11 +262,10 @@ const handleLeaveClass = async (classId: string) => {
         )}
       </div>
     </div>
-  <div className="hidden lg:block lg:w-64">
-  {displayedClasses[0]?._id
-    ? <RightSidebar classId={displayedClasses[0]._id} />
-    : <div className="text-gray-400 p-4">No class selected</div>
-  }
+<div className="hidden lg:block lg:w-64">
+  {displayedClasses[0]?._id && (
+    <RightSidebar classId={displayedClasses[0]._id} />
+  )}
 </div>
   </div>
   <button

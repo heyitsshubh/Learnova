@@ -30,7 +30,7 @@ export const createAssignment = async (
   }
   try {
     const res = await axios.post(
-      'https://project2-zphf.onrender.com/api/assign/',
+      'https://project2-zphf.onrender.com/api/assign',
       formData,
       {
         headers: {
@@ -44,7 +44,7 @@ export const createAssignment = async (
     if (error.response?.status === 401) {
       token = await refreshAccessToken();
       const res = await axios.post(
-        'https://project2-zphf.onrender.com/api/assign/',
+        'https://project2-zphf.onrender.com/api/assign',
         formData,
         {
           headers: {
