@@ -35,8 +35,7 @@ const handleCreateAssignment = async () => {
         100,
         '', // instructions
         false,
-        'assignment',
-        file || undefined
+        'assignment'
       );
       toast.success('Assignment created successfully!');
       setTimeout(onClose, 1500);

@@ -4,9 +4,11 @@ import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
+import { FaBell, FaCog } from 'react-icons/fa';
 import RightSidebar2 from '../../Components/Classroom/RightSidebar2';
 import Sidebarmenu from '../../Components/Classroom/Sidebarmenu';
 import CreateAssignment from '../../Components/Classroom/CreateAssignment';
+import { getAssignments } from '../../services/assignment';
 
 function MaterialCard({
   title,
@@ -38,11 +40,12 @@ export default function ClassDetailPage() {
   const [sidebarMenuOpen, setSidebarMenuOpen] = useState(false);
   const [createAssignmentOpen, setCreateAssignmentOpen] = useState(false);
 
-const params = useParams();
-const router = useRouter();
-const classid = params.classId;
-console.log('params:', params);
-console.log('classid:', classid);
+  const params = useParams();
+  const router = useRouter();
+  const classid = params.classId;
+
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [assignmentsLoading, setAssignmentsLoading] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -50,16 +53,38 @@ console.log('classid:', classid);
     }
   }, []);
 
+  useEffect(() => {
+    if (classid) {
+      setAssignmentsLoading(true);
+      getAssignments(classid as string)
+        .then((data) => setAssignments(Array.isArray(data) ? data : data.assignments || []))
+        .catch(() => setAssignments([]))
+        .finally(() => setAssignmentsLoading(false));
+    }
+  }, [classid, createAssignmentOpen]);
+
   return (
     <div className="flex p-6 gap-6">
       {/* Left/Main Section */}
       <div className="flex-1">
-        <div className="mb-6">
+        <div className="mb-6 flex items-center justify-between">
+          <div>
           <h1 className="text-xl font-semibold text-gray-800">Classroom</h1>
           <p className="text-sm text-gray-500">
             {userName ? `${userName} / ${classid}` : 'Classroom'}
           </p>
         </div>
+        <div className="flex items-center gap-4">
+    <button className="p-2 rounded-full hover:bg-gray-200 transition-colors">
+      <FaBell className="text-xl text-gray-400" />
+    </button>
+    <button className="p-2 rounded-full hover:bg-gray-200 transition-colors">
+      <FaCog className="text-xl text-gray-400" />
+    </button>
+  </div>
+        </div>
+        
+       
 
         {/* Banner Image */}
         <div className="relative h-48 rounded-2xl overflow-hidden shadow mb-6">
@@ -75,52 +100,34 @@ console.log('classid:', classid);
           </div>
         </div>
 
-        {/* Unit Cards */}
-        <div className="grid grid-rows-1 sm:grid-cols-3 gap-4">
-          <MaterialCard
-            title="Unit 1"
-            subtitle="Study Material"
-            icon={
-              <Image
-                src="/books.svg"
-                alt="Unit 1"
-                width={70}
-                height={70}
-                className="rounded"
-              />
-            }
-            onClick={() => router.push(`/classroom/${classid}/unit-1`)}
-          />
-
-          <MaterialCard
-            title="Unit 2"
-            subtitle="Study Material"
-            icon={
-              <Image
-                src="/books.svg"
-                alt="Unit 2"
-                width={70}
-                height={70}
-                className="rounded"
-              />
-            }
-            onClick={() => router.push(`/classroom/${classid}/unit-2`)}
-          />
-
-          <MaterialCard
-            title="Previous Year Papers"
-            subtitle="Download PDFs"
-            icon={
-              <Image
-                src="/books.svg"
-                alt="PDF"
-                width={70}
-                height={70}
-                className="rounded"
-              />
-            }
-            onClick={() => router.push(`/classroom/${classid}/previous-year-papers`)}
-          />
+        {/* Assignments Section */}
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold mb-2">Assignments</h2>
+          {assignmentsLoading ? (
+            <p className="text-gray-400 text-sm">Loading assignments...</p>
+          ) : assignments.length === 0 ? (
+            <p className="text-gray-400 text-sm">No assignments found.</p>
+          ) : (
+            <div className="grid grid-rows-1 sm:grid-cols-3 gap-4">
+              {assignments.map((assignment: any) => (
+                <MaterialCard
+                  key={assignment._id}
+                  title={assignment.title}
+                  subtitle={assignment.description}
+                  icon={
+                    <Image
+                      src="/books.svg"
+                      alt={assignment.title}
+                      width={70}
+                      height={70}
+                      className="rounded"
+                    />
+                  }
+                  onClick={() => router.push(`/classroom/${classid}/assignment/${assignment._id}`)}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
