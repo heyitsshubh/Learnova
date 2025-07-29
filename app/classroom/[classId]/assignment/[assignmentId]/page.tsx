@@ -8,43 +8,57 @@ import { Plus } from 'lucide-react';
 import { FaBell, FaCog } from 'react-icons/fa';
 import Sidebarmenu from '../../../../Components/Classroom/Sidebarmenu';
 import Announcement from '../../../../Components/Classroom/Announcement';
+import { getAssignments } from '../../../../services/assignment';
 
-const unitData: Record<string, string[]> = {
-  'unit-1': ['unit1-part1.pdf', 'unit1-part2.pdf', 'assignment1.pdf'],
-  'unit-2': ['unit2-part1.pdf', 'unit2-part2.pdf'],
-  'previous-year-papers': ['paper1.pdf', 'paper2.pdf']
-};
-
-function PdfCard({ title, filePath }: { title: string; filePath: string }) {
+function MaterialCard({
+  title,
+  subtitle,
+  icon,
+  dueDate,
+  fileUrl,
+  onPreview,
+}: {
+  title: string;
+  subtitle: string;
+  icon: React.ReactNode;
+  dueDate?: string;
+  fileUrl?: string;
+  onPreview?: () => void;
+}) {
   return (
-    <a
-      href={filePath}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="bg-white p-4 rounded-xl shadow hover:shadow-lg transition flex items-center gap-4"
+    <div
+      className="cursor-pointer bg-white p-4 rounded-xl shadow hover:shadow-lg transition flex items-center gap-4"
     >
-      <Image
-        src="/books.svg"
-        alt={title}
-        width={70}
-        height={70}
-        className="rounded"
-      />
-      <div className="text-left">
+      <div className="text-3xl text-purple-600 flex-shrink-0">{icon}</div>
+      <div className="text-left flex-1">
         <h3 className="font-semibold">{title}</h3>
-        <p className="text-sm text-gray-500">Click to open</p>
+        <p className="text-sm text-gray-500">{subtitle}</p>
+        {dueDate && <p className="text-xs text-gray-400 mt-1">Due: {dueDate}</p>}
+        {fileUrl ? (
+          <button
+            className="text-blue-600 underline flex items-center gap-2 mt-2"
+            onClick={onPreview}
+            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+          >
+            <Image src="/books.svg" alt="Attachment" width={24} height={24} />
+            View Attached Document
+          </button>
+        ) : (
+          <div className="text-gray-400 text-xs mt-2">No document attached.</div>
+        )}
       </div>
-    </a>
+    </div>
   );
 }
 
-export default function UnitPdfPage({ params }: { params: Promise<{ classId: string; unit: string }> }) {
-  const { classId, unit } = use(params); // <-- unwrap params with React.use()
+export default function AssignmentListPage({ params }: { params: Promise<{ classId: string }> }) {
+  const { classId } = use(params);
   const [userName, setUserName] = useState('');
   const [sidebarMenuOpen, setSidebarMenuOpen] = useState(false);
   const [announcementOpen, setAnnouncementOpen] = useState(false);
-
-  const files = unitData[unit];
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -52,26 +66,39 @@ export default function UnitPdfPage({ params }: { params: Promise<{ classId: str
     }
   }, []);
 
+  useEffect(() => {
+    if (classId) {
+      setLoading(true);
+      getAssignments(classId)
+        .then(data => {
+          const assignmentsArr = Array.isArray(data) ? data : data.assignments || [];
+          setAssignments(assignmentsArr);
+        })
+        .catch(() => setAssignments([]))
+        .finally(() => setLoading(false));
+    }
+  }, [classId]);
+
   return (
     <div className="flex p-6 gap-6">
       {/* Main Content */}
       <div className="flex-1">
-         <div className="mb-6 flex items-center justify-between">
-        <div className="mb-6">
-          <h1 className="text-xl font-semibold text-gray-800">Classroom</h1>
-         <p className="text-sm text-gray-500">
-  {userName && typeof unit === 'string' ? `${userName} / ${unit.replace(/-/g, ' ')}` : 'Classroom'}
-        </p>
-         </div>
-               <div className="flex items-center gap-4">
-           <button className="p-2 rounded-full hover:bg-gray-200 transition-colors">
-             <FaBell className="text-xl text-gray-400" />
-           </button>
-           <button className="p-2 rounded-full hover:bg-gray-200 transition-colors">
-             <FaCog className="text-xl text-gray-400" />
-           </button>
-         </div>
-               </div>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-semibold text-gray-800">Classroom</h1>
+            <p className="text-sm text-gray-500">
+              {userName ? `${userName} / ${classId}` : 'Classroom'}
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <button className="p-2 rounded-full hover:bg-gray-200 transition-colors">
+              <FaBell className="text-xl text-gray-400" />
+            </button>
+            <button className="p-2 rounded-full hover:bg-gray-200 transition-colors">
+              <FaCog className="text-xl text-gray-400" />
+            </button>
+          </div>
+        </div>
 
         {/* Banner */}
         <div className="relative h-48 rounded-2xl overflow-hidden shadow mb-6">
@@ -87,19 +114,62 @@ export default function UnitPdfPage({ params }: { params: Promise<{ classId: str
           </div>
         </div>
 
-        {/* PDF Grid */}
-        {files ? (
+        {/* Assignments List with MaterialCard */}
+        {loading ? (
+          <p className="text-gray-400 text-sm">Loading assignments...</p>
+        ) : assignments.length === 0 ? (
+          <div className="text-red-500">No assignments found.</div>
+        ) : (
           <div className="grid grid-rows-1 sm:grid-cols-2 gap-4">
-            {files.map((file) => (
-              <PdfCard
-                key={file}
-                title={file.replace('.pdf', '').replace(/-/g, ' ')}
-                filePath={`/pdfs/${unit}/${file}`}
+            {assignments.map((assignment: any) => (
+              <MaterialCard
+                key={assignment._id}
+                title={assignment.title}
+                subtitle={assignment.description}
+                icon={
+                  <Image
+                    src="/books.svg"
+                    alt={assignment.title}
+                    width={70}
+                    height={70}
+                    className="rounded"
+                  />
+                }
+                dueDate={assignment.dueDate}
+                fileUrl={assignment.fileUrl || assignment.file || assignment.attachment || assignment.documentUrl}
+                onPreview={() =>
+                  setPreviewUrl(
+                    assignment.fileUrl ||
+                      assignment.file ||
+                      assignment.attachment ||
+                      assignment.documentUrl ||
+                      ''
+                  )
+                }
               />
             ))}
           </div>
-        ) : (
-          <div className="text-red-500">No material found for this unit.</div>
+        )}
+
+        {/* Document Preview Modal */}
+        {previewUrl && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+            <div className="bg-white rounded-lg shadow-lg p-4 max-w-3xl w-full relative">
+              <button
+                className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+                onClick={() => setPreviewUrl(null)}
+              >
+                Close
+              </button>
+              <iframe
+                src={previewUrl}
+                title="Document Preview"
+                width="100%"
+                height="500px"
+                style={{ border: 'none' }}
+              />
+            </div>
+          </div>
         )}
       </div>
 

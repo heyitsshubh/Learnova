@@ -109,3 +109,35 @@ export const getAssignmentDetails = async (assignmentId: string) => {
   );
   return res.data;
 };
+
+export const deleteAssignment = async (assignmentId: string) => {
+  let token = localStorage.getItem('accessToken');
+  if (!token) {
+    token = await refreshAccessToken();
+  }
+  try {
+    const res = await axios.delete(
+      `https://project2-zphf.onrender.com/api/assign/${assignmentId}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      }
+    );
+    return res.data;
+  } catch (error: any) {
+    if (error.response?.status === 401) {
+      token = await refreshAccessToken();
+      const res = await axios.delete(
+        `https://project2-zphf.onrender.com/api/assign/${assignmentId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+      return res.data;
+    }
+    throw error;
+  }
+};
