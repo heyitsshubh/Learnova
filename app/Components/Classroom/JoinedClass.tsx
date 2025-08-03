@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react';
 import { FaBell, FaCog } from 'react-icons/fa';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import RightSidebar2 from './RightSidebar2';
+import { getAssignments } from '../../services/assignment';
 
 interface ClassData {
   _id: string;
@@ -12,8 +14,18 @@ interface ClassData {
   createdBy?: { name?: string };
 }
 
+interface Assignment {
+  _id: string;
+  title: string;
+  description: string;
+  dueDate: string;
+}
+
 export default function JoinedClass({ classData }: { classData: ClassData }) {
   const [userName, setUserName] = useState('');
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -21,21 +33,30 @@ export default function JoinedClass({ classData }: { classData: ClassData }) {
     }
   }, []);
 
-  // Dummy assignments for layout demo
-  const assignments = [
-    {
-      _id: '1',
-      title: 'Assignment 1',
-      description: 'Read chapter 1',
-      dueDate: '2025-08-01',
-    },
-    {
-      _id: '2',
-      title: 'Assignment 2',
-      description: 'Submit essay',
-      dueDate: '2025-08-05',
-    },
-  ];
+  // Fetch assignments from API
+  useEffect(() => {
+    const fetchAssignments = async () => {
+      if (!classData._id) return;
+      
+      setLoading(true);
+      try {
+        const response = await getAssignments(classData._id);
+        const assignmentsData = response.assignments || [];
+        setAssignments(assignmentsData);
+      } catch (error) {
+        console.error('Failed to fetch assignments:', error);
+        setAssignments([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAssignments();
+  }, [classData._id]);
+
+  const handleAssignmentClick = (assignmentId: string) => {
+    router.push(`/joinedclass/${classData._id}/assignment/${assignmentId}`);
+  };
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 p-6">
@@ -76,18 +97,23 @@ export default function JoinedClass({ classData }: { classData: ClassData }) {
         {/* Assignments Section */}
         <div>
           <h2 className="text-lg font-semibold mb-2">Assignments</h2>
-          {assignments.length === 0 ? (
+          {loading ? (
+            <div className="text-gray-500">Loading assignments...</div>
+          ) : assignments.length === 0 ? (
             <div className="text-red-500">No assignments found.</div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {assignments.map((assignment) => (
                 <div
                   key={assignment._id}
-                  className="bg-white p-4 rounded-xl shadow hover:shadow-lg transition flex flex-col"
+                  className="bg-white p-4 rounded-xl shadow hover:shadow-lg transition flex flex-col cursor-pointer"
+                  onClick={() => handleAssignmentClick(assignment._id)}
                 >
                   <h3 className="font-semibold">{assignment.title}</h3>
                   <p className="text-sm text-gray-500">{assignment.description}</p>
-                  <p className="text-xs text-gray-400 mt-1">Due: {assignment.dueDate}</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Due: {new Date(assignment.dueDate).toLocaleDateString()}
+                  </p>
                 </div>
               ))}
             </div>
@@ -95,7 +121,7 @@ export default function JoinedClass({ classData }: { classData: ClassData }) {
         </div>
       </div>
 
-      {/* Right Sidebar shifted down */}
+      {/* Right Sidebar */}
       <div className="hidden lg:block lg:w-64">
         <div className="">
           <RightSidebar2 classId={classData._id} />

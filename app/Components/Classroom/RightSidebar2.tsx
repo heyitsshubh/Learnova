@@ -1,9 +1,21 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { FiVideo, FiSend, FiPaperclip } from 'react-icons/fi';
 import { FaSearch } from 'react-icons/fa';
 import ClassmatesBox from './ClassmatesBox';
 
 export default function RightSidebar2({ classId }: { classId: string }) {
+  const [userName, setUserName] = useState('');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedUserName = localStorage.getItem('userName') || 'User';
+      setUserName(storedUserName);
+    }
+  }, []);
+
   return (
     <div className="space-y-6 mt-2">
       <div className="flex items-center gap-4">
@@ -21,13 +33,13 @@ export default function RightSidebar2({ classId }: { classId: string }) {
         <div className="flex items-center justify-between bg-[#F5F6FF] px-2 py-1 rounded-t-lg">
           <div className="flex items-center gap-2">
             <Image
-              src="/avatar1.png"
-              alt="Armaan"
+              src="/profilee.svg"
+              alt={userName}
               width={28}
               height={28}
               className="rounded-full object-cover"
             />
-            <span className="text-sm font-medium">Armaan</span>
+            <span className="text-sm font-medium">{userName}</span>
           </div>
           <FiVideo className="text-gray-500" />
         </div>
