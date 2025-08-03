@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FaBell, FaCog, } from 'react-icons/fa';
+import { FaBell, FaCog } from 'react-icons/fa';
 import Image from 'next/image';
 import RightSidebar2 from './RightSidebar2';
 
@@ -14,7 +14,6 @@ interface ClassData {
 
 export default function JoinedClass({ classData }: { classData: ClassData }) {
   const [userName, setUserName] = useState('');
-  const [search, setSearch] = useState('');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -38,12 +37,6 @@ export default function JoinedClass({ classData }: { classData: ClassData }) {
     },
   ];
 
-  const filteredAssignments = assignments.filter(
-    (a) =>
-      a.title.toLowerCase().includes(search.toLowerCase()) ||
-      a.description.toLowerCase().includes(search.toLowerCase())
-  );
-
   return (
     <div className="flex flex-col lg:flex-row gap-6 p-6">
       {/* Main Content */}
@@ -53,7 +46,7 @@ export default function JoinedClass({ classData }: { classData: ClassData }) {
           <div>
             <h1 className="text-xl font-semibold text-gray-800">{classData.className}</h1>
             <p className="text-sm text-gray-500">
-              {userName ? `${userName} / ${classData._id}` : classData.className}
+              {userName ? `${userName} / ${classData.className}` : classData.className}
             </p>
           </div>
           <div className="flex items-center gap-4 ml-auto">
@@ -63,16 +56,6 @@ export default function JoinedClass({ classData }: { classData: ClassData }) {
             <button className="p-2 rounded-full hover:bg-gray-200 transition-colors">
               <FaCog className="text-xl text-gray-400" />
             </button>
-            {/* <div className="relative w-64">
-              <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg" />
-              <input
-                type="text"
-                placeholder="Search assignments..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="pl-12 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div> */}
           </div>
         </div>
 
@@ -93,11 +76,11 @@ export default function JoinedClass({ classData }: { classData: ClassData }) {
         {/* Assignments Section */}
         <div>
           <h2 className="text-lg font-semibold mb-2">Assignments</h2>
-          {filteredAssignments.length === 0 ? (
+          {assignments.length === 0 ? (
             <div className="text-red-500">No assignments found.</div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {filteredAssignments.map((assignment) => (
+              {assignments.map((assignment) => (
                 <div
                   key={assignment._id}
                   className="bg-white p-4 rounded-xl shadow hover:shadow-lg transition flex flex-col"
