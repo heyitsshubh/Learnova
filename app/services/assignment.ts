@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { refreshAccessToken } from '../utils/token';
 
 export const createAssignment = async (
@@ -41,9 +41,10 @@ export const createAssignment = async (
       }
     );
     return res.data;
-  } catch (error: any) {
-    console.error('Assignment creation error:', error.response?.data || error.message);
-    if (error.response?.status === 401) {
+  } catch (error) {
+    const axiosError = error as AxiosError;
+    console.error('Assignment creation error:', axiosError.response?.data || axiosError.message);
+    if (axiosError.response?.status === 401) {
       token = await refreshAccessToken();
       const res = await axios.post(
         'https://project2-zphf.onrender.com/api/assign/',
@@ -61,7 +62,6 @@ export const createAssignment = async (
   }
 };
 
-
 export const getAssignments = async (classId: string) => {
   let token = localStorage.getItem('accessToken');
   if (!token) {
@@ -77,8 +77,9 @@ export const getAssignments = async (classId: string) => {
       }
     );
     return res.data;
-  } catch (error: any) {
-    if (error.response?.status === 401) {
+  } catch (error) {
+    const axiosError = error as AxiosError;
+    if (axiosError.response?.status === 401) {
       token = await refreshAccessToken();
       const res = await axios.get(
         `https://project2-zphf.onrender.com/api/assign/class/${classId}`,
@@ -125,8 +126,9 @@ export const deleteAssignment = async (assignmentId: string) => {
       }
     );
     return res.data;
-  } catch (error: any) {
-    if (error.response?.status === 401) {
+  } catch (error) {
+    const axiosError = error as AxiosError;
+    if (axiosError.response?.status === 401) {
       token = await refreshAccessToken();
       const res = await axios.delete(
         `https://project2-zphf.onrender.com/api/assign/${assignmentId}`,

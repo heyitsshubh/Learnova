@@ -249,13 +249,15 @@ const handleLeaveClass = async (classId: string) => {
                     : handleLeaveClass(cls._id)
                 }
                 deleteLabel={isCreated ? 'Delete' : 'Leave Class'}
-       onCardClick={() => {
-          if (isCreated) {
-            router.push(`/classroom/${cls._id}`);
-          } else {
-            router.push(`/dashboard/${cls._id}`);
-          }
-        }}
+     // ...existing code...
+onCardClick={() => {
+  if (isCreated) {
+    router.push(`/classroom/${cls._id}`);
+  } else {
+    router.push(`/joinedclass/${cls._id}`);
+  }
+}}
+// ...existing code...
               />
             );
           })

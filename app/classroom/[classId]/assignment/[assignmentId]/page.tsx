@@ -10,6 +10,22 @@ import Sidebarmenu from '../../../../Components/Classroom/Sidebarmenu';
 import Announcement from '../../../../Components/Classroom/Announcement';
 import { getAssignments } from '../../../../services/assignment';
 
+interface Assignment {
+  _id: string;
+  title: string;
+  description: string;
+  dueDate: string;
+  maxMarks: number;
+  instructions: string;
+  allowLateSubmission: boolean;
+  category: string;
+  classId: string;
+  fileUrl?: string;
+  file?: string;
+  attachment?: string;
+  documentUrl?: string;
+}
+
 function MaterialCard({
   title,
   subtitle,
@@ -56,7 +72,7 @@ export default function AssignmentListPage({ params }: { params: Promise<{ class
   const [userName, setUserName] = useState('');
   const [sidebarMenuOpen, setSidebarMenuOpen] = useState(false);
   const [announcementOpen, setAnnouncementOpen] = useState(false);
-  const [assignments, setAssignments] = useState<any[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
@@ -121,7 +137,7 @@ export default function AssignmentListPage({ params }: { params: Promise<{ class
           <div className="text-red-500">No assignments found.</div>
         ) : (
           <div className="grid grid-rows-1 sm:grid-cols-2 gap-4">
-            {assignments.map((assignment: any) => (
+            {assignments.map((assignment: Assignment) => (
               <MaterialCard
                 key={assignment._id}
                 title={assignment.title}

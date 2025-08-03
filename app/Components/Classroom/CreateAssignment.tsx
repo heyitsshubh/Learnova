@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Upload, File } from 'lucide-react';
 import { createAssignment } from '../../services/assignment'; // <-- Import the API
 import { toast, Toaster } from 'react-hot-toast';
+import { AxiosError } from 'axios';
 
 export default function CreateAssignmentModal({ onClose, classId }: { onClose: () => void; classId: string }) {
   const [assignmentName, setAssignmentName] = useState('');
@@ -39,11 +40,12 @@ const handleCreateAssignment = async () => {
       );
       toast.success('Assignment created successfully!');
       setTimeout(onClose, 1500);
-    } catch (error: any) {
-  const message = error?.response?.data?.message || 'Failed to create assignment!';
-  toast.error(message);
-  console.error(error);
-
+    } catch (error) {
+      const axiosError = error as AxiosError;
+      const errorData = axiosError.response?.data as { message?: string } | undefined;
+      const message = errorData?.message || 'Failed to create assignment!';
+      toast.error(message);
+      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -64,7 +66,7 @@ const handleCreateAssignment = async () => {
           type="text"
           value={assignmentName}
           onChange={(e) => setAssignmentName(e.target.value)}
-          placeholder="Enter class name"
+          placeholder="Enter assignment name"
           className="w-full p-2 bg-gray-700 rounded text-sm mb-4 focus:outline-none"
         />
 
@@ -73,7 +75,7 @@ const handleCreateAssignment = async () => {
           type="text"
           value={descriptionName}
           onChange={(e) => setDescriptionName(e.target.value)}
-          placeholder="Enter class name"
+          placeholder="Enter description"
           className="w-full p-2 bg-gray-700 rounded text-sm mb-4 focus:outline-none"
         />
 

@@ -74,7 +74,7 @@ const handleSubmit = async (e: React.FormEvent) => {
   const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{5,}$/;
   if (!passwordRegex.test(form.password)) {
     setError('Password must contain at least 1 special character, 1 number, and be at least 5 characters long');
-    toast.error('Password must contain at least 1 special character, 1 number, and be at least 5 characters long'); // <-- Error toast
+    toast.error('Incorrect Password'); // <-- Error toast
     return;
   }
 

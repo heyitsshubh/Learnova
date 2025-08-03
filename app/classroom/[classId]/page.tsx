@@ -11,6 +11,18 @@ import CreateAssignment from '../../Components/Classroom/CreateAssignment';
 import { getAssignments } from '../../services/assignment';
 // import { deleteAssignment } from '../../services/assignment'; // Uncomment and implement this
 
+interface Assignment {
+  _id: string;
+  title: string;
+  description: string;
+  dueDate: string;
+  maxMarks: number;
+  instructions: string;
+  allowLateSubmission: boolean;
+  category: string;
+  classId: string;
+}
+
 function MaterialCard({
   title,
   subtitle,
@@ -71,7 +83,7 @@ export default function ClassDetailPage() {
   const router = useRouter();
   const classid = params.classId;
 
-  const [assignments, setAssignments] = useState<any[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [assignmentsLoading, setAssignmentsLoading] = useState(false);
 
   // Handler for deleting an assignment
@@ -86,24 +98,26 @@ export default function ClassDetailPage() {
       setUserName(localStorage.getItem('userName') || '');
     }
   }, []);
-useEffect(() => {
-  if (classid) {
-    setAssignmentsLoading(true);
-    getAssignments(classid as string)
-      .then((data) => {
-        // Try both possibilities
-        if (Array.isArray(data)) {
-          setAssignments(data);
-        } else if (Array.isArray(data.assignments)) {
-          setAssignments(data.assignments);
-        } else {
-          setAssignments([]);
-        }
-      })
-      .catch(() => setAssignments([]))
-      .finally(() => setAssignmentsLoading(false));
-  }
-}, [classid, createAssignmentOpen]);
+
+  useEffect(() => {
+    if (classid) {
+      setAssignmentsLoading(true);
+      getAssignments(classid as string)
+        .then((data) => {
+          // Try both possibilities
+          if (Array.isArray(data)) {
+            setAssignments(data);
+          } else if (Array.isArray(data.assignments)) {
+            setAssignments(data.assignments);
+          } else {
+            setAssignments([]);
+          }
+        })
+        .catch(() => setAssignments([]))
+        .finally(() => setAssignmentsLoading(false));
+    }
+  }, [classid, createAssignmentOpen]);
+
   return (
     <div className="flex p-6 gap-6">
       {/* Left/Main Section */}
@@ -148,7 +162,7 @@ useEffect(() => {
             <p className="text-gray-400 text-sm">No assignments found.</p>
           ) : (
             <div className="grid grid-rows-1 sm:grid-cols-3 gap-4">
-              {assignments.map((assignment: any) => (
+              {assignments.map((assignment: Assignment) => (
                 <MaterialCard
                   key={assignment._id}
                   title={assignment.title}
