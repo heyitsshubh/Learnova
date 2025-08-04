@@ -46,7 +46,7 @@ const Sidebar: React.FC = () => {
     { name: 'Classroom', path: '/classroom', icon: <FaBook /> },
     { name: 'Community', path: '/community', icon: <FaUsers /> },
     { name: 'Notifications', path: '/notifications', icon: <FaBell /> },
-    { name: 'Settings', path: '/settings', icon: <  FaCog/> }
+    { name: 'Settings', path: '/Settings', icon: <  FaCog/> }
   ];
 
   const isActivePath = (path: string): boolean => {
