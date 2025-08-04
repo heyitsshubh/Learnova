@@ -10,7 +10,16 @@ interface SubmitAssignmentProps {
   classId: string;
 }
 
-export default function SubmitAssignment({ onClose, assignmentId, classId }: SubmitAssignmentProps) {
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+}
+
+export default function SubmitAssignment({ onClose, assignmentId }: SubmitAssignmentProps) {
   const [description, setDescription] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -65,9 +74,10 @@ export default function SubmitAssignment({ onClose, assignmentId, classId }: Sub
         window.location.reload();
       }, 2000);
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Submit error:', error);
-      setError(error.response?.data?.message || 'Failed to submit assignment');
+      const apiError = error as ApiError;
+      setError(apiError.response?.data?.message || apiError.message || 'Failed to submit assignment');
     } finally {
       setIsSubmitting(false);
     }
@@ -88,7 +98,7 @@ export default function SubmitAssignment({ onClose, assignmentId, classId }: Sub
         </div>
       )}
 
-      <div className="fixed inset-0 flex items-center justify-center bg-opacity-40 z-50">
+      <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
         <div className="bg-[#1f1f1f] w-96 max-h-[90vh] overflow-y-auto p-5 rounded-md shadow-md relative text-white border border-gray-500">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold">Submit Assignment</h2>
@@ -107,7 +117,7 @@ export default function SubmitAssignment({ onClose, assignmentId, classId }: Sub
           {showSuccessToast && (
             <div className="bg-green-600 text-white p-3 rounded mb-4 text-sm flex items-center gap-2">
               <CheckCircle className="w-4 h-4" />
-              Assignment submitted successfully
+              Assignment submitted successfully!
             </div>
           )}
 
@@ -121,7 +131,7 @@ export default function SubmitAssignment({ onClose, assignmentId, classId }: Sub
             disabled={isSubmitting || showSuccessToast}
           />
 
-          <label className="text-sm mb-1 block">Attach Assignment File</label>
+          <label className="text-sm mb-1 block">Attach Assignment File (Optional)</label>
           <div className="w-full bg-gray-800 rounded-md h-20 flex items-center justify-center mb-3 cursor-pointer relative border-2 border-dashed border-gray-600 hover:border-gray-500 transition">
             <input
               type="file"
