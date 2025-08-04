@@ -112,3 +112,47 @@ export const deleteAssignment = async (assignmentId: string) => {
     throw error;
   }
 };
+
+export const submitAssignment = async (assignmentId: string, submissionData: FormData) => {
+  let token = localStorage.getItem('accessToken');
+  if (!token) {
+    token = await refreshAccessToken();
+  }
+
+  console.log("Submitting assignment with data:");
+  for (const [key, value] of submissionData.entries()) {
+    console.log(key, value);
+  }
+
+  try {
+    const res = await axios.post(
+      `https://project2-zphf.onrender.com/api/assign/${assignmentId}/submit`,
+      submissionData,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return res.data;
+  } catch (error) {
+    const axiosError = error as AxiosError;
+    console.error('Assignment submission error:', axiosError.response?.data || axiosError.message);
+    if (axiosError.response?.status === 401) {
+      token = await refreshAccessToken();
+      const res = await axios.post(
+        `https://project2-zphf.onrender.com/api/assign/${assignmentId}/submit`,
+        submissionData,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+      return res.data;
+    }
+    throw error;
+  }
+};

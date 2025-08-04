@@ -266,15 +266,15 @@ const getFileUrl = (attachment: Attachment) => {
                         </div>
                         {isImage && (
                           <div className="mt-2">
-                            <img
+                            <Image
                               src={fileUrl}
-                              alt={attachment.originalName || attachment.filename}
+                              alt={attachment.originalName || attachment.filename || 'Attachment image'}
+                              width={800}
+                              height={300}
                               className="max-w-full h-48 object-cover rounded border cursor-pointer"
                               onClick={() => handlePreviewAttachment(attachment)}
-                              onError={(e) => {
+                              onError={() => {
                                 console.error('Image failed to load:', fileUrl);
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
                               }}
                               onLoad={() => {
                                 console.log('Image loaded successfully:', fileUrl);
@@ -282,7 +282,6 @@ const getFileUrl = (attachment: Attachment) => {
                             />
                           </div>
                         )}
-                      
                       </div>
                     );
                   })}
@@ -312,6 +311,8 @@ const getFileUrl = (attachment: Attachment) => {
       {/* Submit Assignment Modal */}
       {submitModalOpen && (
         <SubmitAssignment 
+          assignmentId={assignmentId}
+          classId={classId}
           onClose={() => setSubmitModalOpen(false)} 
         />
       )}
@@ -335,11 +336,13 @@ const getFileUrl = (attachment: Attachment) => {
             <div className="h-full overflow-auto">
               {previewAttachment.mimetype?.startsWith('image/') ? (
                 <div className="flex justify-center items-center h-full">
-                  <img
+                  <Image
                     src={getFileUrl(previewAttachment)}
-                    alt={previewAttachment.originalName || previewAttachment.filename}
+                    alt={previewAttachment.originalName || previewAttachment.filename || 'Preview image'}
+                    width={800}
+                    height={600}
                     className="max-w-full max-h-full object-contain"
-                    onError={(e) => {
+                    onError={() => {
                       console.error('Modal image load error:', getFileUrl(previewAttachment));
                     }}
                     onLoad={() => {
@@ -354,7 +357,6 @@ const getFileUrl = (attachment: Attachment) => {
                   width="100%"
                   height="100%"
                   style={{ border: 'none' }}
-                  onError={() => console.error('PDF load error')}
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center h-full">
