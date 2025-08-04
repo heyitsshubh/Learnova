@@ -8,6 +8,7 @@ import { FaBell, FaCog } from 'react-icons/fa';
 import RightSidebar2 from '../../Components/Classroom/RightSidebar2';
 import Sidebarmenu from '../../Components/Classroom/Sidebarmenu';
 import CreateAssignment from '../../Components/Classroom/CreateAssignment';
+import Announcement from '../../Components/Classroom/Announcement';
 import { getAssignments } from '../../services/assignment';
 // import { deleteAssignment } from '../../services/assignment'; // Uncomment and implement this
 
@@ -78,6 +79,7 @@ export default function ClassDetailPage() {
   const [userName, setUserName] = useState('');
   const [sidebarMenuOpen, setSidebarMenuOpen] = useState(false);
   const [createAssignmentOpen, setCreateAssignmentOpen] = useState(false);
+  const [announcementOpen, setAnnouncementOpen] = useState(false);
 
   const params = useParams();
   const router = useRouter();
@@ -208,14 +210,27 @@ export default function ClassDetailPage() {
             setSidebarMenuOpen(false);
             setCreateAssignmentOpen(true);
           }}
+          onAnnouncement={() => {
+            setSidebarMenuOpen(false);
+            setAnnouncementOpen(true);
+          }}
         />
       )}
 
       {/* Create Assignment Modal */}
       {createAssignmentOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-opacity-40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center  bg-opacity-40">
           <div className="bg-white rounded-lg shadow-lg p-8">
             <CreateAssignment onClose={() => setCreateAssignmentOpen(false)} classId={classid as string} />
+          </div>
+        </div>
+      )}
+
+      {/* Announcement Modal */}
+      {announcementOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center  bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-lg p-8">
+            <Announcement onClose={() => setAnnouncementOpen(false)} />
           </div>
         </div>
       )}

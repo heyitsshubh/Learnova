@@ -1,83 +1,56 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Upload, File } from 'lucide-react';
+import { X, } from 'lucide-react';
 
 export default function Announcement({ onClose }: { onClose: () => void }) {
-  const [assignmentName, setAssignmentName] = useState('');
-//    const [descriptionName, setDescriptionName] = useState('');
-//   const [deadline, setDeadline] = useState('2035-06-06');
-  const [file, setFile] = useState<File | null>(null);
+  const [message, setMessage] = useState('');
+  const [description, setDescription] = useState('');
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setFile(e.target.files[0]);
-    }
+  const handleAnnounce = () => {
+    // Handle announcement logic here
+    
+    // TODO: Add API call to create announcement
+    // createAnnouncement({ message, description, file });
+    
+    onClose();
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center  bg-opacity-40 z-50">
-      <div className="bg-[#1f1f1f] w-96 p-5 rounded-md shadow-md relative text-white border border-gray-500">
+    <div className="fixed inset-0 flex items-center justify-center bg-opacity-40 z-50">
+      <div className="bg-[#1f1f1f] w-96 max-h-[90vh] overflow-y-auto p-5 rounded-md shadow-md relative text-white border border-gray-500">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold">Create Assignment</h2>
-          <button onClick={onClose}>
+          <h2 className="text-lg font-semibold">Make Announcement</h2>
+          <button onClick={onClose} className="hover:bg-gray-700 p-1 rounded">
             <X className="w-5 h-5" />
           </button>
         </div>
-        <label className="text-sm mb-1 block">Assignment name</label>
+
+        <label className="text-sm mb-1 block">Enter Message *</label>
         <input
           type="text"
-          value={assignmentName}
-          onChange={(e) => setAssignmentName(e.target.value)}
-          placeholder="Enter class name"
-          className="w-full p-2 bg-gray-700 rounded text-sm mb-4 focus:outline-none"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="Enter announcement message"
+          className="w-full p-2 bg-gray-700 rounded text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          required
         />
-{/* 
-          <label className="text-sm mb-1 block">Description</label>
-        <input
-          type="text"
-          value={descriptionName}
-          onChange={(e) => setDescriptionName(e.target.value)}
-          placeholder="Enter class name"
-          className="w-full p-2 bg-gray-700 rounded text-sm mb-4 focus:outline-none"
-        /> */}
 
-        {/* <label className="text-sm mb-1 block">Select deadline</label>
-        <input
-          type="date"
-          value={deadline}
-          onChange={(e) => setDeadline(e.target.value)}
-          className="w-full p-2 bg-gray-700 rounded text-sm mb-4 focus:outline-none"
-        /> */}
+        <label className="text-sm mb-1 block">Description</label>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Enter detailed description (optional)"
+          rows={3}
+          className="w-full p-2 bg-gray-700 rounded text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+        />
 
-  
-        <label className="text-sm mb-1 block">Attach documents</label>
-        <div className="w-full bg-gray-800 rounded-md h-28 flex items-center justify-center mb-3 cursor-pointer relative">
-          <input
-            type="file"
-            className="absolute inset-0 opacity-0 cursor-pointer"
-            onChange={handleFileChange}
-          />
-          <Upload className="w-6 h-6 text-gray-300" />
-        </div>
 
-  
-        {file && (
-          <div className="flex items-center justify-between bg-gray-700 px-3 py-2 rounded mb-3">
-            <div className="flex items-center gap-2">
-              <File className="w-4 h-4" />
-              <span className="text-sm truncate">{file.name}</span>
-            </div>
-            <button
-              onClick={() => setFile(null)}
-              className="text-gray-400 hover:text-red-400 text-sm"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-
-        <button className="bg-gray-900 text-sm w-full py-2 rounded border border-gray-600 hover:bg-gray-800 transition">
+        <button 
+          className="bg-blue-600 text-sm w-full py-2 rounded hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={handleAnnounce}
+          disabled={!message.trim()}
+        >
           Announce
         </button>
       </div>
