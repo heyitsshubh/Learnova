@@ -10,7 +10,7 @@ import Sidebarmenu from '../../Components/Classroom/Sidebarmenu';
 import CreateAssignment from '../../Components/Classroom/CreateAssignment';
 import Announcement from '../../Components/Classroom/Announcement';
 import { getAssignments } from '../../services/assignment';
-// import { deleteAssignment } from '../../services/assignment'; // Uncomment and implement this
+import { deleteAssignment } from '../../services/assignment'; // Uncomment and implement this
 
 interface Assignment {
   _id: string;
@@ -91,7 +91,7 @@ export default function ClassDetailPage() {
   // Handler for deleting an assignment
   const handleDeleteAssignment = async (assignmentId: string) => {
     // TODO: Replace with actual deleteAssignment API call
-    // await deleteAssignment(assignmentId);
+     await deleteAssignment(assignmentId);
     setAssignments((prev) => prev.filter(a => a._id !== assignmentId));
   };
 

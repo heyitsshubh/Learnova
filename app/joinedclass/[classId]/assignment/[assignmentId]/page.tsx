@@ -5,10 +5,19 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { FaBell, FaCog, FaArrowLeft } from 'react-icons/fa';
-import { Plus } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { getAssignments } from '../../../../services/assignment';
 import RightSidebar2 from '../../../../Components/Classroom/RightSidebar2';
 import SubmitAssignment from '../../../../Components/utils/Submit';
+
+interface Attachment {
+  _id: string;
+  originalName: string;
+  filename: string;
+  url: string;
+  mimetype: string;
+  path?: string;
+}
 
 interface Assignment {
   _id: string;
@@ -27,13 +36,7 @@ interface Assignment {
     name: string;
     email: string;
   };
-  attachments: Array<{
-    _id: string;
-    originalName: string;
-    filename: string;
-    url: string;
-    mimetype: string;
-  }>;
+  attachments: Attachment[];
   hasSubmitted: boolean;
   isOverdue: boolean;
   userSubmission?: {
@@ -54,6 +57,7 @@ export default function JoinedAssignmentDetailPage({ params }: { params: Promise
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
+  const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -69,11 +73,10 @@ export default function JoinedAssignmentDetailPage({ params }: { params: Promise
       try {
         const response = await getAssignments(classId);
         const assignments = response.assignments || [];
-        
-        // Find the specific assignment by ID
         const foundAssignment = assignments.find((assignment: Assignment) => assignment._id === assignmentId);
         
         if (foundAssignment) {
+          console.log('Assignment attachments:', foundAssignment.attachments); // Debug log
           setAssignment(foundAssignment);
         } else {
           console.error('Assignment not found');
@@ -87,6 +90,45 @@ export default function JoinedAssignmentDetailPage({ params }: { params: Promise
 
     fetchAssignment();
   }, [classId, assignmentId]);
+
+  const handlePreviewAttachment = (attachment: Attachment) => {
+    console.log('Preview attachment:', attachment);
+    setPreviewAttachment(attachment);
+  };
+
+const getFileUrl = (attachment: Attachment) => {
+  const baseUrl = 'https://project2-zphf.onrender.com';
+  
+  console.log('Getting file URL for:', attachment); 
+  if (attachment.path) {
+    const cleanPath = attachment.path.startsWith('/') ? attachment.path.slice(1) : attachment.path;
+    const correctUrl = `${baseUrl}/${cleanPath}`;
+    console.log('Using path field:', correctUrl);
+    return correctUrl;
+  }
+  
+  if (attachment.url) {
+    if (attachment.url.startsWith('http')) {
+      console.log('Using full URL:', attachment.url);
+      return attachment.url;
+    } else {
+      const cleanUrl = attachment.url.startsWith('/') ? attachment.url.slice(1) : attachment.url;
+      const fullUrl = `${baseUrl}/${cleanUrl}`;
+      console.log('Using baseUrl + url:', fullUrl);
+      return fullUrl;
+    }
+  }
+  
+  if (attachment.filename) {
+    const fallbackUrl = `${baseUrl}/uploads/assignments/${attachment.filename}`;
+    console.log('Using filename fallback:', fallbackUrl);
+    return fallbackUrl;
+  }
+
+  const defaultUrl = `${baseUrl}/uploads/assignments/default.png`;
+  console.log('Using default fallback:', defaultUrl);
+  return defaultUrl;
+};
 
   if (loading) {
     return (
@@ -202,23 +244,48 @@ export default function JoinedAssignmentDetailPage({ params }: { params: Promise
             {assignment.attachments && assignment.attachments.length > 0 && (
               <>
                 <h3 className="font-semibold mb-2">Attachments</h3>
-                <div className="space-y-2">
-                  {assignment.attachments.map((attachment, index) => (
-                    <div key={attachment._id || index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
-                      <Image src="/books.svg" alt="File" width={20} height={20} />
-                      <span className="text-sm">{attachment.originalName || attachment.filename || `Attachment ${index + 1}`}</span>
-                      {attachment.url && (
-                        <a
-                          href={attachment.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline text-xs ml-auto"
-                        >
-                          View
-                        </a>
-                      )}
-                    </div>
-                  ))}
+                <div className="space-y-4">
+                  {assignment.attachments.map((attachment, index) => {
+                    const isImage = attachment.mimetype?.startsWith('image/');
+                    const isPDF = attachment.mimetype === 'application/pdf';
+                    const fileUrl = getFileUrl(attachment);
+                    
+                    return (
+                      <div key={attachment._id || index} className="p-4 bg-gray-50 rounded shadow-sm">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Image src="/books.svg" alt="File" width={20} height={20} />
+                          <span className="text-sm font-medium">
+                            {attachment.originalName || attachment.filename || `Attachment ${index + 1}`}
+                          </span>
+                          <button
+                            onClick={() => handlePreviewAttachment(attachment)}
+                            className="text-blue-600 hover:text-blue-800 hover:underline text-xs ml-auto"
+                          >
+                            {isImage ? 'View Image' : isPDF ? 'View PDF' : 'View File'}
+                          </button>
+                        </div>
+                        {isImage && (
+                          <div className="mt-2">
+                            <img
+                              src={fileUrl}
+                              alt={attachment.originalName || attachment.filename}
+                              className="max-w-full h-48 object-cover rounded border cursor-pointer"
+                              onClick={() => handlePreviewAttachment(attachment)}
+                              onError={(e) => {
+                                console.error('Image failed to load:', fileUrl);
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                              }}
+                              onLoad={() => {
+                                console.log('Image loaded successfully:', fileUrl);
+                              }}
+                            />
+                          </div>
+                        )}
+                      
+                      </div>
+                    );
+                  })}
                 </div>
               </>
             )}
@@ -244,7 +311,83 @@ export default function JoinedAssignmentDetailPage({ params }: { params: Promise
 
       {/* Submit Assignment Modal */}
       {submitModalOpen && (
-        <SubmitAssignment onClose={() => setSubmitModalOpen(false)} />
+        <SubmitAssignment 
+          onClose={() => setSubmitModalOpen(false)} 
+        />
+      )}
+
+      {/* Attachment Preview Modal */}
+      {previewAttachment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75">
+          <div className="bg-white rounded-lg shadow-lg p-4 max-w-5xl max-h-5xl w-full h-5/6 relative">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold truncate">
+                {previewAttachment.originalName || previewAttachment.filename}
+              </h3>
+              <button
+                className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100"
+                onClick={() => setPreviewAttachment(null)}
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="h-full overflow-auto">
+              {previewAttachment.mimetype?.startsWith('image/') ? (
+                <div className="flex justify-center items-center h-full">
+                  <img
+                    src={getFileUrl(previewAttachment)}
+                    alt={previewAttachment.originalName || previewAttachment.filename}
+                    className="max-w-full max-h-full object-contain"
+                    onError={(e) => {
+                      console.error('Modal image load error:', getFileUrl(previewAttachment));
+                    }}
+                    onLoad={() => {
+                      console.log('Modal image loaded successfully:', getFileUrl(previewAttachment));
+                    }}
+                  />
+                </div>
+              ) : previewAttachment.mimetype === 'application/pdf' ? (
+                <iframe
+                  src={getFileUrl(previewAttachment)}
+                  title="PDF Preview"
+                  width="100%"
+                  height="100%"
+                  style={{ border: 'none' }}
+                  onError={() => console.error('PDF load error')}
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full">
+                  <Image src="/books.svg" alt="File" width={64} height={64} className="mb-4" />
+                  <p className="text-gray-600 mb-4">Preview not available for this file type</p>
+                  <p className="text-sm text-gray-500 mb-4">File type: {previewAttachment.mimetype}</p>
+                  <a
+                    href={getFileUrl(previewAttachment)}
+                    download={previewAttachment.originalName || previewAttachment.filename}
+                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Download File
+                  </a>
+                </div>
+              )}
+            </div>
+            
+            {/* Download button for all file types */}
+            <div className="mt-4 flex justify-center">
+              <a
+                href={getFileUrl(previewAttachment)}
+                download={previewAttachment.originalName || previewAttachment.filename}
+                className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 transition-colors"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Download
+              </a>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
