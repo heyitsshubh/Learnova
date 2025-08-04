@@ -5,8 +5,10 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { FaBell, FaCog, FaArrowLeft } from 'react-icons/fa';
+import { Plus } from 'lucide-react';
 import { getAssignments } from '../../../../services/assignment';
 import RightSidebar2 from '../../../../Components/Classroom/RightSidebar2';
+import SubmitAssignment from '../../../../Components/utils/Submit';
 
 interface Assignment {
   _id: string;
@@ -51,6 +53,7 @@ export default function JoinedAssignmentDetailPage({ params }: { params: Promise
   const [userName, setUserName] = useState('');
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [loading, setLoading] = useState(true);
+  const [submitModalOpen, setSubmitModalOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -221,48 +224,28 @@ export default function JoinedAssignmentDetailPage({ params }: { params: Promise
             )}
           </div>
         </div>
-
-        {/* Submission Section */}
-        {assignment.userSubmission ? (
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <h3 className="font-semibold mb-4">Your Submission</h3>
-            <div className="bg-gray-50 p-4 rounded-lg mb-4">
-              <p className="text-gray-700">{assignment.userSubmission.content}</p>
-              <p className="text-xs text-gray-500 mt-2">
-                Submitted on: {new Date(assignment.userSubmission.submittedAt).toLocaleString()}
-              </p>
-            </div>
-            
-            {assignment.userSubmission.grade !== null && (
-              <div className="border-t pt-4">
-                <h4 className="font-semibold mb-2">Grade</h4>
-                <p className="text-lg font-bold text-green-600">
-                  {assignment.userSubmission.grade} / {assignment.maxMarks}
-                </p>
-                {assignment.userSubmission.feedback && (
-                  <>
-                    <h4 className="font-semibold mb-2 mt-4">Feedback</h4>
-                    <p className="text-gray-700">{assignment.userSubmission.feedback}</p>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h3 className="font-semibold mb-4">Submit Assignment</h3>
-            <p className="text-gray-600 mb-4">You haven&apos;t submitted this assignment yet.</p>
-            <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
-              Submit Assignment
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Right Sidebar */}
       <div className="hidden lg:block lg:w-64">
         <RightSidebar2 classId={classId} />
       </div>
+
+      {/* Floating Plus Button */}
+      {!assignment.hasSubmitted && (
+        <button
+          className="fixed bottom-6 right-6 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-shadow"
+          style={{ backgroundColor: 'rgba(73, 73, 73, 1)' }}
+          onClick={() => setSubmitModalOpen(true)}
+        >
+          <Plus className="w-6 h-6" />
+        </button>
+      )}
+
+      {/* Submit Assignment Modal */}
+      {submitModalOpen && (
+        <SubmitAssignment onClose={() => setSubmitModalOpen(false)} />
+      )}
     </div>
   );
 }
