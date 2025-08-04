@@ -10,6 +10,17 @@ import Sidebarmenu from '../../../../Components/Classroom/Sidebarmenu';
 import Announcement from '../../../../Components/Classroom/Announcement';
 import { getAssignments } from '../../../../services/assignment';
 
+interface Attachment {
+  _id: string;
+  filename: string;
+  originalName?: string;
+  path: string;
+  url?: string;
+  size: number;
+  mimetype: string;
+  uploadedAt: string;
+}
+
 interface Assignment {
   _id: string;
   title: string;
@@ -20,6 +31,7 @@ interface Assignment {
   allowLateSubmission: boolean;
   category: string;
   classId: string;
+  attachments: Attachment[];
   fileUrl?: string;
   file?: string;
   attachment?: string;
@@ -31,34 +43,32 @@ function MaterialCard({
   subtitle,
   icon,
   dueDate,
-  fileUrl,
-  onPreview,
+  attachments,
 }: {
   title: string;
   subtitle: string;
   icon: React.ReactNode;
   dueDate?: string;
-  fileUrl?: string;
-  onPreview?: () => void;
+  attachments?: Attachment[];
 }) {
+  const hasAttachments = attachments && attachments.length > 0;
+
   return (
-    <div
-      className="cursor-pointer bg-white p-4 rounded-xl shadow hover:shadow-lg transition flex items-center gap-4"
-    >
+    <div className="cursor-pointer bg-white p-4 rounded-xl shadow hover:shadow-lg transition flex items-center gap-4">
       <div className="text-3xl text-purple-600 flex-shrink-0">{icon}</div>
       <div className="text-left flex-1">
         <h3 className="font-semibold">{title}</h3>
         <p className="text-sm text-gray-500">{subtitle}</p>
-        {dueDate && <p className="text-xs text-gray-400 mt-1">Due: {dueDate}</p>}
-        {fileUrl ? (
-          <button
-            className="text-blue-600 underline flex items-center gap-2 mt-2"
-            onClick={onPreview}
-            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-          >
-            <Image src="/books.svg" alt="Attachment" width={24} height={24} />
-            View Attached Document
-          </button>
+        {dueDate && <p className="text-xs text-gray-400 mt-1">Due: {new Date(dueDate).toLocaleDateString()}</p>}
+        
+        {hasAttachments ? (
+          <div className="mt-2">
+            {attachments.map((attachment, index) => (
+              <div key={attachment._id || index} className="text-xs text-gray-600">
+                📎 {attachment.originalName || attachment.filename}
+              </div>
+            ))}
+          </div>
         ) : (
           <div className="text-gray-400 text-xs mt-2">No document attached.</div>
         )}
@@ -74,7 +84,6 @@ export default function AssignmentListPage({ params }: { params: Promise<{ class
   const [announcementOpen, setAnnouncementOpen] = useState(false);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -87,10 +96,21 @@ export default function AssignmentListPage({ params }: { params: Promise<{ class
       setLoading(true);
       getAssignments(classId)
         .then(data => {
+          console.log('Assignments data:', data); // Debug log
           const assignmentsArr = Array.isArray(data) ? data : data.assignments || [];
+          
+          // Log to check attachments
+          assignmentsArr.forEach((assignment: Assignment, index: number) => {
+            console.log(`Assignment ${index + 1}: ${assignment.title}`);
+            console.log('Attachments:', assignment.attachments);
+          });
+          
           setAssignments(assignmentsArr);
         })
-        .catch(() => setAssignments([]))
+        .catch(error => {
+          console.error('Error fetching assignments:', error);
+          setAssignments([]);
+        })
         .finally(() => setLoading(false));
     }
   }, [classId]);
@@ -152,39 +172,9 @@ export default function AssignmentListPage({ params }: { params: Promise<{ class
                   />
                 }
                 dueDate={assignment.dueDate}
-                fileUrl={assignment.fileUrl || assignment.file || assignment.attachment || assignment.documentUrl}
-                onPreview={() =>
-                  setPreviewUrl(
-                    assignment.fileUrl ||
-                      assignment.file ||
-                      assignment.attachment ||
-                      assignment.documentUrl ||
-                      ''
-                  )
-                }
+                attachments={assignment.attachments}
               />
             ))}
-          </div>
-        )}
-
-        {/* Document Preview Modal */}
-        {previewUrl && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="bg-white rounded-lg shadow-lg p-4 max-w-3xl w-full relative">
-              <button
-                className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
-                onClick={() => setPreviewUrl(null)}
-              >
-                Close
-              </button>
-              <iframe
-                src={previewUrl}
-                title="Document Preview"
-                width="100%"
-                height="500px"
-                style={{ border: 'none' }}
-              />
-            </div>
           </div>
         )}
       </div>

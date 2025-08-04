@@ -8,7 +8,7 @@ export const createAssignment = async (formData: FormData) => {
   }
 
   console.log("Sending assignment FormData:");
-  for (let [key, value] of formData.entries()) {
+  for (const [key, value] of formData.entries()) {
     console.log(key, value);
   }
 
