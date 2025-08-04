@@ -77,3 +77,38 @@ export const getAssignments = async (classId: string) => {
     throw error;
   }
 };
+
+export const deleteAssignment = async (assignmentId: string) => {
+  let token = localStorage.getItem('accessToken');
+  if (!token) {
+    token = await refreshAccessToken();
+  }
+
+  try {
+    const res = await axios.delete(
+      `https://project2-zphf.onrender.com/api/assign/${assignmentId}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      }
+    );
+    return res.data;
+  } catch (error) {
+    const axiosError = error as AxiosError;
+    console.error('Assignment deletion error:', axiosError.response?.data || axiosError.message);
+    if (axiosError.response?.status === 401) {
+      token = await refreshAccessToken();
+      const res = await axios.delete(
+        `https://project2-zphf.onrender.com/api/assign/${assignmentId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+      return res.data;
+    }
+    throw error;
+  }
+};

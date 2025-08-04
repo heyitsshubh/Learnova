@@ -25,6 +25,7 @@ interface ClassData {
   _id: string;
   className: string;
   subject: string;
+  classCode?: string;
   createdBy?: { name?: string };
 }
 
@@ -124,6 +125,16 @@ export default function ClassroomPage() {
     }
   };
 
+  const handleCopyClassCode = async (classCode: string) => {
+    try {
+      await navigator.clipboard.writeText(classCode);
+      toast.success('Class code copied to clipboard!');
+    } catch (error) {
+      console.error('Failed to copy class code:', error);
+      toast.error('Failed to copy class code');
+    }
+  };
+
   const handleCreateClass = async (formData: {
     className: string;
     subject: string;
@@ -174,23 +185,21 @@ export default function ClassroomPage() {
       switch (type) {
         case 'join':
           return {
-            image: '/class.svg', // Add your empty joined classes image
+            image: '/class.svg',
             title: 'No Joined Classes',
             description: 'You haven\'t joined any classes yet.',
-          
             buttonAction: () => setJoinModalOpen(true)
           };
         case 'create':
           return {
-            image: '/class.svg', // Add your empty created classes image
+            image: '/class.svg',
             title: 'No Created Classes',
             description: 'You haven\'t created any classes yet.',
-          
             buttonAction: () => setModalOpen(true)
           };
         default:
           return {
-            image: '/empty-all.svg', // Add your empty all classes image
+            image: '/empty-all.svg',
             title: 'No Classes Found',
             description: 'Start by creating or joining a class.',
             buttonText: 'Get Started',
@@ -214,7 +223,6 @@ export default function ClassroomPage() {
         </div>
         <h3 className="text-xl font-semibold text-gray-700 mb-2">{content.title}</h3>
         <p className="text-gray-500 text-center mb-6 max-w-md">{content.description}</p>
-   
       </div>
     );
   };
@@ -290,6 +298,7 @@ export default function ClassroomPage() {
                         _id: cls._id,
                         className: cls.className,
                         subject: cls.subject,
+                        classCode: cls.classCode,
                         createdByName: cls.createdBy?.name,
                         tags: ['UHV', 'Universal'],
                       }}
@@ -298,7 +307,9 @@ export default function ClassroomPage() {
                           ? handleDeleteClass(cls._id)
                           : handleLeaveClass(cls._id)
                       }
+                      onCopyCode={() => handleCopyClassCode(cls.classCode || cls._id)}
                       deleteLabel={isCreated ? 'Delete' : 'Leave Class'}
+                      showCopyCode={isCreated}
                       onCardClick={() => {
                         if (isCreated) {
                           router.push(`/classroom/${cls._id}`);

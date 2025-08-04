@@ -8,33 +8,34 @@ interface ClassCardProps {
     _id: string;
     className: string;
     subject: string;
+    classCode?: string;
     createdByName?: string;
     profilePicture?: string;
     studentsCount?: number;
     tags?: string[];
   };
   onDelete?: () => void;
+  onCopyCode?: () => void;
   deleteLabel?: string;
-  onCardClick?: (e: React.MouseEvent) => void; // <-- Add this prop
+  showCopyCode?: boolean;
+  onCardClick?: () => void;
 }
 
-const ClassCard: React.FC<{
-  classData: ClassCardProps['classData'];
-  onDelete?: () => void;
-  deleteLabel?: string;
-  onCardClick?: (e: React.MouseEvent) => void;
-}> = ({
+const ClassCard: React.FC<ClassCardProps> = ({
   classData,
   onDelete,
+  onCopyCode,
   deleteLabel,
+  showCopyCode = false,
   onCardClick,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const router = useRouter();
+
   const handleCardClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.menu-btn')) return;
     if (onCardClick) {
-      onCardClick(e);
+      onCardClick();
     } else {
       router.push(`/classroom/${classData._id}`);
     }
@@ -57,17 +58,34 @@ const ClassCard: React.FC<{
           <BsThreeDotsVertical size={22} className="text-white" />
         </button>
         {menuOpen && (
-          <div className="absolute right-0 mt-2 w-32 bg-white border rounded shadow-lg z-20">
-            <button
-              className="block w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
-              onClick={(e) => {
-                e.stopPropagation();
-                setMenuOpen(false);
-                if (onDelete) onDelete();
-              }}
-            >
-              {deleteLabel || 'Delete Class'}
-            </button>
+          <div className="absolute right-0 mt-2 w-40 bg-white border rounded shadow-lg z-20">
+            {showCopyCode && onCopyCode && (
+              <>
+                <button
+                  className="block w-full text-left px-4 py-2 text-blue-600 hover:bg-gray-100"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuOpen(false);
+                    onCopyCode();
+                  }}
+                >
+                  Copy Class Code
+                </button>
+                {onDelete && <hr className="border-t border-gray-200" />}
+              </>
+            )}
+            {onDelete && (
+              <button
+                className="block w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuOpen(false);
+                  onDelete();
+                }}
+              >
+                {deleteLabel || 'Delete Class'}
+              </button>
+            )}
           </div>
         )}
       </div>
