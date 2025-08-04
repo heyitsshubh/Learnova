@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { FaHome, FaBook, FaUsers, FaEnvelope, FaBell } from 'react-icons/fa';
+import { FaHome, FaBook, FaUsers,  FaCog,FaBell } from 'react-icons/fa';
 
 interface MenuItem {
   name: string;
@@ -45,8 +45,8 @@ const Sidebar: React.FC = () => {
     { name: 'Home', path: '/dashboard', icon: <FaHome /> },
     { name: 'Classroom', path: '/classroom', icon: <FaBook /> },
     { name: 'Community', path: '/community', icon: <FaUsers /> },
-    { name: 'Messages', path: '/messages', icon: <FaEnvelope /> },
-    { name: 'Notifications', path: '/notifications', icon: <FaBell /> }
+    { name: 'Notifications', path: '/notifications', icon: <FaBell /> },
+    { name: 'Settings', path: '/settings', icon: <  FaCog/> }
   ];
 
   const isActivePath = (path: string): boolean => {
