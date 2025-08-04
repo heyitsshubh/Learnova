@@ -1,42 +1,25 @@
 import axios, { AxiosError } from 'axios';
 import { refreshAccessToken } from '../utils/token';
 
-export const createAssignment = async (
-  title: string,
-  description: string,
-  classId: string,
-  dueDate: string,
-  maxMarks: number,
-  instructions: string,
-  allowLateSubmission: boolean,
-  category: string
-) => {
+export const createAssignment = async (formData: FormData) => {
   let token = localStorage.getItem('accessToken');
   if (!token) {
     token = await refreshAccessToken();
   }
 
-  const payload = {
-    title,
-    description,
-    classId,
-    dueDate,
-    maxMarks,
-    instructions,
-    allowLateSubmission,
-    category,
-  };
-
-  console.log("Sending assignment:", payload);
+  console.log("Sending assignment FormData:");
+  for (let [key, value] of formData.entries()) {
+    console.log(key, value);
+  }
 
   try {
     const res = await axios.post(
-      'https://project2-zphf.onrender.com/api/assign/',
-      payload,
+      'https://project2-zphf.onrender.com/api/assign',
+      formData,
       {
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
+          'Content-Type': 'multipart/form-data',
         },
       }
     );
@@ -47,12 +30,12 @@ export const createAssignment = async (
     if (axiosError.response?.status === 401) {
       token = await refreshAccessToken();
       const res = await axios.post(
-        'https://project2-zphf.onrender.com/api/assign/',
-        payload,
+        'https://project2-zphf.onrender.com/api/assign',
+        formData,
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
+            'Content-Type': 'multipart/form-data',
           },
         }
       );
@@ -94,4 +77,3 @@ export const getAssignments = async (classId: string) => {
     throw error;
   }
 };
-
