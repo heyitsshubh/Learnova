@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import AppLayout from '../Components/AppLayout';
-import { FaSearch, FaBell, FaCog, FaUser, FaCalendar, FaBook } from 'react-icons/fa';
+import { FaSearch, FaBell, FaCog, FaUser, FaCalendar } from 'react-icons/fa';
 import { useSocket } from '../Components/Contexts/SocketContext';
 import { X, MessageCircle, Users, BookOpen } from 'lucide-react';
 
