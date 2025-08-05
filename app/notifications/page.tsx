@@ -30,51 +30,6 @@ const Notifications = () => {
 
   // Static notifications for demo (these would come from your API)
   const staticNotifications: NotificationItem[] = [
-    {
-      _id: 'static1',
-      content: 'The school\'s Annual Sports Day will be held on May 12, 2024. Mark your calendars!',
-      sender: {
-        _id: 'admin1',
-        name: 'School Admin',
-        email: 'admin@school.com',
-        role: 'teacher'
-      },
-      classId: 'general',
-      className: 'General',
-      timestamp: new Date('2024-03-12').toISOString(),
-      type: 'announcement',
-      isRead: false
-    },
-    {
-      _id: 'static2',
-      content: 'Summer holidays notification - School will be closed from June 1-15',
-      sender: {
-        _id: 'admin1',
-        name: 'School Admin',
-        email: 'admin@school.com',
-        role: 'teacher'
-      },
-      classId: 'general',
-      className: 'General',
-      timestamp: new Date('2024-03-12').toISOString(),
-      type: 'general',
-      isRead: true
-    },
-    {
-      _id: 'static3',
-      content: 'IT-1 UHV Live class is starting now. Click to join!',
-      sender: {
-        _id: 'teacher1',
-        name: 'Prof. Kumar',
-        email: 'kumar@school.com',
-        role: 'teacher'
-      },
-      classId: 'class1',
-      className: 'IT-1 UHV',
-      timestamp: new Date('2024-03-12').toISOString(),
-      type: 'announcement',
-      isRead: false
-    }
   ];
 
   useEffect(() => {
@@ -200,26 +155,26 @@ const Notifications = () => {
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex gap-2 mb-6 overflow-x-auto">
-          {[
-            { key: 'all', label: 'All', count: allNotifications.length },
-            { key: 'unread', label: 'Unread', count: unreadCount },
-            { key: 'messages', label: 'Messages', count: allNotifications.filter(n => n.type === 'message').length },
-            { key: 'announcements', label: 'Announcements', count: allNotifications.filter(n => ['announcement', 'general'].includes(n.type)).length }
-          ].map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setFilter(tab.key as any)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                filter === tab.key
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              {tab.label} ({tab.count})
-            </button>
-          ))}
-        </div>
+   <div className="flex gap-2 mb-6 overflow-x-auto">
+  {[
+    { key: 'all', label: 'All', count: notifications.length },
+    { key: 'unread', label: 'Unread', count: unreadCount },
+    { key: 'messages', label: 'Messages', count: notifications.filter((n) => n.type === 'message').length },
+    { key: 'announcements', label: 'Announcements', count: notifications.filter((n) => ['announcement', 'general'].includes(n.type)).length },
+  ].map((tab) => (
+    <button
+      key={tab.key}
+      onClick={() => setFilter(tab.key as 'all' | 'unread' | 'messages' | 'announcements')}
+      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+        filter === tab.key
+          ? 'bg-blue-600 text-white'
+          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+      }`}
+    >
+      {tab.label} ({tab.count})
+    </button>
+  ))}
+</div>
 
         {/* Clear All Button */}
         {unreadCount > 0 && (
