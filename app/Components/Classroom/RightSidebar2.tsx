@@ -5,16 +5,47 @@ import Image from 'next/image';
 import { FiVideo, FiSend, FiPaperclip } from 'react-icons/fi';
 import { FaSearch } from 'react-icons/fa';
 import ClassmatesBox from './ClassmatesBox';
+import { useSocket } from '../Contexts/SocketContext';
 
 export default function RightSidebar2({ classId }: { classId: string }) {
   const [userName, setUserName] = useState('');
+  const [userRole, setUserRole] = useState('');
+  const [messageInput, setMessageInput] = useState('');
+  const { messages, isConnected, joinClass, sendMessage } = useSocket();
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const storedUserName = localStorage.getItem('userName') || 'User';
+      const storedUserRole = localStorage.getItem('userRole') || 'student';
       setUserName(storedUserName);
+      setUserRole(storedUserRole);
     }
   }, []);
+
+  useEffect(() => {
+    if (classId && isConnected) {
+      const userId = localStorage.getItem('userId') || '';
+      const storedUserName = localStorage.getItem('userName') || 'User';
+      const storedUserRole = localStorage.getItem('userRole') || 'student';
+      joinClass(classId, userId, storedUserName, storedUserRole);
+    }
+  }, [classId, isConnected, joinClass]);
+
+  const handleSendMessage = () => {
+    if (messageInput.trim() && classId) {
+      sendMessage(classId, messageInput, 'message');
+      setMessageInput('');
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const classMessages = messages.filter(msg => msg.classId === classId);
 
   return (
     <div className="space-y-6 mt-2">
@@ -40,21 +71,63 @@ export default function RightSidebar2({ classId }: { classId: string }) {
               className="rounded-full object-cover"
             />
             <span className="text-sm font-medium">{userName}</span>
+            <span className="text-xs text-gray-500">
+              {userRole === 'teacher' ? '👨‍🏫' : '👨‍🎓'}
+            </span>
+            {isConnected && (
+              <span className="w-2 h-2 bg-green-500 rounded-full" title="Connected" />
+            )}
           </div>
-          <FiVideo className="text-gray-500" />
+          <FiVideo className="text-gray-500 cursor-pointer hover:text-gray-700" />
         </div>
 
-        <div className="h-32 px-3 py-2 text-sm text-gray-400"></div>
+        <div className="h-32 px-3 py-2 text-sm overflow-y-auto">
+          {classMessages.length === 0 ? (
+            <div className="text-gray-400 text-center mt-8">
+              {isConnected ? 'No messages yet' : 'Connecting...'}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {classMessages.slice(-3).map((message) => (
+                <div key={message._id} className="text-xs">
+                  <div className="flex items-center gap-1 mb-1">
+                    <span className="font-medium text-gray-700">
+                      {message.sender.name}
+                    </span>
+                    {message.type === 'announcement' && (
+                      <span className="bg-blue-100 text-blue-600 px-1 rounded text-xs">
+                        📢
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-gray-600 break-words">{message.content}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="flex items-center bg-[#f2f2f2] px-2 py-2 rounded-b-lg">
-          <FiPaperclip className="text-gray-500 mr-2 cursor-pointer" />
+          <FiPaperclip className="text-gray-500 mr-2 cursor-pointer hover:text-gray-700" />
           <input
             type="text"
-            placeholder="Ask Query"
-            className="flex-1 bg-transparent outline-none text-sm"
+            placeholder={isConnected ? "Ask Query" : "Connecting..."}
+            value={messageInput}
+            onChange={(e) => setMessageInput(e.target.value)}
+            onKeyPress={handleKeyPress}
+            disabled={!isConnected}
+            className="flex-1 bg-transparent outline-none text-sm disabled:opacity-50"
           />
-          <FiSend className="text-gray-600 ml-2 cursor-pointer hover:text-black" />
+          <button
+            onClick={handleSendMessage}
+            disabled={!isConnected || !messageInput.trim()}
+            className="ml-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <FiSend className="text-gray-600 cursor-pointer hover:text-black" />
+          </button>
         </div>
       </div>
+      
       <ClassmatesBox classId={classId} />
     </div>
   );
