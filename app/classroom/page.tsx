@@ -180,52 +180,44 @@ export default function ClassroomPage() {
   }
 
   // Empty state component
-  const EmptyState = ({ type }: { type: 'join' | 'create' | 'all' }) => {
-    const getEmptyStateContent = () => {
-      switch (type) {
-        case 'join':
-          return {
-            image: '/class.svg',
-            title: 'No Joined Classes',
-            description: 'You haven\'t joined any classes yet.',
-            buttonAction: () => setJoinModalOpen(true)
-          };
-        case 'create':
-          return {
-            image: '/class.svg',
-            title: 'No Created Classes',
-            description: 'You haven\'t created any classes yet.',
-            buttonAction: () => setModalOpen(true)
-          };
-        default:
-          return {
-            image: '/empty-all.svg',
-            title: 'No Classes Found',
-            description: 'Start by creating or joining a class.',
-            buttonText: 'Get Started',
-            buttonAction: () => setModalOpen(true)
-          };
-      }
-    };
-
-    const content = getEmptyStateContent();
-
-    return (
-      <div className="flex flex-col items-center justify-center py-8 px-4 min-h-[400px]">
-        <div className=" flex justify-center items-center">
-          <Image
-            src={content.image}
-            alt={content.title}
-            width={712}
-            height={470}
-          className="object-contain"
-          />
-        </div>
-        <h3 className="text-xl font-semibold text-gray-700 mb-2">{content.title}</h3>
-        <p className="text-gray-500 text-center mb-6 max-w-md">{content.description}</p>
-      </div>
-    );
+  const EmptyState = ({ type }: { type: 'join' | 'create' }) => {
+  const getEmptyStateContent = () => {
+    switch (type) {
+      case 'join':
+        return {
+          image: '/class.svg',
+          title: 'No Joined Classes',
+          description: "You haven't joined any classes yet.",
+          buttonAction: () => setJoinModalOpen(true),
+        };
+      case 'create':
+        return {
+          image: '/class.svg',
+          title: 'No Created Classes',
+          description: "You haven't created any classes yet.",
+          buttonAction: () => setModalOpen(true),
+        };
+    }
   };
+
+  const content = getEmptyStateContent();
+
+  return (
+    <div className="flex flex-col items-center justify-center py-8 px-4 min-h-[400px]">
+      <div className="flex justify-center items-center">
+        <Image
+          src={content?.image || ''}
+          alt={content?.title || ''}
+          width={712}
+          height={470}
+          className="object-contain"
+        />
+      </div>
+      <h3 className="text-xl font-semibold text-gray-700 mb-2">{content?.title}</h3>
+      <p className="text-gray-500 text-center mb-6 max-w-md">{content?.description}</p>
+    </div>
+  );
+};
 
   return (
     <AppLayout>
@@ -282,8 +274,7 @@ export default function ClassroomPage() {
             ) : displayedClasses.length === 0 ? (
               <EmptyState 
                 type={
-                  activeTab === 'Join' ? 'join' : 
-                  activeTab === 'Create' ? 'create' : 'all'
+                  activeTab === 'Join' ? 'join' : 'create'
                 } 
               />
             ) : (
