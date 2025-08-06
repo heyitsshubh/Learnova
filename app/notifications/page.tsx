@@ -349,35 +349,34 @@ const Notifications = () => {
   const [filter, setFilter] = useState<'all' | 'unread' | 'messages' | 'announcements'>('all');
   const [notifications, setNotifications] = useState<NotificationItem[]>([]); // State for notifications
 
-  // Fetch notifications (messages) from the API
-  const fetchNotifications = async () => {
-    const classId = localStorage.getItem('currentClassId'); // Get the current class ID
-    if (!classId) {
-      console.error('Class ID is missing.');
-      return;
-    }
+const fetchNotifications = async () => {
+  const classId = localStorage.getItem('currentClassId'); // Get the current class ID
+  if (!classId) {
+    console.error('Class ID is missing.');
+    return;
+  }
 
-    try {
-      const messages = await fetchMessages(classId); // Fetch messages using the API
-    const allowedTypes = ['message', 'announcement', 'assignment', 'general', 'question'] as const;
-    const formattedMessages = messages.map((msg) => ({
+  try {
+    const messages = await fetchMessages(classId); // Fetch messages using the API
+    const allowedTypes: NotificationItem['type'][] = ['message', 'announcement', 'assignment', 'general', 'question'];
+    const formattedMessages = messages.map((msg: any): NotificationItem => ({
       ...msg,
       isRead: false, // Add a default isRead property
       className: 'Class Chat', // Optional: Add a class name for display
-      type: allowedTypes.includes(msg.type as any) ? (msg.type as NotificationItem['type']) : 'general',
+      type: allowedTypes.includes(msg.type!) ? msg.type! : 'general',
       sender: {
         _id: msg.sender._id,
         name: msg.sender.name,
-          email: (msg.sender as any).email || '', // Handle missing email property
-        role: msg.sender.role as 'teacher' | 'student' | 'system',
+        email: msg.sender.email ?? '', // Provide a default value if email is missing
+        role: msg.sender.role,
       },
     }));
     setNotifications(formattedMessages);
-      console.log('Fetched notifications:', formattedMessages);
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-    }
-  };
+    console.log('Fetched notifications:', formattedMessages);
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+  }
+};
 
   // Fetch notifications on component load
   useEffect(() => {

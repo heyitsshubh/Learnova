@@ -79,7 +79,7 @@ function MaterialCard({
 }
 
 export default function ClassDetailPage() {
-  const [userName, setUserName] = useState('');
+  // const [userName, setUserName] = useState('');
   const [sidebarMenuOpen, setSidebarMenuOpen] = useState(false);
   const [createAssignmentOpen, setCreateAssignmentOpen] = useState(false);
   const [announcementOpen, setAnnouncementOpen] = useState(false);
@@ -100,11 +100,11 @@ export default function ClassDetailPage() {
     setAssignments((prev) => prev.filter((a) => a._id !== assignmentId));
   };
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setUserName(localStorage.getItem('userName') || '');
-    }
-  }, []);
+  // useEffect(() => {
+  //   if (typeof window !== 'undefined') {
+  //     setUserName(localStorage.getItem('userName') || '');
+  //   }
+  // }, []);
 
   useEffect(() => {
     if (classid) {

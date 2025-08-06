@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Define the Message type according to your API response structure
 export interface Message {
-  _id: string; // Updated to match the API response
+  _id: string;
   content: string;
   sender: {
     _id: string;
@@ -14,9 +14,25 @@ export interface Message {
   type?: 'message' | 'announcement';
 }
 
+// Define the API response type
+interface ApiResponse {
+  messages: {
+    _id: string;
+    content: string;
+    sender: {
+      _id: string;
+      name: string;
+      role: string;
+    };
+    classId: string;
+    timestamp: string;
+    type?: 'message' | 'announcement';
+  }[];
+}
+
 export const fetchMessages = async (classId: string): Promise<Message[]> => {
   try {
-    const response = await axios.get(
+    const response = await axios.get<ApiResponse>(
       `https://project2-zphf.onrender.com/api/class/${classId}/messages`,
       {
         headers: {
@@ -26,7 +42,7 @@ export const fetchMessages = async (classId: string): Promise<Message[]> => {
     );
 
     if (response.status === 200) {
-      return response.data.messages.map((msg: any) => ({
+      return response.data.messages.map((msg) => ({
         _id: msg._id,
         content: msg.content,
         sender: {
