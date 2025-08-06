@@ -49,9 +49,13 @@ const Otp = () => {
   try {
     const otpValue = otp.join('');
     const res = await verifyOtp({ email, otp: otpValue });
+    console.log('OTP verification response:', res);
     if (res?.accessToken && res?.refreshToken) {
       setTokens(res.accessToken, res.refreshToken);
     }
+     if (res?.userId) {
+        localStorage.setItem('userId', res.userId); // Store userId
+      }  
     toast.success('OTP verified successfully!'); // Success toast
     router.push('/dashboard');
   } catch (err: unknown) {

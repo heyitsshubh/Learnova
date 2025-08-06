@@ -49,8 +49,7 @@ const Login = () => {
     const accessToken = await user.getIdToken();
     setTokens(accessToken, ''); // Store access token
     localStorage.setItem('userName', user.displayName || ''); // Store user name
-    localStorage.setItem('userEmail', user.email || ''); // Store user email
-
+    localStorage.setItem('userEmail', user.email || ''); // Store user email// Store user ID
     toast.success('Logged in successfully!'); // <-- Success toast
     router.push('/dashboard'); // Redirect to dashboard
   } catch (error) {
@@ -82,7 +81,9 @@ const handleSubmit = async (e: React.FormEvent) => {
   try {
     const res = await login(form);
     setTokens(res.accessToken, res.refreshToken);
-    localStorage.setItem('userName', res.user?.name || '');
+    localStorage.setItem('userName', res.username || '');
+    localStorage.setItem('userEmail', res.userEmail || '');
+    localStorage.setItem('userId', res.userId || ''); // Store user ID
     toast.success('Logged in successfully!'); // <-- Success toast
     router.push('/dashboard');
   } catch (err: unknown) {

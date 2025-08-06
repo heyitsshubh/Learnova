@@ -10,7 +10,8 @@ import Sidebarmenu from '../../Components/Classroom/Sidebarmenu';
 import CreateAssignment from '../../Components/Classroom/CreateAssignment';
 import Announcement from '../../Components/Classroom/Announcement';
 import { getAssignments } from '../../services/assignment';
-import { deleteAssignment } from '../../services/assignment'; // Uncomment and implement this
+import { deleteAssignment } from '../../services/assignment';
+import { useSocket } from '../../Components/Contexts/SocketContext'; // Import socket context
 
 interface Assignment {
   _id: string;
@@ -29,7 +30,7 @@ function MaterialCard({
   subtitle,
   icon,
   onClick,
-  onDelete
+  onDelete,
 }: {
   title: string;
   subtitle: string;
@@ -41,7 +42,9 @@ function MaterialCard({
 
   return (
     <div className="relative cursor-pointer bg-white p-4 rounded-xl shadow hover:shadow-lg transition flex items-center gap-4">
-      <div className="text-3xl text-purple-600 flex-shrink-0" onClick={onClick}>{icon}</div>
+      <div className="text-3xl text-purple-600 flex-shrink-0" onClick={onClick}>
+        {icon}
+      </div>
       <div className="text-left flex-1" onClick={onClick}>
         <h3 className="font-semibold">{title}</h3>
         <p className="text-sm text-gray-500">{subtitle}</p>
@@ -80,6 +83,7 @@ export default function ClassDetailPage() {
   const [sidebarMenuOpen, setSidebarMenuOpen] = useState(false);
   const [createAssignmentOpen, setCreateAssignmentOpen] = useState(false);
   const [announcementOpen, setAnnouncementOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0); // Track unread notifications
 
   const params = useParams();
   const router = useRouter();
@@ -88,11 +92,12 @@ export default function ClassDetailPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [assignmentsLoading, setAssignmentsLoading] = useState(false);
 
+  const { notifications } = useSocket(); // Use socket context for notifications
+
   // Handler for deleting an assignment
   const handleDeleteAssignment = async (assignmentId: string) => {
-    // TODO: Replace with actual deleteAssignment API call
-     await deleteAssignment(assignmentId);
-    setAssignments((prev) => prev.filter(a => a._id !== assignmentId));
+    await deleteAssignment(assignmentId);
+    setAssignments((prev) => prev.filter((a) => a._id !== assignmentId));
   };
 
   useEffect(() => {
@@ -106,7 +111,6 @@ export default function ClassDetailPage() {
       setAssignmentsLoading(true);
       getAssignments(classid as string)
         .then((data) => {
-          // Try both possibilities
           if (Array.isArray(data)) {
             setAssignments(data);
           } else if (Array.isArray(data.assignments)) {
@@ -120,6 +124,18 @@ export default function ClassDetailPage() {
     }
   }, [classid, createAssignmentOpen]);
 
+  // Update unread count when new notifications are received
+  useEffect(() => {
+    // Replace 'isRead' with the correct property, e.g., 'read' or 'unread'
+    const unreadNotifications = notifications.filter((notif) => !notif.isRead).length;
+    setUnreadCount(unreadNotifications);
+  }, [notifications]);
+
+  const handleBellClick = () => {
+    setUnreadCount(0); // Clear unread count when the bell is clicked
+    // Optionally, navigate to the notifications page or open a dropdown
+  };
+
   return (
     <div className="flex p-6 gap-6">
       {/* Left/Main Section */}
@@ -128,13 +144,24 @@ export default function ClassDetailPage() {
           <div>
             <h1 className="text-xl font-semibold text-gray-800">Classroom</h1>
             <p className="text-sm text-gray-500">
-              {userName ? `${userName} / ${classid}` : 'Classroom'}
+              {/* {userName ? `${userName} / ${classid}` : 'Classroom'} */}
             </p>
           </div>
           <div className="flex items-center gap-4">
-            <button className="p-2 rounded-full hover:bg-gray-200 transition-colors">
+            {/* Notification Bell */}
+            <button
+              className="p-2 rounded-full hover:bg-gray-200 transition-colors relative"
+              onClick={handleBellClick}
+            >
               <FaBell className="text-xl text-gray-400" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  {unreadCount}
+                </span>
+              )}
             </button>
+
+            {/* Settings Icon */}
             <button className="p-2 rounded-full hover:bg-gray-200 transition-colors">
               <FaCog className="text-xl text-gray-400" />
             </button>
