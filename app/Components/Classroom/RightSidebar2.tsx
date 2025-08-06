@@ -256,7 +256,7 @@ export default function RightSidebar2({ classId }: { classId: string }) {
     const content = messageInput.trim();
 
     console.log('Sending message:', { classId, content });
-    sendMessage(content, classId);
+    sendMessage(classId, content);
     setMessageInput('');
   };
 

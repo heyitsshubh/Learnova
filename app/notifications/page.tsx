@@ -322,8 +322,7 @@ import AppLayout from '../Components/AppLayout';
 import { FaSearch, FaBell, FaCog, FaUser, FaCalendar } from 'react-icons/fa';
 import { X, MessageCircle, Users, BookOpen } from 'lucide-react';
 import { fetchMessages, } from '../services/message'; // Import fetchMessages
-
-// Define the Message type if not imported from elsewhere
+// Define the Message type if not imported from elsewhere // Adjust the import path as necessary
 interface Message {
   _id: string;
   content: string;
@@ -454,6 +453,27 @@ const fetchNotifications = async () => {
       )
     );
   };
+  
+  <div className="flex gap-2 mb-6 overflow-x-auto">
+  {[
+    { key: 'all', label: 'All', count: notifications.length },
+    { key: 'unread', label: 'Unread', count: notifications.filter((n) => !n.isRead).length },
+    { key: 'messages', label: 'Messages', count: notifications.filter((n) => n.type === 'message').length },
+    { key: 'announcements', label: 'Announcements', count: notifications.filter((n) => n.type === 'announcement').length },
+  ].map((tab) => (
+    <button
+      key={tab.key}
+      onClick={() => setFilter(tab.key as 'all' | 'unread' | 'messages' | 'announcements')}
+      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+        filter === tab.key
+          ? 'bg-blue-600 text-white'
+          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+      }`}
+    >
+      {tab.label} ({tab.count})
+    </button>
+  ))}
+</div>
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
