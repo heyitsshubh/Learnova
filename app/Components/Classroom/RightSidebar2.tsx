@@ -240,25 +240,27 @@ export default function RightSidebar2({ classId }: { classId: string }) {
     }
   }, [classId, isConnected, joinClass]);
 
-  // Handle sending messages
-  const handleSendMessage = () => {
-    if (!messageInput.trim()) {
-      console.error('Message content is required.');
-      return;
-    }
+ 
+   // Handle sending messages
+  const handleSendMessage = () => {
+    if (!messageInput.trim()) {
+      console.error('Message content is required.');
+      return;
+    }
 
-    if (!classId) {
-      console.error('Class ID is missing.');
-      return;
-    }
+    if (!classId) {
+      console.error('Class ID is missing.');
+      return;
+    }
 
-    // Send the message with the required format
-    const content = messageInput.trim();
+    // Send the message with the required format
+    const content = messageInput.trim();
 
-    console.log('Sending message:', { classId, content });
-    sendMessage(content, classId);
-    setMessageInput('');
-  };
+    console.log('Sending message:', { classId, content });
+    // Correct the order of arguments here: classId, then content
+    sendMessage(classId, content); 
+    setMessageInput('');
+  };
 
   // Handle "Enter" key press for sending messages
   const handleKeyPress = (e: React.KeyboardEvent) => {
