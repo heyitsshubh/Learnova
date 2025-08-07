@@ -1,6 +1,4 @@
 import axios from 'axios';
-
-// Define the Message type according to your API response structure
 export interface Message {
   _id: string;
   content: string;
@@ -14,7 +12,6 @@ export interface Message {
   type?: 'message' | 'announcement';
 }
 
-// Define the API response type
 interface ApiResponse {
   messages: {
     _id: string;

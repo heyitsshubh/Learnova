@@ -83,7 +83,7 @@ export default function ClassDetailPage() {
   const [sidebarMenuOpen, setSidebarMenuOpen] = useState(false);
   const [createAssignmentOpen, setCreateAssignmentOpen] = useState(false);
   const [announcementOpen, setAnnouncementOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0); // Track unread notifications
+  const [unreadCount, setUnreadCount] = useState(0); 
 
   const params = useParams();
   const router = useRouter();
@@ -92,9 +92,7 @@ export default function ClassDetailPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [assignmentsLoading, setAssignmentsLoading] = useState(false);
 
-  const { notifications } = useSocket(); // Use socket context for notifications
-
-  // Handler for deleting an assignment
+  const { notifications } = useSocket(); 
   const handleDeleteAssignment = async (assignmentId: string) => {
     await deleteAssignment(assignmentId);
     setAssignments((prev) => prev.filter((a) => a._id !== assignmentId));
@@ -123,22 +121,18 @@ export default function ClassDetailPage() {
         .finally(() => setAssignmentsLoading(false));
     }
   }, [classid, createAssignmentOpen]);
-
-  // Update unread count when new notifications are received
   useEffect(() => {
-    // Replace 'isRead' with the correct property, e.g., 'read' or 'unread'
     const unreadNotifications = notifications.filter((notif) => !notif.isRead).length;
     setUnreadCount(unreadNotifications);
   }, [notifications]);
 
   const handleBellClick = () => {
-    setUnreadCount(0); // Clear unread count when the bell is clicked
-    // Optionally, navigate to the notifications page or open a dropdown
+    setUnreadCount(0); 
+  
   };
 
   return (
     <div className="flex p-6 gap-6">
-      {/* Left/Main Section */}
       <div className="flex-1">
         <div className="mb-6 flex items-center justify-between">
           <div>
@@ -148,7 +142,6 @@ export default function ClassDetailPage() {
             </p>
           </div>
           <div className="flex items-center gap-4">
-            {/* Notification Bell */}
             <button
               className="p-2 rounded-full hover:bg-gray-200 transition-colors relative"
               onClick={handleBellClick}
@@ -160,15 +153,11 @@ export default function ClassDetailPage() {
                 </span>
               )}
             </button>
-
-            {/* Settings Icon */}
             <button className="p-2 rounded-full hover:bg-gray-200 transition-colors">
               <FaCog className="text-xl text-gray-400" />
             </button>
           </div>
         </div>
-
-        {/* Banner Image */}
         <div className="relative h-48 rounded-2xl overflow-hidden shadow mb-6">
           <Image
             src="/Banner.svg"
@@ -181,8 +170,6 @@ export default function ClassDetailPage() {
             <h2 className="text-white text-2xl font-bold"></h2>
           </div>
         </div>
-
-        {/* Assignments Section */}
         <div className="mb-6">
           <h2 className="text-lg font-semibold mb-2">Assignments</h2>
           {assignmentsLoading ? (
@@ -213,13 +200,9 @@ export default function ClassDetailPage() {
           )}
         </div>
       </div>
-
-      {/* Right Sidebar */}
       <div className="hidden lg:block lg:w-64">
         <RightSidebar2 classId={classid as string} />
       </div>
-
-      {/* Floating Plus Button */}
       <button
         className="fixed bottom-6 right-6 text-white p-4 rounded-full shadow-lg"
         style={{ backgroundColor: 'rgba(73, 73, 73, 1)' }}
@@ -227,8 +210,6 @@ export default function ClassDetailPage() {
       >
         <Plus />
       </button>
-
-      {/* Sidebar Menu */}
       {sidebarMenuOpen && (
         <Sidebarmenu
           open={sidebarMenuOpen}
@@ -243,8 +224,6 @@ export default function ClassDetailPage() {
           }}
         />
       )}
-
-      {/* Create Assignment Modal */}
       {createAssignmentOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center  bg-opacity-40">
           <div className="bg-white rounded-lg shadow-lg p-8">
@@ -252,12 +231,10 @@ export default function ClassDetailPage() {
           </div>
         </div>
       )}
-
-      {/* Announcement Modal */}
       {announcementOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center  bg-opacity-40">
           <div className="bg-white rounded-lg shadow-lg p-8">
-            <Announcement onClose={() => setAnnouncementOpen(false)} />
+            <Announcement onClose={() => setAnnouncementOpen(false)} classId={classid as string} />
           </div>
         </div>
       )}

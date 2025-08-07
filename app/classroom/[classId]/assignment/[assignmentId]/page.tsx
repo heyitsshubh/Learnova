@@ -96,10 +96,8 @@ export default function AssignmentListPage({ params }: { params: Promise<{ class
       setLoading(true);
       getAssignments(classId)
         .then(data => {
-          console.log('Assignments data:', data); // Debug log
+          console.log('Assignments data:', data); 
           const assignmentsArr = Array.isArray(data) ? data : data.assignments || [];
-          
-          // Log to check attachments
           assignmentsArr.forEach((assignment: Assignment, index: number) => {
             console.log(`Assignment ${index + 1}: ${assignment.title}`);
             console.log('Attachments:', assignment.attachments);
@@ -117,7 +115,6 @@ export default function AssignmentListPage({ params }: { params: Promise<{ class
 
   return (
     <div className="flex p-6 gap-6">
-      {/* Main Content */}
       <div className="flex-1">
         <div className="mb-6 flex items-center justify-between">
           <div>
@@ -135,9 +132,7 @@ export default function AssignmentListPage({ params }: { params: Promise<{ class
             </button>
           </div>
         </div>
-
-        {/* Banner */}
-        <div className="relative h-48 rounded-2xl overflow-hidden shadow mb-6">
+       <div className="relative h-48 rounded-2xl overflow-hidden shadow mb-6">
           <Image
             src="/Banner.svg"
             alt="UHV Banner"
@@ -149,8 +144,6 @@ export default function AssignmentListPage({ params }: { params: Promise<{ class
             <h2 className="text-white text-2xl font-bold"></h2>
           </div>
         </div>
-
-        {/* Assignments List with MaterialCard */}
         {loading ? (
           <p className="text-gray-400 text-sm">Loading assignments...</p>
         ) : assignments.length === 0 ? (
@@ -178,13 +171,9 @@ export default function AssignmentListPage({ params }: { params: Promise<{ class
           </div>
         )}
       </div>
-
-      {/* Right Sidebar */}
       <div className="hidden lg:block lg:w-64">
         <RightSidebar2 classId={classId} />
       </div>
-
-      {/* Floating + Button */}
       <button
         className="fixed bottom-6 right-6 text-white p-4 rounded-full shadow-lg"
         style={{ backgroundColor: 'rgba(73, 73, 73, 1)' }}
@@ -193,7 +182,6 @@ export default function AssignmentListPage({ params }: { params: Promise<{ class
         <Plus />
       </button>
 
-      {/* Side Menu */}
       {sidebarMenuOpen && (
         <Sidebarmenu
           open={sidebarMenuOpen}
@@ -204,12 +192,10 @@ export default function AssignmentListPage({ params }: { params: Promise<{ class
           }}
         />
       )}
-
-      {/* Announcement Modal */}
       {announcementOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-opacity-40">
           <div className="bg-white rounded-lg shadow-lg p-8">
-            <Announcement onClose={() => setAnnouncementOpen(false)} />
+            <Announcement onClose={() => setAnnouncementOpen(false)} classId={classId} />
           </div>
         </div>
       )}

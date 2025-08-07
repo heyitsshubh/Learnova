@@ -44,8 +44,6 @@ const Login = () => {
   try {
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
-
-    // Store tokens or user info as needed
     const accessToken = await user.getIdToken();
     setTokens(accessToken, ''); // Store access token
     localStorage.setItem('userName', user.displayName || ''); // Store user name

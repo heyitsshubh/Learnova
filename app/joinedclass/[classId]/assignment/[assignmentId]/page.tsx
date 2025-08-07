@@ -148,9 +148,7 @@ const getFileUrl = (attachment: Attachment) => {
 
   return (
     <div className="flex p-6 gap-6">
-      {/* Main Content */}
       <div className="flex-1">
-        {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
@@ -176,7 +174,6 @@ const getFileUrl = (attachment: Attachment) => {
           </div>
         </div>
 
-        {/* Banner */}
         <div className="relative h-48 rounded-2xl overflow-hidden shadow mb-6">
           <Image
             src="/Banner.svg"
@@ -189,8 +186,6 @@ const getFileUrl = (attachment: Attachment) => {
             {/* <h2 className="text-white text-2xl font-bold">{assignment.title}</h2> */}
           </div>
         </div>
-
-        {/* Assignment Details Card */}
         <div className="bg-white rounded-xl shadow-md p-6 mb-6">
           <div className="flex items-center gap-4 mb-4">
             <Image
@@ -291,13 +286,9 @@ const getFileUrl = (attachment: Attachment) => {
           </div>
         </div>
       </div>
-
-      {/* Right Sidebar */}
       <div className="hidden lg:block lg:w-64">
         <RightSidebar2 classId={classId} />
       </div>
-
-      {/* Floating Plus Button */}
       {!assignment.hasSubmitted && (
         <button
           className="fixed bottom-6 right-6 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-shadow"
@@ -307,8 +298,6 @@ const getFileUrl = (attachment: Attachment) => {
           <Plus className="w-6 h-6" />
         </button>
       )}
-
-      {/* Submit Assignment Modal */}
       {submitModalOpen && (
         <SubmitAssignment 
           assignmentId={assignmentId}
@@ -316,8 +305,6 @@ const getFileUrl = (attachment: Attachment) => {
           onClose={() => setSubmitModalOpen(false)} 
         />
       )}
-
-      {/* Attachment Preview Modal */}
       {previewAttachment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75">
           <div className="bg-white rounded-lg shadow-lg p-4 max-w-5xl max-h-5xl w-full h-5/6 relative">
@@ -374,9 +361,7 @@ const getFileUrl = (attachment: Attachment) => {
                   </a>
                 </div>
               )}
-            </div>
-            
-            {/* Download button for all file types */}
+            </div>     
             <div className="mt-4 flex justify-center">
               <a
                 href={getFileUrl(previewAttachment)}

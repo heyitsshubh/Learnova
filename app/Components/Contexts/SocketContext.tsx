@@ -1,253 +1,3 @@
-// 'use client';
-
-// import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
-// import io, { Socket } from 'socket.io-client';
-
-// interface User {
-//   _id: string;
-//   name: string;
-//   email: string;
-//   role: 'teacher' | 'student';
-// }
-
-// interface NotificationItem {
-//   _id: string;
-//   content: string;
-//   sender: User;
-//   classId: string;
-//   timestamp: string;
-//   type: 'message' | 'announcement' | 'assignment' | 'general' | 'question';
-//   isRead?: boolean;
-// }
-
-// interface SocketContextType {
-//   socket: Socket | null;
-//   notifications: NotificationItem[];
-//   activeUsers: any[];
-//   isConnected: boolean;
-//   joinClass: (classId: string, userId: string, userName: string, userRole: string) => void;
-//   sendMessage: (classId: string, content: string, type?: string) => void;
-//   sendAnnouncement: (classId: string, message: string, urgent?: boolean) => void;
-//   askQuestion: (classId: string, question: string, isAnonymous?: boolean) => void;
-//   notifyAssignment: (classId: string, assignmentId: string, title: string, dueDate?: string) => void;
-//   markNotificationAsRead: (notificationId: string) => void;
-//   clearNotifications: () => void;
-// }
-
-// const SocketContext = createContext<SocketContextType | undefined>(undefined);
-
-// interface SocketProviderProps {
-//   children: ReactNode;
-// }
-
-// export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
-//   const [socket, setSocket] = useState<Socket | null>(null);
-//   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-//   const [activeUsers, setActiveUsers] = useState<any[]>([]);
-//   const [isConnected, setIsConnected] = useState(false);
-//   const [isClassJoined, setIsClassJoined] = useState(false);
-
-//   useEffect(() => {
-//     if (typeof window === 'undefined') return;
-
-//     const SOCKET_URL = 'https://project2-zphf.onrender.com';
-//     const token = localStorage.getItem('accessToken');
-//     if (!token) return;
-
-//     const newSocket = io(SOCKET_URL, {
-//       autoConnect: false,
-//       auth: { token },
-//       transports: ['websocket', 'polling'],
-//       timeout: 20000,
-//       forceNew: true
-//     });
-
-//     newSocket.connect();
-
-//     newSocket.on('connect', () => {
-//       setIsConnected(true);
-//       const classId = localStorage.getItem('currentClassId');
-//       const userId = localStorage.getItem('userId');
-//       const userName = localStorage.getItem('userName');
-//       const userRole = localStorage.getItem('userRole');
-
-//       if (classId && userId && userName && userRole) {
-//         newSocket.emit('joinClass', { classId, userId, userName, userRole });
-//         setIsClassJoined(true);
-//       }
-//     });
-
-//     newSocket.on('connect_error', (error: any) => {
-//       setIsConnected(false);
-//       setIsClassJoined(false);
-//     });
-
-//     newSocket.on('disconnect', () => {
-//       setIsConnected(false);
-//       setIsClassJoined(false);
-//     });
-
-//     newSocket.on('newMessage', (message: NotificationItem) => {
-//       setNotifications((prev) => [message, ...prev]);
-
-//       const currentUserId = localStorage.getItem('userId');
-//       if (message.sender._id !== currentUserId && Notification.permission === 'granted') {
-//         new Notification(`New message from ${message.sender.name}`, {
-//           body: message.content,
-//           icon: '/profilee.svg',
-//         });
-//       }
-//     });
-
-//     newSocket.on('classMessages', (classMessages: NotificationItem[]) => {
-//       setNotifications(classMessages);
-//     });
-
-//     newSocket.on('active_users', (users) => {
-//       setActiveUsers(users);
-//     });
-
-//     newSocket.on('receive_announcement', (announcement: any) => {
-//       const notificationData: NotificationItem = {
-//         _id: announcement.id,
-//         content: announcement.message,
-//         sender: {
-//           _id: announcement.userId,
-//           name: announcement.userName,
-//           email: '',
-//           role: announcement.userRole
-//         },
-//         classId: announcement.classId,
-//         timestamp: announcement.timestamp,
-//         type: 'announcement'
-//       };
-//       setNotifications((prev) => [notificationData, ...prev]);
-//     });
-
-//     newSocket.on('receive_question', (question: any) => {
-//       const notificationData: NotificationItem = {
-//         _id: question.id,
-//         content: question.question,
-//         sender: {
-//           _id: question.userId,
-//           name: question.isAnonymous ? 'Anonymous' : question.userName,
-//           email: '',
-//           role: question.userRole
-//         },
-//         classId: question.classId,
-//         timestamp: question.timestamp,
-//         type: 'question'
-//       };
-//       setNotifications((prev) => [notificationData, ...prev]);
-//     });
-
-//     newSocket.on('assignment_notification', (assignment: any) => {
-//       const notificationData: NotificationItem = {
-//         _id: assignment.id,
-//         content: `New assignment: ${assignment.title}${assignment.dueDate ? ` (Due: ${new Date(assignment.dueDate).toLocaleDateString()})` : ''}`,
-//         sender: {
-//           _id: 'system',
-//           name: assignment.teacherName,
-//           email: '',
-//           role: 'teacher'
-//         },
-//         classId: assignment.classId,
-//         timestamp: assignment.timestamp,
-//         type: 'assignment'
-//       };
-//       setNotifications((prev) => [notificationData, ...prev]);
-//     });
-
-//     newSocket.on('error', (error: any) => {
-//       if (error?.code === 'AUTH_ERROR') return;
-//     });
-
-//     setSocket(newSocket);
-
-//     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
-//       Notification.requestPermission();
-//     }
-
-//     return () => {
-//       newSocket.disconnect();
-//       setIsClassJoined(false);
-//     };
-//   }, []);
-
-//   const joinClass = useCallback((classId: string, userId: string, userName: string, userRole: string) => {
-//     if (socket && isConnected) {
-//       localStorage.setItem('currentClassId', classId);
-//       localStorage.setItem('userId', userId);
-//       localStorage.setItem('userName', userName);
-//       localStorage.setItem('userRole', userRole);
-//       socket.emit('joinClass', { classId, userId, userName, userRole });
-//       setIsClassJoined(true);
-//     }
-//   }, [socket, isConnected]);
-
-//   const sendMessage = useCallback((classId: string, content: string, type: string = 'message') => {
-//     if (socket && isConnected && isClassJoined) {
-//       socket.emit('sendMessage', { classId, content, type });
-//     }
-//   }, [socket, isConnected, isClassJoined]);
-
-//   const sendAnnouncement = useCallback((classId: string, message: string, urgent: boolean = false) => {
-//     if (socket && isConnected) {
-//       socket.emit('send_announcement', { classId, message, urgent });
-//     }
-//   }, [socket, isConnected]);
-
-//   const askQuestion = useCallback((classId: string, question: string, isAnonymous: boolean = false) => {
-//     if (socket && isConnected) {
-//       socket.emit('ask_question', { classId, question, isAnonymous });
-//     }
-//   }, [socket, isConnected]);
-
-//   const notifyAssignment = useCallback((classId: string, assignmentId: string, title: string, dueDate?: string) => {
-//     if (socket && isConnected) {
-//       socket.emit('notify_assignment', { classId, assignmentId, title, dueDate });
-//     }
-//   }, [socket, isConnected]);
-
-//   const markNotificationAsRead = useCallback((notificationId: string) => {
-//     setNotifications(prev =>
-//       prev.map(notif =>
-//         notif._id === notificationId
-//           ? { ...notif, isRead: true }
-//           : notif
-//       )
-//     );
-//   }, []);
-
-//   const clearNotifications = useCallback(() => {
-//     setNotifications([]);
-//   }, []);
-
-//   const value: SocketContextType = {
-//     socket,
-//     notifications,
-//     activeUsers,
-//     isConnected,
-//     joinClass,
-//     sendMessage,
-//     sendAnnouncement,
-//     askQuestion,
-//     notifyAssignment,
-//     markNotificationAsRead,
-//     clearNotifications,
-//   };
-
-//   return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;
-// };
-
-// export const useSocket = (): SocketContextType => {
-//   const context = useContext(SocketContext);
-//   if (!context) {
-//     throw new Error('useSocket must be used within a SocketProvider');
-//   }
-//   return context;
-// };
-
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -277,6 +27,7 @@ interface SocketContextType {
   sendMessage: (classId: string, content: string, type?: 'message' | 'announcement') => void;
   markNotificationAsRead: (messageId: string) => void;
   clearNotifications: () => void;
+  sendAnnouncement: (classId: string, message: string) => void;
 }
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
@@ -339,8 +90,6 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
 newSocket.on('classMessages', (classMessages: Message[]) => {
   console.log('Class messages loaded:', classMessages);
-
-  // Only update the state if the messages have changed
   setMessages((prevMessages) => {
     const isSame = JSON.stringify(prevMessages) === JSON.stringify(classMessages);
     if (!isSame) {
@@ -365,20 +114,24 @@ newSocket.on('classMessages', (classMessages: Message[]) => {
     };
   }, []);
 
-  const joinClass = (classId: string, userId: string, userName: string, userRole: string) => {
-    if (socket && isConnected) {
+const joinClass = (classId: string, userId: string, userName: string, userRole: string) => {
+  if (socket && isConnected) {
+    const isClassCreator = localStorage.getItem('isClassCreator') === 'true';
+    const role = isClassCreator ? 'teacher' : userRole;
+
     localStorage.setItem('currentClassId', classId);
-      socket.emit('joinClass', { classId, userId, userName, userRole });
-      console.log('Joined class:', classId);
-    }
-  };
+    localStorage.setItem('userId', userId);
+    localStorage.setItem('userName', userName);
+    socket.emit('joinClass', { classId, userId, userName, userRole: role });
+    console.log('Joined class:', { classId, userId, userName, userRole: role });
+  }
+};
 const sendMessage = (
   classId: string,
   content: string,
   type: 'message' | 'announcement' = 'message'
 ) => {
-  const userId = localStorage.getItem('userId');
- // Retrieve userRole from localStorage
+  const userId = localStorage.getItem('userId')
 
   if (socket && isConnected && content.trim() && userId ) {
     const messageData = {
@@ -403,6 +156,45 @@ const sendMessage = (
   const clearNotifications = () => {
     setNotifications([]);
   };
+const sendAnnouncement = (classId: string, message: string, description?: string) => {
+  const userId = localStorage.getItem('userId');
+  const userName = localStorage.getItem('userName');
+  const userRole = 'teacher'; 
+
+  console.log('sendAnnouncement called with:', {
+    classId,
+    message,
+    description,
+    userId,
+    userName,
+    userRole,
+    isConnected,
+  });
+
+  if (socket && isConnected && classId && message.trim() && userId && userName) {
+    socket.emit('send_announcement', {
+      classId,
+      message: message.trim(),
+      description: description?.trim() || '', 
+      userId,
+      userName,
+      userRole, 
+    });
+    console.log('Announcement sent:', { classId, message, description });
+  } else {
+    console.error('Failed to send announcement: Missing required fields.', {
+      classId,
+      message,
+      description,
+      userId,
+      userName,
+      userRole,
+      isConnected,
+    });
+  }
+};
+  
+
 
   return (
     <SocketContext.Provider
@@ -415,6 +207,7 @@ const sendMessage = (
         sendMessage,
         markNotificationAsRead,
         clearNotifications,
+        sendAnnouncement,
       }}
     >
       {children}
