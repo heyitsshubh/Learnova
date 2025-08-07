@@ -130,31 +130,29 @@ useEffect(() => {
           <FiVideo className="text-gray-500 cursor-pointer hover:text-gray-700" />
         </div>
 
-        <div className="h-32 px-3 py-2 text-sm overflow-y-auto">
-          {classMessages.length === 0 ? (
-            <div className="text-gray-400 text-center mt-8">
-              {isConnected ? 'No messages yet' : 'Connecting...'}
+<div className="h-32 px-3 py-2 text-sm overflow-y-auto">
+  {classMessages.filter(msg => msg.type !== 'announcement').length === 0 ? (
+    <div className="text-gray-400 text-center mt-8">
+      {isConnected ? 'No messages yet' : 'Connecting...'}
+    </div>
+  ) : (
+    <div className="space-y-2">
+      {classMessages
+        .filter(message => message.type !== 'announcement')
+        .map((message) => (
+          <div key={message._id} className="text-xs">
+            <div className="flex items-center gap-1 mb-1">
+              <span className="font-medium text-gray-700">
+                {message.sender.name}
+              </span>
             </div>
-          ) : (
-            <div className="space-y-2">
-              {classMessages.map((message) => (
-                <div key={message._id} className="text-xs">
-                  <div className="flex items-center gap-1 mb-1">
-                    <span className="font-medium text-gray-700">
-                      {message.sender.name}
-                    </span>
-                    {message.type === 'announcement' && (
-                      <span className="bg-blue-100 text-blue-600 px-1 rounded text-xs">
-                        📢
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-gray-600 break-words">{message.content}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+            <p className="text-gray-600 break-words">{message.content}</p>
+          </div>
+        ))}
+    </div>
+  )}
+</div>
+
 
         <div className="flex items-center bg-[#f2f2f2] px-2 py-2 rounded-b-lg">
           <FiPaperclip className="text-gray-500 mr-2 cursor-pointer hover:text-gray-700" />
