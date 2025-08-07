@@ -124,7 +124,8 @@ export default function AssignmentListPage({ params }: { params: Promise<{ class
             </p>
           </div>
           <div className="flex items-center gap-4">
-            <button className="p-2 rounded-full hover:bg-gray-200 transition-colors">
+            <button className="p-2 rounded-full hover:bg-gray-200 transition-colors
+            " >
               <FaBell className="text-xl text-gray-400" />
             </button>
             <button className="p-2 rounded-full hover:bg-gray-200 transition-colors">

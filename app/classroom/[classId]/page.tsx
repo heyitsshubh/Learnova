@@ -126,10 +126,12 @@ export default function ClassDetailPage() {
     setUnreadCount(unreadNotifications);
   }, [notifications]);
 
-  const handleBellClick = () => {
-    setUnreadCount(0); 
-  
-  };
+const handleBellClick = () => {
+  setUnreadCount(0);
+  router.push('/notifications');
+};
+
+
 
   return (
     <div className="flex p-6 gap-6">
@@ -153,7 +155,8 @@ export default function ClassDetailPage() {
                 </span>
               )}
             </button>
-            <button className="p-2 rounded-full hover:bg-gray-200 transition-colors">
+            <button className="p-2 rounded-full hover:bg-gray-200 transition-colors
+            " onClick={() => router.push('/settings')}>
               <FaCog className="text-xl text-gray-400" />
             </button>
           </div>
