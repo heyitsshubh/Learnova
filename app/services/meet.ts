@@ -28,3 +28,20 @@ export const scheduleMeet = async (data: ScheduleMeetPayload) => {
     throw error;
   }
 };
+
+export const fetchMeetingsByClass = async (classId: string) => {
+  try {
+    const response = await axios.get(
+      `https://project2-zphf.onrender.com/api/meetings/class/${classId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching meetings:', error);
+    throw error;
+  }
+};

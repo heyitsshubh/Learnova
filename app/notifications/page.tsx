@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -5,8 +6,9 @@ import AppLayout from '../Components/AppLayout';
 import { FaSearch, FaBell, FaCog, FaUser, FaCalendar } from 'react-icons/fa';
 import { X, Users, BookOpen } from 'lucide-react';
 import { fetchMessages } from '../services/message';
+import { fetchMeetingsByClass } from '../services/meet'; // <-- Import meetings API
 import Image from 'next/image';
-import { useSocket } from '../Components/Contexts/SocketContext'; 
+import { useSocket } from '../Components/Contexts/SocketContext';
 
 interface Message {
   _id: string;
@@ -19,52 +21,79 @@ interface Message {
   };
   classId: string;
   timestamp: string;
-  type: 'message' | 'announcement' | 'assignment' | 'general' | 'question';
+  type: 'message' | 'announcement' | 'assignment' | 'general' | 'question' | 'meeting';
   isRead?: boolean;
 }
 
 interface NotificationItem extends Message {
-  className?: string; 
+  className?: string;
+  duration?: number;
 }
 
 const Notifications = () => {
   const [userName, setUserName] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [filter, setFilter] = useState<'all' | 'unread' | 'messages' | 'announcements'>('all');
+  const [filter, setFilter] = useState<'all' | 'unread' | 'messages' | 'announcements' | 'meetings'>('all');
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const { socket } = useSocket(); // Get socket from context
+  const { socket } = useSocket();
 
   const fetchNotifications = async () => {
-    const classId = localStorage.getItem('currentClassId'); 
+    const classId = localStorage.getItem('currentClassId');
     if (!classId) {
       console.error('Class ID is missing.');
       return;
     }
 
     try {
-      const messages = await fetchMessages(classId); 
-      const allowedTypes: NotificationItem['type'][] = ['message', 'announcement', 'assignment', 'general', 'question'];
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const messages = await fetchMessages(classId);
+      const meetingsRes = await fetchMeetingsByClass(classId);
+
+      // Format meetings as notifications
+      const meetings: NotificationItem[] = (meetingsRes.meetings || []).map((meeting: any) => ({
+        _id: meeting._id,
+        content: `${meeting.title}`,
+        sender: {
+          _id: meeting.scheduledBy?._id || '',
+          name: meeting.scheduledBy?.name || 'Unknown',
+          email: meeting.scheduledBy?.email || '',
+          role: 'teacher',
+        },
+        classId: typeof meeting.classId === 'string' ? meeting.classId : meeting.classId?._id || '',
+        className: typeof meeting.classId === 'object' ? meeting.classId.className : '',
+        timestamp: meeting.scheduledDate,
+        type: 'meeting',
+        isRead: false,
+        duration: meeting.duration,
+      }));
+
+      const allowedTypes: NotificationItem['type'][] = [
+        'message',
+        'announcement',
+        'assignment',
+        'general',
+        'question',
+        'meeting',
+      ];
       const formattedMessages = messages.map((msg: any): NotificationItem => ({
         ...msg,
-        isRead: false, 
-        className: 'Class Chat', 
+        isRead: false,
+        className: 'Class Chat',
         type: allowedTypes.includes(msg.type!) ? msg.type! : 'general',
         sender: {
           _id: msg.sender._id,
           name: msg.sender.name,
-          email: msg.sender.email ?? '', 
+          email: msg.sender.email ?? '',
           role: msg.sender.role,
         },
       }));
-      
-      // Sort by timestamp (newest first)
-      const sortedMessages = formattedMessages.sort((a, b) => 
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+
+      // Combine and sort
+      const allNotifications = [...meetings, ...formattedMessages].sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       );
-      
-      setNotifications(sortedMessages);
-      console.log('Fetched notifications:', sortedMessages);
+
+      setNotifications(allNotifications);
+      console.log('Fetched notifications:', allNotifications);
     } catch (error) {
       console.error('Error fetching notifications:', error);
     }
@@ -77,14 +106,14 @@ const Notifications = () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handleNewAnnouncement = (announcementData: any) => {
       console.log('Received new announcement:', announcementData);
-      
+
       const newNotification: NotificationItem = {
         _id: announcementData._id || announcementData.id,
         content: announcementData.content || announcementData.message,
         sender: {
           _id: announcementData.userId || announcementData.sender?._id,
           name: announcementData.userName || announcementData.sender?.name,
-          email: '', // Announcements might not have email
+          email: '',
           role: announcementData.userRole || announcementData.sender?.role || 'teacher',
         },
         classId: announcementData.classId,
@@ -94,14 +123,13 @@ const Notifications = () => {
         className: 'Class Chat',
       };
 
-      // Add to notifications (at the beginning for newest first)
       setNotifications(prev => [newNotification, ...prev]);
     };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handleNewMessage = (messageData: any) => {
       console.log('Received new message:', messageData);
-      
+
       const newNotification: NotificationItem = {
         _id: messageData._id,
         content: messageData.content,
@@ -118,15 +146,12 @@ const Notifications = () => {
         className: 'Class Chat',
       };
 
-      // Add to notifications (at the beginning for newest first)
       setNotifications(prev => [newNotification, ...prev]);
     };
 
-    // Listen for real-time events
     socket.on('receive_announcement', handleNewAnnouncement);
     socket.on('newMessage', handleNewMessage);
 
-    // Cleanup
     return () => {
       socket.off('receive_announcement', handleNewAnnouncement);
       socket.off('newMessage', handleNewMessage);
@@ -152,7 +177,8 @@ const Notifications = () => {
       filter === 'all' ||
       (filter === 'unread' && !notification.isRead) ||
       (filter === 'messages' && notification.type === 'message') ||
-      (filter === 'announcements' && notification.type === 'announcement');
+      (filter === 'announcements' && notification.type === 'announcement') ||
+      (filter === 'meetings' && notification.type === 'meeting');
 
     return matchesSearch && matchesFilter;
   });
@@ -183,16 +209,26 @@ const Notifications = () => {
             className="object-cover w-full h-full rounded-lg"
           />
         );
-    case 'announcement':
-      return (
-        <Image
-          src="/bel.svg" 
-          alt="Announcement"
-          width={42}
-          height={45}
-          className="object-cover w-full h-full rounded-lg"
-        />
-      ); 
+      case 'announcement':
+        return (
+          <Image
+            src="/bel.svg"
+            alt="Announcement"
+            width={42}
+            height={45}
+            className="object-cover w-full h-full rounded-lg"
+          />
+        );
+      case 'meeting':
+        return (
+          <Image
+            src="/bel.svg"
+            alt="Meeting"
+            width={42}
+            height={45}
+            className="object-cover w-full h-full rounded-lg"
+          />
+        );
       case 'assignment':
         return <BookOpen className="w-4 h-4" />;
       default:
@@ -257,10 +293,11 @@ const Notifications = () => {
             { key: 'unread', label: 'Unread', count: notifications.filter((n) => !n.isRead).length },
             { key: 'messages', label: 'Messages', count: notifications.filter((n) => n.type === 'message').length },
             { key: 'announcements', label: 'Announcements', count: notifications.filter((n) => n.type === 'announcement').length },
+            { key: 'meetings', label: 'Meetings', count: notifications.filter((n) => n.type === 'meeting').length },
           ].map((tab) => (
             <button
               key={tab.key}
-              onClick={() => setFilter(tab.key as 'all' | 'unread' | 'messages' | 'announcements')}
+              onClick={() => setFilter(tab.key as any)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                 filter === tab.key
                   ? 'bg-blue-600 text-white'
@@ -298,7 +335,7 @@ const Notifications = () => {
                       onClick={() => handleNotificationClick(item._id)}
                       className={`flex items-start gap-3 border rounded-lg p-4 bg-white shadow-sm cursor-pointer transition-all hover:shadow-md ${
                         !item.isRead ? 'border-blue-200 bg-blue-50' : 'border-gray-200'
-                      } ${item.type === 'announcement' ? 'border-l-4 border-l-orange-500' : ''}`}
+                      } ${item.type === 'announcement' ? '' : ''} ${item.type === 'meeting' ? '' : ''}`}
                     >
                       <div className={`w-18 h-18 flex items-center justify-center rounded-lg overflow-hidden bg-white`}>
                         {getNotificationIcon(item.type || 'general', item.sender.role)}
@@ -307,19 +344,30 @@ const Notifications = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <p className="font-semibold text-sm text-gray-800 truncate">
-                            {item.sender.name}
+                           {item.type === 'meeting' ? item.className : item.sender.name}
                           </p>
                           {item.type === 'announcement' && (
                             <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
                               Announcement
                             </span>
                           )}
-                          <span className="text-xs text-gray-500">
-                            {item.sender.role === 'teacher' ? '' : ''}
-                          </span>
+                          {item.type === 'meeting' && (
+                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                              Meeting
+                            </span>
+                          )}
+                          <span className="text-xs text-gray-500"></span>
                         </div>
 
                         <p className="text-gray-600 text-sm mb-2 line-clamp-2">{item.content}</p>
+                        {/* Show meeting details */}
+                        {item.type === 'meeting' && (
+                          <div className="text-xs text-gray-500 mb-1">
+    
+                            {/* <div>Date: {new Date(item.timestamp).toLocaleString()}</div>
+                            <div>Duration: {item.duration} min</div> */}
+                          </div>
+                        )}
 
                         <div className="flex items-center justify-between">
                           <p className="text-xs text-gray-400">
