@@ -33,11 +33,11 @@ export default function Announcement({ onClose, classId }: { onClose: () => void
       
       // Use the socket context method or emit directly
       if (sendAnnouncement) {
-        await sendAnnouncement(classId, message.trim(), description.trim());
+        sendAnnouncement(classId, message.trim());
+        // If you need to send description, update sendAnnouncement definition to accept it
       } else if (socket) {
         socket.emit('send_announcement', announcementData);
       }
-
       console.log('Announcement sent successfully');
       onClose(); // Close the modal after sending
     } catch (error) {
@@ -49,7 +49,7 @@ export default function Announcement({ onClose, classId }: { onClose: () => void
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+    <div className="fixed inset-0 flex items-center justify-center bg-opacity-40 z-50">
       <div className="bg-[#1f1f1f] w-96 max-h-[90vh] overflow-y-auto p-5 rounded-md shadow-md relative text-white border border-gray-500">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold">Make Announcement</h2>
@@ -62,6 +62,7 @@ export default function Announcement({ onClose, classId }: { onClose: () => void
         <input
           type="text"
           value={message}
+                      style={{backgroundColor: 'rgba(165, 159, 159, 0.35)',color: 'white'}}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Enter announcement message"
           className="w-full p-2 bg-gray-700 rounded text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -72,7 +73,8 @@ export default function Announcement({ onClose, classId }: { onClose: () => void
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Enter detailed description (optional)"
+                      style={{backgroundColor: 'rgba(165, 159, 159, 0.35)',color: 'white'}}
+          placeholder="Enter detailed description "
           rows={3}
           className="w-full p-2 bg-gray-700 rounded text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
           disabled={isLoading}

@@ -11,8 +11,8 @@ import CreateAssignment from '../../Components/Classroom/CreateAssignment';
 import Announcement from '../../Components/Classroom/Announcement';
 import { getAssignments } from '../../services/assignment';
 import { deleteAssignment } from '../../services/assignment';
-import { useSocket } from '../../Components/Contexts/SocketContext'; // Import socket context
-
+import { useSocket } from '../../Components/Contexts/SocketContext';
+import ScheduleMeet from '../../Components/Classroom/Schedulemeet'; // adjust path if needed
 interface Assignment {
   _id: string;
   title: string;
@@ -83,6 +83,7 @@ export default function ClassDetailPage() {
   const [sidebarMenuOpen, setSidebarMenuOpen] = useState(false);
   const [createAssignmentOpen, setCreateAssignmentOpen] = useState(false);
   const [announcementOpen, setAnnouncementOpen] = useState(false);
+  const [scheduleMeetOpen, setScheduleMeetOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0); 
 
   const params = useParams();
@@ -156,7 +157,7 @@ const handleBellClick = () => {
               )}
             </button>
             <button className="p-2 rounded-full hover:bg-gray-200 transition-colors
-            " onClick={() => router.push('/settings')}>
+            " onClick={() => router.push('/Settings')}>
               <FaCog className="text-xl text-gray-400" />
             </button>
           </div>
@@ -225,6 +226,10 @@ const handleBellClick = () => {
             setSidebarMenuOpen(false);
             setAnnouncementOpen(true);
           }}
+           onScheduleMeet={() => {
+    setSidebarMenuOpen(false);
+    setScheduleMeetOpen(true);
+  }}
         />
       )}
       {createAssignmentOpen && (
@@ -241,6 +246,20 @@ const handleBellClick = () => {
           </div>
         </div>
       )}
+      {scheduleMeetOpen && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-opacity-40">
+    <div className="bg-white rounded-lg shadow-lg p-8">
+      <ScheduleMeet
+        open={scheduleMeetOpen}
+        onClose={() => setScheduleMeetOpen(false)}
+        onSchedule={() => {
+          // handle scheduled meet data here (e.g., send to backend)
+          setScheduleMeetOpen(false);
+        }}
+      />
+    </div>
+  </div>
+)}
     </div>
   );
 }

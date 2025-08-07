@@ -101,6 +101,7 @@ export default function CreateAssignmentModal({ onClose, classId }: { onClose: (
           type="text"
           value={assignmentName}
           onChange={(e) => setAssignmentName(e.target.value)}
+            style={{backgroundColor: 'rgba(165, 159, 159, 0.35)',color: 'white'}}          
           placeholder="Enter assignment name"
           className="w-full p-2 bg-gray-700 rounded text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
           required
@@ -110,6 +111,7 @@ export default function CreateAssignmentModal({ onClose, classId }: { onClose: (
         <textarea
           value={descriptionName}
           onChange={(e) => setDescriptionName(e.target.value)}
+           style={{backgroundColor: 'rgba(165, 159, 159, 0.35)',color: 'white'}}         
           placeholder="Enter description"
           rows={3}
           className="w-full p-2 bg-gray-700 rounded text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
@@ -120,17 +122,19 @@ export default function CreateAssignmentModal({ onClose, classId }: { onClose: (
         <input
           type="date"
           value={deadline}
+                      style={{backgroundColor: 'rgba(165, 159, 159, 0.35)',color: 'white'}}
           onChange={(e) => setDeadline(e.target.value)}
           min={today}
           className="w-full p-2 bg-gray-700 rounded text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
           required
         />
 
-        <label className="text-sm mb-1 block">Attach documents (Optional)</label>
+        <label className="text-sm mb-1 block">Attach documents</label>
         <div className="w-full bg-gray-800 rounded-md h-20 flex items-center justify-center mb-3 cursor-pointer relative border-2 border-dashed border-gray-600 hover:border-gray-500 transition">
           <input
             type="file"
             className="absolute inset-0 opacity-0 cursor-pointer"
+            style={{backgroundColor: 'rgba(165, 159, 159, 0.35)',color: 'white'}}
             onChange={handleFileChange}
             accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.ppt,.pptx,.xls,.xlsx"
           />
@@ -142,6 +146,7 @@ export default function CreateAssignmentModal({ onClose, classId }: { onClose: (
           ) : (
             <div className="text-center">
               <Upload className="w-6 h-6 text-gray-400 mx-auto mb-1" />
+              
               <span className="text-xs text-gray-400">Click to upload</span>
             </div>
           )}

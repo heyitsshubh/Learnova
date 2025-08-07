@@ -3,14 +3,15 @@ interface SidebarmenuProps {
   onClose: () => void;
   onCreateAssignment?: () => void;
   onAnnouncement?: () => void;
+  onScheduleMeet?: () => void;
 }
 
-export default function Sidebarmenu({ open, onClose, onCreateAssignment,onAnnouncement }: SidebarmenuProps) {
+export default function Sidebarmenu({ open, onClose, onCreateAssignment,onAnnouncement,onScheduleMeet }: SidebarmenuProps) {
   if (!open) return null;
 
   const items = [
-    { label: 'Attendence' },
-    { label: 'Create Meet' },
+    { label: 'Attendance' },
+    { label: 'Schedule Meet' , action: onScheduleMeet },
     { label: 'Create Assignment', action: onCreateAssignment },
     { label: 'Make Announcement', action: onAnnouncement },
   ];
