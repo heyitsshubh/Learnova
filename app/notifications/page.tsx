@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react';
 import AppLayout from '../Components/AppLayout';
 import { FaSearch, FaBell, FaCog, FaUser, FaCalendar } from 'react-icons/fa';
-import { X,  Users, BookOpen } from 'lucide-react';
-import { fetchMessages, } from '../services/message';
+import { X, Users, BookOpen } from 'lucide-react';
+import { fetchMessages } from '../services/message';
 import Image from 'next/image';
+import { useSocket } from '../Components/Contexts/SocketContext'; // Import your socket context
+
 interface Message {
   _id: string;
   content: string;
@@ -30,36 +32,105 @@ const Notifications = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<'all' | 'unread' | 'messages' | 'announcements'>('all');
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const { socket } = useSocket(); // Get socket from context
 
-const fetchNotifications = async () => {
-  const classId = localStorage.getItem('currentClassId'); 
-  if (!classId) {
-    console.error('Class ID is missing.');
-    return;
-  }
+  const fetchNotifications = async () => {
+    const classId = localStorage.getItem('currentClassId'); 
+    if (!classId) {
+      console.error('Class ID is missing.');
+      return;
+    }
 
-  try {
-    const messages = await fetchMessages(classId); 
-    const allowedTypes: NotificationItem['type'][] = ['message', 'announcement', 'assignment', 'general', 'question'];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const formattedMessages = messages.map((msg: any): NotificationItem => ({
-      ...msg,
-      isRead: false, 
-      className: 'Class Chat', 
-      type: allowedTypes.includes(msg.type!) ? msg.type! : 'general',
-      sender: {
-        _id: msg.sender._id,
-        name: msg.sender.name,
-        email: msg.sender.email ?? '', 
-        role: msg.sender.role,
-      },
-    }));
-    setNotifications(formattedMessages);
-    console.log('Fetched notifications:', formattedMessages);
-  } catch (error) {
-    console.error('Error fetching notifications:', error);
-  }
-};
+    try {
+      const messages = await fetchMessages(classId); 
+      const allowedTypes: NotificationItem['type'][] = ['message', 'announcement', 'assignment', 'general', 'question'];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const formattedMessages = messages.map((msg: any): NotificationItem => ({
+        ...msg,
+        isRead: false, 
+        className: 'Class Chat', 
+        type: allowedTypes.includes(msg.type!) ? msg.type! : 'general',
+        sender: {
+          _id: msg.sender._id,
+          name: msg.sender.name,
+          email: msg.sender.email ?? '', 
+          role: msg.sender.role,
+        },
+      }));
+      
+      // Sort by timestamp (newest first)
+      const sortedMessages = formattedMessages.sort((a, b) => 
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+      
+      setNotifications(sortedMessages);
+      console.log('Fetched notifications:', sortedMessages);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  };
+
+  // Handle real-time announcements
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewAnnouncement = (announcementData: any) => {
+      console.log('Received new announcement:', announcementData);
+      
+      const newNotification: NotificationItem = {
+        _id: announcementData._id || announcementData.id,
+        content: announcementData.content || announcementData.message,
+        sender: {
+          _id: announcementData.userId || announcementData.sender?._id,
+          name: announcementData.userName || announcementData.sender?.name,
+          email: '', // Announcements might not have email
+          role: announcementData.userRole || announcementData.sender?.role || 'teacher',
+        },
+        classId: announcementData.classId,
+        timestamp: announcementData.timestamp || new Date().toISOString(),
+        type: 'announcement',
+        isRead: false,
+        className: 'Class Chat',
+      };
+
+      // Add to notifications (at the beginning for newest first)
+      setNotifications(prev => [newNotification, ...prev]);
+    };
+
+    const handleNewMessage = (messageData: any) => {
+      console.log('Received new message:', messageData);
+      
+      const newNotification: NotificationItem = {
+        _id: messageData._id,
+        content: messageData.content,
+        sender: {
+          _id: messageData.sender._id,
+          name: messageData.sender.name,
+          email: messageData.sender.email || '',
+          role: messageData.sender.role,
+        },
+        classId: messageData.classId,
+        timestamp: messageData.timestamp,
+        type: messageData.type || 'message',
+        isRead: false,
+        className: 'Class Chat',
+      };
+
+      // Add to notifications (at the beginning for newest first)
+      setNotifications(prev => [newNotification, ...prev]);
+    };
+
+    // Listen for real-time events
+    socket.on('receive_announcement', handleNewAnnouncement);
+    socket.on('newMessage', handleNewMessage);
+
+    // Cleanup
+    return () => {
+      socket.off('receive_announcement', handleNewAnnouncement);
+      socket.off('newMessage', handleNewMessage);
+    };
+  }, [socket]);
+
   useEffect(() => {
     fetchNotifications();
   }, []);
@@ -69,6 +140,7 @@ const fetchNotifications = async () => {
       setUserName(localStorage.getItem('userName') || 'User');
     }
   }, []);
+
   const filteredNotifications = notifications.filter((notification) => {
     const matchesSearch =
       notification.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -82,6 +154,7 @@ const fetchNotifications = async () => {
 
     return matchesSearch && matchesFilter;
   });
+
   const groupedNotifications = filteredNotifications.reduce((groups, notification) => {
     const date = new Date(notification.timestamp).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -97,26 +170,25 @@ const fetchNotifications = async () => {
   }, {} as Record<string, NotificationItem[]>);
 
   const getNotificationIcon = (type: string, senderRole: string) => {
-  switch (type) {
-    case 'message':
-      return (
-        <Image
-          src="/bell.svg" // Place your image in the public folder as /public/message-icon.png
-          alt="Message"
-          width={42}
-          height={45}
-          className="object-cover w-full h-full rounded-lg"
-        />
-      );
-    case 'announcement':
-      return <FaBell className="w-4 h-4" />;
-    case 'assignment':
-      return <BookOpen className="w-4 h-4" />;
-    default:
-      return senderRole === 'teacher' ? <FaUser className="w-4 h-4" /> : <Users className="w-4 h-4" />;
-  }
-};
-
+    switch (type) {
+      case 'message':
+        return (
+          <Image
+            src="/bell.svg"
+            alt="Message"
+            width={42}
+            height={45}
+            className="object-cover w-full h-full rounded-lg"
+          />
+        );
+      case 'announcement':
+        return <FaBell className="w-4 h-4 text-orange-500" />; // Different color for announcements
+      case 'assignment':
+        return <BookOpen className="w-4 h-4" />;
+      default:
+        return senderRole === 'teacher' ? <FaUser className="w-4 h-4" /> : <Users className="w-4 h-4" />;
+    }
+  };
 
   const handleNotificationClick = (notificationId: string) => {
     setNotifications((prev) =>
@@ -125,27 +197,6 @@ const fetchNotifications = async () => {
       )
     );
   };
-  
-  <div className="flex gap-2 mb-6 overflow-x-auto">
-  {[
-    { key: 'all', label: 'All', count: notifications.length },
-    { key: 'unread', label: 'Unread', count: notifications.filter((n) => !n.isRead).length },
-    { key: 'messages', label: 'Messages', count: notifications.filter((n) => n.type === 'message').length },
-    { key: 'announcements', label: 'Announcements', count: notifications.filter((n) => n.type === 'announcement').length },
-  ].map((tab) => (
-    <button
-      key={tab.key}
-      onClick={() => setFilter(tab.key as 'all' | 'unread' | 'messages' | 'announcements')}
-      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-        filter === tab.key
-          ? 'bg-blue-600 text-white'
-          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-      }`}
-    >
-      {tab.label} ({tab.count})
-    </button>
-  ))}
-</div>
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
@@ -188,6 +239,29 @@ const fetchNotifications = async () => {
             </div>
           </div>
         </div>
+
+        {/* Filter tabs */}
+        <div className="flex gap-2 mb-6 overflow-x-auto">
+          {[
+            { key: 'all', label: 'All', count: notifications.length },
+            { key: 'unread', label: 'Unread', count: notifications.filter((n) => !n.isRead).length },
+            { key: 'messages', label: 'Messages', count: notifications.filter((n) => n.type === 'message').length },
+            { key: 'announcements', label: 'Announcements', count: notifications.filter((n) => n.type === 'announcement').length },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setFilter(tab.key as 'all' | 'unread' | 'messages' | 'announcements')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                filter === tab.key
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {tab.label} ({tab.count})
+            </button>
+          ))}
+        </div>
+
         {Object.keys(groupedNotifications).length === 0 ? (
           <div className="text-center py-12">
             <FaBell className="mx-auto text-4xl text-gray-300 mb-4" />
@@ -214,20 +288,24 @@ const fetchNotifications = async () => {
                       onClick={() => handleNotificationClick(item._id)}
                       className={`flex items-start gap-3 border rounded-lg p-4 bg-white shadow-sm cursor-pointer transition-all hover:shadow-md ${
                         !item.isRead ? 'border-blue-200 bg-blue-50' : 'border-gray-200'
-                      }`}
+                      } ${item.type === 'announcement' ? 'border-l-4 border-l-orange-500' : ''}`}
                     >
-              <div
-             className={`w-18 h-18 flex items-center justify-center rounded-lg overflow-hidden  bg-white`}
-            > {getNotificationIcon(item.type || 'general', item.sender.role)}
-</div>
+                      <div className={`w-18 h-18 flex items-center justify-center rounded-lg overflow-hidden bg-white`}>
+                        {getNotificationIcon(item.type || 'general', item.sender.role)}
+                      </div>
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <p className="font-semibold text-sm text-gray-800 truncate">
                             {item.sender.name}
                           </p>
+                          {item.type === 'announcement' && (
+                            <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
+                              Announcement
+                            </span>
+                          )}
                           <span className="text-xs text-gray-500">
-                            {/* {item.sender.role === 'teacher' ? '👨‍🏫' : '👨‍🎓'} */}
+                            {item.sender.role === 'teacher' ? '👨‍🏫' : '👨‍🎓'}
                           </span>
                         </div>
 
