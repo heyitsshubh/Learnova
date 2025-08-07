@@ -370,9 +370,17 @@ const Notifications = () => {
                         )}
 
                         <div className="flex items-center justify-between">
-                          <p className="text-xs text-gray-400">
-                            {new Date(item.timestamp).toLocaleString()}
-                          </p>
+ <p className="text-xs text-gray-400">
+  {new Date(item.timestamp).toLocaleString('en-IN', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'Asia/Kolkata', // Force IST
+  })}
+</p>
                         </div>
                       </div>
 

@@ -12,7 +12,7 @@ import Announcement from '../../Components/Classroom/Announcement';
 import { getAssignments } from '../../services/assignment';
 import { deleteAssignment } from '../../services/assignment';
 import { useSocket } from '../../Components/Contexts/SocketContext';
-import ScheduleMeet from '../../Components/Classroom/Schedulemeet'; // adjust path if needed
+
 interface Assignment {
   _id: string;
   title: string;
@@ -145,6 +145,19 @@ const handleBellClick = () => {
             </p>
           </div>
           <div className="flex items-center gap-4">
+            {/* Schedule Meet Button */}
+            <button
+              className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-600 text-white rounded-lg shadow transition"
+              onClick={() => {
+                // Navigate to the meet page for this class
+                // If you want to pass classId as a param, use `/meet?classId=${classid}`
+                // If not, just `/meet`
+                router.push('/meet');
+              }}
+            >
+              <Plus className="w-5 h-5" />
+              <span>Schedule Meet</span>
+            </button>
             <button
               className="p-2 rounded-full hover:bg-gray-200 transition-colors relative"
               onClick={handleBellClick}
@@ -156,8 +169,8 @@ const handleBellClick = () => {
                 </span>
               )}
             </button>
-            <button className="p-2 rounded-full hover:bg-gray-200 transition-colors
-            " onClick={() => router.push('/Settings')}>
+            <button className="p-2 rounded-full hover:bg-gray-200 transition-colors"
+              onClick={() => router.push('/Settings')}>
               <FaCog className="text-xl text-gray-400" />
             </button>
           </div>
@@ -248,7 +261,7 @@ const handleBellClick = () => {
       )}
       {scheduleMeetOpen && (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-opacity-40">
-    <div className="bg-white rounded-lg shadow-lg p-8">
+    {/* <div className="bg-white rounded-lg shadow-lg p-8">
       <ScheduleMeet
         open={scheduleMeetOpen}
         onClose={() => setScheduleMeetOpen(false)}
@@ -258,7 +271,7 @@ const handleBellClick = () => {
           setScheduleMeetOpen(false);
         }}
       />
-    </div>
+    </div> */}
   </div>
 )}
     </div>

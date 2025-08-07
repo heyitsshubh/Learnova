@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { scheduleMeet } from '../../services/meet';
-import { toast } from 'react-hot-toast'; // <-- Add this import
+import { toast } from 'react-hot-toast';
 
 interface ScheduleMeetModalProps {
   open: boolean;
@@ -17,7 +17,7 @@ const ScheduleMeetModal: React.FC<ScheduleMeetModalProps> = ({
   onScheduled,
 }) => {
   const [title, setTitle] = useState('');
-  const [date, setDate] = useState('');
+  const [dateTime, setDateTime] = useState(''); // Use datetime-local
   const [description, setDescription] = useState('');
   const [duration, setDuration] = useState('');
   const [maxParticipants, setMaxParticipants] = useState('');
@@ -26,7 +26,7 @@ const ScheduleMeetModal: React.FC<ScheduleMeetModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !date || !duration) {
+    if (!title || !dateTime || !duration) {
       toast.error('Please fill all required fields.');
       return;
     }
@@ -44,7 +44,7 @@ const ScheduleMeetModal: React.FC<ScheduleMeetModalProps> = ({
         title,
         description,
         classId,
-        scheduledDate: date,
+        scheduledDate: dateTime, // Send full datetime string
         duration: Number(duration),
         maxParticipants: maxParticipants ? Number(maxParticipants) : undefined,
         isPrivate,
@@ -54,7 +54,7 @@ const ScheduleMeetModal: React.FC<ScheduleMeetModalProps> = ({
         toast.success('Meeting scheduled successfully!');
         if (onScheduled) onScheduled();
         setTitle('');
-        setDate('');
+        setDateTime('');
         setDescription('');
         setDuration('');
         setMaxParticipants('');
@@ -101,10 +101,10 @@ const ScheduleMeetModal: React.FC<ScheduleMeetModalProps> = ({
             rows={3}
           />
           <input
-            type="date"
-            value={date}
+            type="datetime-local"
+            value={dateTime}
             style={{ backgroundColor: 'rgba(165, 159, 159, 0.35)', color: 'white' }}
-            onChange={e => setDate(e.target.value)}
+            onChange={e => setDateTime(e.target.value)}
             className="w-full p-2 bg-gray-700 rounded text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           />
