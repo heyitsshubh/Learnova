@@ -45,27 +45,56 @@ export default function RightSidebar2({ classId }: { classId: string }) {
     }
   }, [classId, isConnected, joinClass]);
 
-  const handleSendMessage = () => {
-    if (!messageInput.trim()) {
-      console.error('Message content is required.');
-      return;
-    }
+const handleSendMessage = () => {
+  if (!messageInput.trim()) {
+    console.error('Message content is required.');
+    return;
+  }
 
-    if (!classId) {
-      console.error('Class ID is missing.');
-      return;
-    }
-    const content = messageInput.trim();
-    console.log('Sending message:', { classId, content });
-    sendMessage(classId, content);
-    setMessageInput('');
-  };
+  if (!classId) {
+    console.error('Class ID is missing.');
+    return;
+  }
+  const content = messageInput.trim();
+  setClassMessages((prev) => [
+    ...prev,
+    {
+      _id: Date.now().toString(), 
+      content,
+      sender: {
+        _id: localStorage.getItem('userId') || '',
+        name: userName,
+        email: '',
+        role: userRole as 'teacher' | 'student' | 'system',
+      },
+      classId,
+      timestamp: new Date().toISOString(),
+      type: 'message',
+    },
+  ]);
+  sendMessage(classId, content);
+  setMessageInput('');
+};
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
   };
+
+const { socket } = useSocket();
+
+useEffect(() => {
+  if (typeof window === 'undefined' || !classId || !socket) return;
+  const handleReceiveMessage = (message: Message) => {
+    setClassMessages(prev => [...prev, message]);
+  };
+
+  socket.on('newMessage', handleReceiveMessage); 
+  return () => {
+    socket.off('newMessage', handleReceiveMessage); 
+  };
+}, [classId, socket]);
 
   return (
     <div className="space-y-6 mt-2">
@@ -92,10 +121,10 @@ export default function RightSidebar2({ classId }: { classId: string }) {
             />
             <span className="text-sm font-medium">{userName}</span>
             <span className="text-xs text-gray-500">
-              {userRole === 'teacher' ? '👨‍🏫' : '👨‍🎓'}
+              {userRole === 'teacher' ? '' : ''}
             </span>
             {isConnected && (
-              <span className="w-2 h-2 bg-green-500 rounded-full" title="Connected" />
+              <span className="w-2 h-2 rounded-full" title="Connected" />
             )}
           </div>
           <FiVideo className="text-gray-500 cursor-pointer hover:text-gray-700" />

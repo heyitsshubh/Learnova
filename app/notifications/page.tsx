@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import AppLayout from '../Components/AppLayout';
 import { FaSearch, FaBell, FaCog, FaUser, FaCalendar } from 'react-icons/fa';
-import { X, MessageCircle, Users, BookOpen } from 'lucide-react';
-import { fetchMessages, } from '../services/message'; 
+import { X,  Users, BookOpen } from 'lucide-react';
+import { fetchMessages, } from '../services/message';
+import Image from 'next/image';
 interface Message {
   _id: string;
   content: string;
@@ -96,32 +97,26 @@ const fetchNotifications = async () => {
   }, {} as Record<string, NotificationItem[]>);
 
   const getNotificationIcon = (type: string, senderRole: string) => {
-    switch (type) {
-      case 'message':
-        return <MessageCircle className="w-4 h-4" />;
-      case 'announcement':
-        return <FaBell className="w-4 h-4" />;
-      case 'assignment':
-        return <BookOpen className="w-4 h-4" />;
-      default:
-        return senderRole === 'teacher' ? <FaUser className="w-4 h-4" /> : <Users className="w-4 h-4" />;
-    }
-  };
+  switch (type) {
+    case 'message':
+      return (
+        <Image
+          src="/bell.svg" // Place your image in the public folder as /public/message-icon.png
+          alt="Message"
+          width={42}
+          height={45}
+          className="object-cover w-full h-full rounded-lg"
+        />
+      );
+    case 'announcement':
+      return <FaBell className="w-4 h-4" />;
+    case 'assignment':
+      return <BookOpen className="w-4 h-4" />;
+    default:
+      return senderRole === 'teacher' ? <FaUser className="w-4 h-4" /> : <Users className="w-4 h-4" />;
+  }
+};
 
-  const getIconColor = (type: string, isRead: boolean) => {
-    const baseColors = {
-      message: 'bg-blue-100 text-blue-600',
-      announcement: 'bg-yellow-100 text-yellow-600',
-      assignment: 'bg-green-100 text-green-600',
-      general: 'bg-gray-100 text-gray-600',
-    };
-
-    if (isRead) {
-      return 'bg-gray-100 text-gray-400';
-    }
-
-    return baseColors[type as keyof typeof baseColors] || baseColors.general;
-  };
 
   const handleNotificationClick = (notificationId: string) => {
     setNotifications((prev) =>
@@ -221,14 +216,10 @@ const fetchNotifications = async () => {
                         !item.isRead ? 'border-blue-200 bg-blue-50' : 'border-gray-200'
                       }`}
                     >
-                      <div
-                        className={`w-10 h-10 flex items-center justify-center rounded-full ${getIconColor(
-                          item.type || 'general',
-                          !!item.isRead
-                        )}`}
-                      >
-                        {getNotificationIcon(item.type || 'general', item.sender.role)}
-                      </div>
+              <div
+             className={`w-18 h-18 flex items-center justify-center rounded-lg overflow-hidden  bg-white`}
+            > {getNotificationIcon(item.type || 'general', item.sender.role)}
+              </div>
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
@@ -236,7 +227,7 @@ const fetchNotifications = async () => {
                             {item.sender.name}
                           </p>
                           <span className="text-xs text-gray-500">
-                            {item.sender.role === 'teacher' ? '👨‍🏫' : '👨‍🎓'}
+                            {/* {item.sender.role === 'teacher' ? '👨‍🏫' : '👨‍🎓'} */}
                           </span>
                         </div>
 
