@@ -358,6 +358,7 @@ const fetchNotifications = async () => {
   try {
     const messages = await fetchMessages(classId); // Fetch messages using the API
     const allowedTypes: NotificationItem['type'][] = ['message', 'announcement', 'assignment', 'general', 'question'];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const formattedMessages = messages.map((msg: any): NotificationItem => ({
       ...msg,
       isRead: false, // Add a default isRead property
