@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 import { useSocket } from '../../Components/Contexts/SocketContext';
+import { toast } from 'react-hot-toast';
 
 export default function Announcement({ onClose, classId }: { onClose: () => void, classId: string }) {
   const [message, setMessage] = useState('');
@@ -22,7 +23,6 @@ export default function Announcement({ onClose, classId }: { onClose: () => void
     setIsLoading(true);
     
     try {
-      // Send the announcement with the message and description
       const announcementData = {
         message: message.trim(),
         description: description.trim() || undefined,
@@ -31,18 +31,16 @@ export default function Announcement({ onClose, classId }: { onClose: () => void
 
       console.log('Sending announcement:', announcementData);
       
-      // Use the socket context method or emit directly
       if (sendAnnouncement) {
         sendAnnouncement(classId, message.trim());
-        // If you need to send description, update sendAnnouncement definition to accept it
       } else if (socket) {
         socket.emit('send_announcement', announcementData);
       }
-      console.log('Announcement sent successfully');
-      onClose(); // Close the modal after sending
+      toast.success('Announcement sent successfully!'); // <-- Toast on success
+      onClose();
     } catch (error) {
       console.error('Failed to send announcement:', error);
-      // You might want to show an error message to the user here
+      toast.error('Failed to send announcement'); // <-- Toast on error
     } finally {
       setIsLoading(false);
     }
@@ -62,7 +60,7 @@ export default function Announcement({ onClose, classId }: { onClose: () => void
         <input
           type="text"
           value={message}
-                      style={{backgroundColor: 'rgba(165, 159, 159, 0.35)',color: 'white'}}
+          style={{backgroundColor: 'rgba(165, 159, 159, 0.35)',color: 'white'}}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Enter announcement message"
           className="w-full p-2 bg-gray-700 rounded text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -73,7 +71,7 @@ export default function Announcement({ onClose, classId }: { onClose: () => void
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-                      style={{backgroundColor: 'rgba(165, 159, 159, 0.35)',color: 'white'}}
+          style={{backgroundColor: 'rgba(165, 159, 159, 0.35)',color: 'white'}}
           placeholder="Enter detailed description "
           rows={3}
           className="w-full p-2 bg-gray-700 rounded text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"

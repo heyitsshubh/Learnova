@@ -219,7 +219,7 @@ const fetchNotifications = async () => {
               <div
              className={`w-18 h-18 flex items-center justify-center rounded-lg overflow-hidden  bg-white`}
             > {getNotificationIcon(item.type || 'general', item.sender.role)}
-              </div>
+</div>
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">

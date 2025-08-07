@@ -26,6 +26,7 @@ interface SocketContextType {
   joinClass: (classId: string, userId: string, userName: string, userRole: string) => void;
   sendMessage: (classId: string, content: string, type?: 'message' | 'announcement') => void;
   markNotificationAsRead: (messageId: string) => void;
+    setNotifications: React.Dispatch<React.SetStateAction<Message[]>>;
   clearNotifications: () => void;
   sendAnnouncement: (classId: string, message: string) => void;
 }
@@ -87,6 +88,36 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
       }
     });
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    newSocket.on('receive_announcement', (announcement: any) => {
+    console.log('Announcement received:', announcement);
+    setNotifications(prev => [
+      ...prev,
+      {
+        _id: announcement.id || Date.now().toString(),
+        content: announcement.message,
+        sender: {
+          _id: announcement.userId,
+          name: announcement.userName,
+          email: '', // Add if available
+          role: announcement.userRole || 'teacher',
+        },
+        classId: announcement.classId,
+        timestamp: announcement.timestamp || new Date().toISOString(),
+        type: 'announcement',
+        isRead: false,
+      }
+    ]);
+    // Optionally, show a browser notification
+    if (typeof window !== 'undefined' && Notification.permission === 'granted') {
+      new Notification(`New Announcement from ${announcement.userName}`, {
+        body: announcement.message,
+        icon: '/profilee.svg'
+      });
+    }
+  });
+
 
 newSocket.on('classMessages', (classMessages: Message[]) => {
   console.log('Class messages loaded:', classMessages);
@@ -202,6 +233,7 @@ const sendAnnouncement = (classId: string, message: string, description?: string
         socket,
         messages,
         notifications,
+        setNotifications,
         isConnected,
         joinClass,
         sendMessage,
