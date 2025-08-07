@@ -252,7 +252,8 @@ const handleBellClick = () => {
       <ScheduleMeet
         open={scheduleMeetOpen}
         onClose={() => setScheduleMeetOpen(false)}
-        onSchedule={() => {
+        classId={classid as string}
+        onScheduled={() => {
           // handle scheduled meet data here (e.g., send to backend)
           setScheduleMeetOpen(false);
         }}
