@@ -3,8 +3,6 @@
 import { useEffect, useState } from 'react';
 import { fetchMeetingsByClass } from '../../../services/meet';
 import Image from 'next/image';
-import { FaPlus } from 'react-icons/fa';
-import ScheduleMeetModal from '../../../Components/Classroom/Schedulemeet';
 import { useRouter } from 'next/navigation';
 
 interface Meeting {
@@ -23,24 +21,13 @@ interface Meeting {
 export default function MeetPage() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
+
   const router = useRouter();
 
   const currentUserId =
     typeof window !== 'undefined' ? localStorage.getItem('userId') || '' : '';
 
-  const handlePlusClick = () => {
-    setShowModal(true);
-  };
 
-  const handleModalClose = () => {
-    setShowModal(false);
-  };
-
-  const handleScheduled = () => {
-    setShowModal(false);
-    fetchMeetings();
-  };
 
   const fetchMeetings = async () => {
     const classId = localStorage.getItem('currentClassId');
@@ -60,10 +47,6 @@ export default function MeetPage() {
     // eslint-disable-next-line
   }, []);
 
-  const classId =
-    typeof window !== 'undefined'
-      ? localStorage.getItem('currentClassId') || ''
-      : '';
 
   // Helper to check if meeting is started
   const isMeetingStarted = (scheduledDate: string) => {
@@ -187,22 +170,8 @@ export default function MeetPage() {
         )}
       </div>
       {/* Floating Plus Button */}
-      <button
-        className="fixed bottom-8 right-8 z-50 p-4 rounded-full bg-gray-800 hover:bg-gray-700 text-white shadow-lg transition-colors"
-        title="Schedule Meeting"
-        onClick={handlePlusClick}
-      >
-        <FaPlus className="text-2xl" />
-      </button>
-      {/* Schedule Meet Modal */}
-      {showModal && (
-        <ScheduleMeetModal
-          open={showModal}
-          onClose={handleModalClose}
-          classId={classId}
-          onScheduled={handleScheduled}
-        />
-      )}
+   
+       
     </div>
   );
 }
