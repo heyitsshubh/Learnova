@@ -13,6 +13,7 @@ import {
   FaCheckCircle,
   FaHourglassHalf,
   FaVideo,
+  FaSpinner
 } from 'react-icons/fa';
 import { useSocket } from '../../../Components/Contexts/SocketContext';
 
@@ -29,7 +30,6 @@ interface Meeting {
   status?: string;
 }
 
-// Utility: Parse a "YYYY-MM-DDTHH:mm" string as IST
 function parseAsIST(dateString: string) {
   const [datePart, timePart] = dateString.split('T');
   const [year, month, day] = datePart.split('-').map(Number);
@@ -41,20 +41,22 @@ function parseAsIST(dateString: string) {
 export default function MeetPage() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
+  const [startingMeeting, setStartingMeeting] = useState<string | null>(null);
   const router = useRouter();
   const socket = useSocket();
 
   const currentUserId = typeof window !== 'undefined' ? localStorage.getItem('userId') || '' : '';
-
-  // For showing current IST time
+  const userRole = typeof window !== 'undefined' ? localStorage.getItem('userRole') || '' : '';
 
   const fetchMeetings = async () => {
     const classId = localStorage.getItem('currentClassId');
     if (!classId) return setLoading(false);
+    
     try {
       const res = await fetchMeetingsByClass(classId);
       setMeetings(res.meetings || []);
-    } catch {
+    } catch (error) {
+      console.error('Error fetching meetings:', error);
       setMeetings([]);
     } finally {
       setLoading(false);
@@ -65,14 +67,34 @@ export default function MeetPage() {
     fetchMeetings();
   }, []);
 
+  // Listen for meeting events from backend
+  useEffect(() => {
+    if (!socket?.socket) return;
+
+    const handleMeetingStarted = (data: { meetingId: string; title: string; meetingLink: string }) => {
+      console.log('Meeting started:', data);
+      // You could show a notification here
+    };
+
+    const handleMeetingNotification = (data: any) => {
+      console.log('Meeting notification:', data);
+    };
+
+    socket.socket.on('meeting_started', handleMeetingStarted);
+    socket.socket.on('meeting_notification', handleMeetingNotification);
+
+    return () => {
+      socket.socket?.off('meeting_started', handleMeetingStarted);
+      socket.socket?.off('meeting_notification', handleMeetingNotification);
+    };
+  }, [socket]);
+
   // Compare dates in IST
   const isMeetingStarted = (scheduledDate: string) => {
-    // Get current IST date (date only)
     const now = new Date();
     const nowIST = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
-    // Parse scheduled date as IST
     const meetingIST = parseAsIST(scheduledDate);
-    // Compare only date part (ignore time)
+    
     return (
       nowIST.getFullYear() > meetingIST.getFullYear() ||
       (nowIST.getFullYear() === meetingIST.getFullYear() &&
@@ -90,19 +112,44 @@ export default function MeetPage() {
     );
   };
 
+  const isTeacher = () => {
+    return userRole?.toLowerCase() === 'teacher';
+  };
+
   const handleStartLecture = async (meeting: Meeting) => {
     const meetingId = meeting._id;
     const classId = typeof meeting.classId === 'object' ? meeting.classId._id : meeting.classId;
 
+    setStartingMeeting(meetingId);
+
     try {
+      // Start the meeting via API
       await startMeeting(meetingId);
-      if (socket.socket) {
-        socket.socket.emit('startLecture', { classId, meetingId });
+      
+      // Emit meeting started event via socket
+      if (socket?.socket) {
+        socket.socket.emit('meeting_started', { 
+          meetingId,
+          title: meeting.title,
+          meetingLink: `/meet/lecture/${meetingId}`,
+          classId
+        });
       }
+
+      // Redirect to meeting screen as host
       router.push(`/meet/lecture/${meetingId}?role=host`);
-    } catch {
-      alert('Failed to start the meeting.');
+    } catch (error) {
+      console.error('Error starting meeting:', error);
+      alert('Failed to start the meeting. Please try again.');
+    } finally {
+      setStartingMeeting(null);
     }
+  };
+
+  const handleJoinLecture = (meeting: Meeting) => {
+    const meetingId = meeting._id;
+    // Redirect to meeting screen as participant
+    router.push(`/meet/lecture/${meetingId}?role=participant`);
   };
 
   return (
@@ -138,17 +185,9 @@ export default function MeetPage() {
           <div className="space-y-6">
             {meetings.map((meeting) => {
               const started = isMeetingStarted(meeting.scheduledDate);
-              const creator = isMeetingCreator(meeting);
-
-              // Debug log for troubleshooting
-              console.log({
-                meetingId: meeting._id,
-                started,
-                creator,
-                scheduledBy: meeting.scheduledBy._id,
-                currentUserId,
-                scheduledDate: meeting.scheduledDate,
-              });
+              const isCreator = isMeetingCreator(meeting);
+              const canStart = isTeacher() && (isCreator || userRole?.toLowerCase() === 'teacher');
+              const isStartingThis = startingMeeting === meeting._id;
 
               return (
                 <div key={meeting._id} className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300">
@@ -159,9 +198,16 @@ export default function MeetPage() {
                         <p className="text-gray-700 text-lg mb-4 leading-relaxed">{meeting.description}</p>
                       )}
                     </div>
-                    <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 font-medium ml-4">
-                      {typeof meeting.classId === 'object' ? meeting.classId.className : ''}
-                    </span>
+                    <div className="flex flex-col space-y-2 ml-4">
+                      <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 font-medium">
+                        {typeof meeting.classId === 'object' ? meeting.classId.className : ''}
+                      </span>
+                      {isCreator && (
+                        <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-700 font-medium">
+                          Created by you
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -181,7 +227,6 @@ export default function MeetPage() {
                               timeZone: 'Asia/Kolkata',
                             })}
                           </div>
-                        
                         </div>
                       </div>
 
@@ -237,16 +282,42 @@ export default function MeetPage() {
                     </div>
 
                     <div>
-                      {started && creator ? (
-                        <button
-                          className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold text-lg flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-                          onClick={() => handleStartLecture(meeting)}
-                        >
-                          <FaVideo className="mr-2" /> Start Lecture
-                        </button>
+                      {started ? (
+                        <div className="flex space-x-3">
+                          {canStart && (
+                            <button
+                              className={`px-8 py-3 rounded-lg font-semibold text-lg flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 ${
+                                isStartingThis
+                                  ? 'bg-gray-400 cursor-not-allowed text-white'
+                                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+                              }`}
+                              onClick={() => handleStartLecture(meeting)}
+                              disabled={isStartingThis}
+                            >
+                              {isStartingThis ? (
+                                <>
+                                  <FaSpinner className="animate-spin mr-2" /> Starting...
+                                </>
+                              ) : (
+                                <>
+                                  <FaVideo className="mr-2" /> Start Lecture
+                                </>
+                              )}
+                            </button>
+                          )}
+                          
+                          {!canStart && (
+                            <button
+                              className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-semibold text-lg flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                              onClick={() => handleJoinLecture(meeting)}
+                            >
+                              <FaVideo className="mr-2" /> Join Lecture
+                            </button>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-gray-400 font-medium text-lg">
-                          {started ? 'Waiting for teacher to start' : 'Meeting yet to start'}
+                          Meeting not started yet
                         </span>
                       )}
                     </div>
