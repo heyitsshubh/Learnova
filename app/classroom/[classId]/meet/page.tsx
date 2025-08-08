@@ -21,11 +21,9 @@ interface Meeting {
 export default function MeetPage() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
-
   const router = useRouter();
 
-  const currentUserId =
-    typeof window !== 'undefined' ? localStorage.getItem('userId') || '' : '';
+  const currentUserId = typeof window !== 'undefined' ? localStorage.getItem('userId') || '' : '';
 
   const fetchMeetings = async () => {
     const classId = localStorage.getItem('currentClassId');
@@ -42,10 +40,8 @@ export default function MeetPage() {
 
   useEffect(() => {
     fetchMeetings();
-    // eslint-disable-next-line
   }, []);
 
-  // Helper to check if meeting is started
   const isMeetingStarted = (scheduledDate: string) => {
     const today = new Date();
     const meetingDate = new Date(scheduledDate);
@@ -53,12 +49,10 @@ export default function MeetPage() {
       today.getFullYear() > meetingDate.getFullYear() ||
       (today.getFullYear() === meetingDate.getFullYear() &&
         (today.getMonth() > meetingDate.getMonth() ||
-          (today.getMonth() === meetingDate.getMonth() &&
-            today.getDate() >= meetingDate.getDate())))
+          (today.getMonth() === meetingDate.getMonth() && today.getDate() >= meetingDate.getDate())))
     );
   };
 
-  // Helper to check if user is the meeting creator
   const isMeetingCreator = (meeting: Meeting) => {
     return (
       meeting.scheduledBy &&
@@ -74,20 +68,12 @@ export default function MeetPage() {
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-800 mb-2">Schedule Meetings</h1>
-            <p className="text-lg text-gray-600">
-              Manage and join your classroom meetings
-            </p>
+            <p className="text-lg text-gray-600">Manage and join your classroom meetings</p>
           </div>
         </div>
 
         <div className="relative h-56 rounded-2xl overflow-hidden shadow-lg mb-8">
-          <Image
-            src="/Banner.svg"
-            alt="UHV Banner"
-            fill
-            className="object-cover"
-            priority
-          />
+          <Image src="/Banner.svg" alt="UHV Banner" fill className="object-cover" priority />
         </div>
 
         {loading ? (
@@ -113,15 +99,6 @@ export default function MeetPage() {
               const started = isMeetingStarted(meeting.scheduledDate);
               const creator = isMeetingCreator(meeting);
 
-              console.log({
-                meetingId: meeting._id,
-                started,
-                creator,
-                currentUserId,
-                createdBy: typeof meeting.classId === 'object' ? meeting.classId.createdBy : undefined,
-                scheduledDate: meeting.scheduledDate,
-              });
-
               return (
                 <div key={meeting._id} className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300">
                   <div className="flex justify-between items-start mb-6">
@@ -132,9 +109,7 @@ export default function MeetPage() {
                       )}
                     </div>
                     <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 font-medium ml-4">
-                      {typeof meeting.classId === 'object'
-                        ? meeting.classId.className
-                        : ''}
+                      {typeof meeting.classId === 'object' ? meeting.classId.className : ''}
                     </span>
                   </div>
 
@@ -225,15 +200,13 @@ export default function MeetPage() {
                         creator ? (
                           <button
                             className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold text-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-                            onClick={() => router.push(`/meet/lecture/${meeting._id}?role=host`)}
-                          >
+                            onClick={() => router.push(`/meet/lecture/${meeting._id}?role=host`)}>
                             Start Lecture
                           </button>
                         ) : (
                           <button
                             className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-semibold text-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-                            onClick={() => router.push(`/meet/lecture/${meeting._id}?role=participant`)}
-                          >
+                            onClick={() => router.push(`/meet/lecture/${meeting._id}?role=participant`)}>
                             Join Lecture
                           </button>
                         )
