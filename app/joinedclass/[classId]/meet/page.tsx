@@ -4,7 +4,17 @@ import { useEffect, useState } from 'react';
 import { fetchMeetingsByClass } from '../../../services/meet';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { FaCalendarAlt, FaUsers, FaClock, FaUser, FaLock, FaCheckCircle, FaHourglassHalf } from 'react-icons/fa';
+import { FaLock, FaCheckCircle, FaHourglassHalf, FaUsers, FaCalendarAlt, FaClock, FaUser, FaVideo } from 'react-icons/fa';
+import { useSocket } from '../../../Components/Contexts/SocketContext';
+
+// Utility: Parse a "YYYY-MM-DDTHH:mm" string as IST
+function parseAsIST(dateString: string) {
+  const [datePart, timePart] = dateString.split('T');
+  const [year, month, day] = datePart.split('-').map(Number);
+  const [hour, minute] = timePart.split(':').map(Number);
+  // Create a Date object in IST (local time as IST)
+  return new Date(year, month - 1, day, hour, minute);
+}
 
 interface Meeting {
   _id: string;
@@ -22,11 +32,19 @@ interface Meeting {
 export default function MeetPage() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const [lectureAvailable, setLectureAvailable] = useState<{ [meetingId: string]: boolean }>({});
   const router = useRouter();
+  const socket = useSocket();
 
   const currentUserId =
     typeof window !== 'undefined' ? localStorage.getItem('userId') || '' : '';
+
+  // For showing current IST time
+  const [nowIST, setNowIST] = useState(new Date());
+  useEffect(() => {
+    const interval = setInterval(() => setNowIST(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchMeetings = async () => {
     const classId = localStorage.getItem('currentClassId');
@@ -43,19 +61,32 @@ export default function MeetPage() {
 
   useEffect(() => {
     fetchMeetings();
-    // eslint-disable-next-line
   }, []);
 
-  // Helper to check if meeting is started
+  // Listen for lectureStarted event from backend
+  useEffect(() => {
+    if (!socket?.socket) return;
+    const handler = ({ meetingId }: { meetingId: string }) => {
+      setLectureAvailable((prev) => ({ ...prev, [meetingId]: true }));
+    };
+    socket.socket.on('lectureStarted', handler);
+    return () => {
+      if (socket?.socket) {
+        socket.socket.off('lectureStarted', handler);
+      }
+    };
+  }, [socket]);
+
+  // Helper to check if meeting is started (IST)
   const isMeetingStarted = (scheduledDate: string) => {
-    // Only compare by date (not time)
-    const today = new Date();
-    const meetingDate = new Date(scheduledDate);
+    const now = new Date();
+    const nowIST = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+    const meetingIST = parseAsIST(scheduledDate);
     return (
-      today.getFullYear() > meetingDate.getFullYear() ||
-      (today.getFullYear() === meetingDate.getFullYear() &&
-        (today.getMonth() > meetingDate.getMonth() ||
-          (today.getMonth() === meetingDate.getMonth() && today.getDate() >= meetingDate.getDate())))
+      nowIST.getFullYear() > meetingIST.getFullYear() ||
+      (nowIST.getFullYear() === meetingIST.getFullYear() &&
+        (nowIST.getMonth() > meetingIST.getMonth() ||
+          (nowIST.getMonth() === meetingIST.getMonth() && nowIST.getDate() >= meetingIST.getDate())))
     );
   };
 
@@ -71,17 +102,45 @@ export default function MeetPage() {
     return false;
   };
 
+  // Handler for joining a lecture (emit join_video_call and redirect to MeetScreen)
+  const handleJoinLecture = (meeting: Meeting) => {
+    const meetingId = meeting._id;
+    const classId = typeof meeting.classId === 'object' ? meeting.classId._id : meeting.classId;
+    if (socket?.socket) {
+      socket.socket.emit('join_video_call', { classId, meetingId });
+    }
+    router.push(`/meet/lecture/${meetingId}?role=participant`);
+  };
+
+  // Handler for teacher to start lecture (redirect to MeetScreen as host)
+  const handleStartLecture = (meeting: Meeting) => {
+    router.push(`/meet/lecture/${meeting._id}?role=host`);
+  };
+
   return (
-    <div className="flex p-6">
-      <div className="flex-1">
-        <div className="mb-6 flex items-center justify-between">
+    <div className="flex p-6 bg-gray-50 min-h-screen">
+      <div className="flex-1 max-w-7xl mx-auto">
+        <div className="mb-8 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-gray-800">Schedule Meetings</h1>
-            <p className="text-sm text-gray-500">
-              Manage and join your classroom meetings
-            </p>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">Schedule Meetings</h1>
+            <p className="text-lg text-gray-600">Manage and join your classroom meetings</p>
           </div>
         </div>
+
+        {/* Show current IST time */}
+        <div className="mb-4 text-right text-gray-600 text-sm">
+          Current IST Time: {nowIST.toLocaleString('en-IN', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true,
+            timeZone: 'Asia/Kolkata',
+          })}
+        </div>
+
         <div className="relative h-48 rounded-2xl overflow-hidden shadow mb-6">
           <Image
             src="/Banner.svg"
@@ -103,16 +162,6 @@ export default function MeetPage() {
           <div className="space-y-4">
             {meetings.map((meeting) => {
               const started = isMeetingStarted(meeting.scheduledDate);
-              const creator = isClassCreator(meeting);
-
-              console.log({
-                meetingId: meeting._id,
-                started,
-                creator,
-                currentUserId,
-                createdBy: typeof meeting.classId === 'object' ? meeting.classId.createdBy : undefined,
-                scheduledDate: meeting.scheduledDate,
-              });
 
               return (
                 <div key={meeting._id} className="border border-gray-200 rounded-xl p-6 bg-white shadow-sm hover:shadow-md transition-shadow">
@@ -130,15 +179,14 @@ export default function MeetPage() {
                   </div>
 
                   {/* Meeting details grid */}
-                  <div className="grid grid-cols-2 gap-6 mb-6">
-                    {/* Left column */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     <div className="space-y-3">
                       <div className="flex items-center text-gray-600">
                         <FaCalendarAlt className="w-5 h-5 mr-3" />
                         <div>
-                          <div className="text-xs text-gray-500 uppercase tracking-wide font-medium">Scheduled Date</div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {new Date(meeting.scheduledDate).toLocaleString('en-IN', {
+                          <div className="text-sm font-medium text-gray-500">Scheduled Date</div>
+                          <div className="text-base font-semibold text-gray-800">
+                            {parseAsIST(meeting.scheduledDate).toLocaleString('en-IN', {
                               year: 'numeric',
                               month: 'short',
                               day: 'numeric',
@@ -148,33 +196,33 @@ export default function MeetPage() {
                               timeZone: 'Asia/Kolkata',
                             })}
                           </div>
+                          <div className="text-xs text-gray-400">Raw: {meeting.scheduledDate}</div>
                         </div>
                       </div>
 
                       <div className="flex items-center text-gray-600">
                         <FaUsers className="w-5 h-5 mr-3" />
                         <div>
-                          <div className="text-xs text-gray-500 uppercase tracking-wide font-medium">Max Participants</div>
-                          <div className="text-sm font-medium text-gray-900">{meeting.maxParticipants || 'N/A'}</div>
+                          <div className="text-sm font-medium text-gray-500">Max Participants</div>
+                          <div className="text-base font-semibold text-gray-800">{meeting.maxParticipants || 'Unlimited'}</div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Right column */}
                     <div className="space-y-3">
                       <div className="flex items-center text-gray-600">
                         <FaClock className="w-5 h-5 mr-3" />
                         <div>
-                          <div className="text-xs text-gray-500 uppercase tracking-wide font-medium">Duration</div>
-                          <div className="text-sm font-medium text-gray-900">{meeting.duration} minutes</div>
+                          <div className="text-sm font-medium text-gray-500">Duration</div>
+                          <div className="text-base font-semibold text-gray-800">{meeting.duration} minutes</div>
                         </div>
                       </div>
 
                       <div className="flex items-center text-gray-600">
                         <FaUser className="w-5 h-5 mr-3" />
                         <div>
-                          <div className="text-xs text-gray-500 uppercase tracking-wide font-medium">Scheduled by</div>
-                          <div className="text-sm font-medium text-gray-900">{meeting.scheduledBy.name}</div>
+                          <div className="text-sm font-medium text-gray-500">Scheduled by</div>
+                          <div className="text-base font-semibold text-gray-800">{meeting.scheduledBy.name}</div>
                         </div>
                       </div>
                     </div>
@@ -189,7 +237,7 @@ export default function MeetPage() {
                         </span>
                       )}
 
-                      {started ? (
+                      {started && lectureAvailable[meeting._id] ? (
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
                           <FaCheckCircle className="w-4 h-4 mr-1" /> Meeting Available
                         </span>
@@ -202,18 +250,18 @@ export default function MeetPage() {
 
                     {/* Action button */}
                     <div>
-                      {started ? (
-                        creator ? (
+                      {started && lectureAvailable[meeting._id] ? (
+                        isClassCreator(meeting) ? (
                           <button
-                            className="inline-flex items-center px-6 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
-                            onClick={() => router.push(`/meet/lecture/${meeting._id}?role=host`)}
+                            className="inline-flex items-center px-6 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700"
+                            onClick={() => handleStartLecture(meeting)}
                           >
-                            Start Lecture
+                            <FaVideo className="mr-2" /> Start Lecture
                           </button>
                         ) : (
                           <button
-                            className="inline-flex items-center px-6 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200"
-                            onClick={() => router.push(`/meet/lecture/${meeting._id}?role=participant`)}
+                            className="inline-flex items-center px-6 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700"
+                            onClick={() => handleJoinLecture(meeting)}
                           >
                             Join Lecture
                           </button>

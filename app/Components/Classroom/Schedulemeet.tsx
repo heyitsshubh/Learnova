@@ -26,6 +26,16 @@ const ScheduleMeetModal: React.FC<ScheduleMeetModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+      console.log('Submitting meeting:', {
+    title,
+    dateTime,
+    description,
+    duration,
+    maxParticipants,
+    isPrivate,
+    classId,
+  });
+
     if (!title || !dateTime || !duration) {
       toast.error('Please fill all required fields.');
       return;
