@@ -46,12 +46,11 @@ export default function MeetPage() {
   const socket = useSocket();
 
   const currentUserId = typeof window !== 'undefined' ? localStorage.getItem('userId') || '' : '';
-  const userRole = typeof window !== 'undefined' ? localStorage.getItem('userRole') || '' : '';
 
   const fetchMeetings = async () => {
     const classId = localStorage.getItem('currentClassId');
     if (!classId) return setLoading(false);
-    
+
     try {
       const res = await fetchMeetingsByClass(classId);
       setMeetings(res.meetings || []);
@@ -95,7 +94,7 @@ export default function MeetPage() {
     const now = new Date();
     const nowIST = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
     const meetingIST = parseAsIST(scheduledDate);
-    
+
     return (
       nowIST.getFullYear() > meetingIST.getFullYear() ||
       (nowIST.getFullYear() === meetingIST.getFullYear() &&
@@ -113,10 +112,6 @@ export default function MeetPage() {
     );
   };
 
-  const isTeacher = () => {
-    return userRole?.toLowerCase() === 'teacher';
-  };
-
   const handleStartLecture = async (meeting: Meeting) => {
     const meetingId = meeting._id;
     const classId = typeof meeting.classId === 'object' ? meeting.classId._id : meeting.classId;
@@ -126,10 +121,10 @@ export default function MeetPage() {
     try {
       // Start the meeting via API
       await startMeeting(meetingId);
-      
+
       // Emit meeting started event via socket
       if (socket?.socket) {
-        socket.socket.emit('meeting_started', { 
+        socket.socket.emit('meeting_started', {
           meetingId,
           title: meeting.title,
           meetingLink: `/meet/lecture/${meetingId}`,
@@ -138,19 +133,13 @@ export default function MeetPage() {
       }
 
       // Redirect to meeting screen as host
-      router.push(`/meet/lecture/${meetingId}?role=host`);
+      router.push(`classroom/${classId}/meet/lecture/${meetingId}`);
     } catch (error) {
       console.error('Error starting meeting:', error);
       alert('Failed to start the meeting. Please try again.');
     } finally {
       setStartingMeeting(null);
     }
-  };
-
-  const handleJoinLecture = (meeting: Meeting) => {
-    const meetingId = meeting._id;
-    // Redirect to meeting screen as participant
-    router.push(`/meet/lecture/${meetingId}?role=participant`);
   };
 
   return (
@@ -187,7 +176,7 @@ export default function MeetPage() {
             {meetings.map((meeting) => {
               const started = isMeetingStarted(meeting.scheduledDate);
               const isCreator = isMeetingCreator(meeting);
-              const canStart = isTeacher() && (isCreator || userRole?.toLowerCase() === 'teacher');
+              const canStart = isCreator; // Only the creator can start
               const isStartingThis = startingMeeting === meeting._id;
 
               return (
@@ -283,44 +272,27 @@ export default function MeetPage() {
                     </div>
 
                     <div>
-                      {started ? (
-                        <div className="flex space-x-3">
-                          {canStart && (
-                            <button
-                              className={`px-8 py-3 rounded-lg font-semibold text-lg flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 ${
-                                isStartingThis
-                                  ? 'bg-gray-400 cursor-not-allowed text-white'
-                                  : 'bg-blue-600 hover:bg-blue-700 text-white'
-                              }`}
-                              onClick={() => handleStartLecture(meeting)}
-                              disabled={isStartingThis}
-                            >
-                              {isStartingThis ? (
-                                <>
-                                  <FaSpinner className="animate-spin mr-2" /> Starting...
-                                </>
-                              ) : (
-                                <>
-                                  <FaVideo className="mr-2" /> Start Lecture
-                                </>
-                              )}
-                            </button>
+                      {started && canStart ? (
+                        <button
+                          className={`px-8 py-3 rounded-lg font-semibold text-lg flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 ${
+                            isStartingThis
+                              ? 'bg-gray-400 cursor-not-allowed text-white'
+                              : 'bg-blue-600 hover:bg-blue-700 text-white'
+                          }`}
+                          onClick={() => handleStartLecture(meeting)}
+                          disabled={isStartingThis}
+                        >
+                          {isStartingThis ? (
+                            <>
+                              <FaSpinner className="animate-spin mr-2" /> Starting...
+                            </>
+                          ) : (
+                            <>
+                              <FaVideo className="mr-2" /> Start Lecture
+                            </>
                           )}
-                          
-                          {!canStart && (
-                            <button
-                              className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-semibold text-lg flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-                              onClick={() => handleJoinLecture(meeting)}
-                            >
-                              <FaVideo className="mr-2" /> Join Lecture
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400 font-medium text-lg">
-                          Meeting not started yet
-                        </span>
-                      )}
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 </div>

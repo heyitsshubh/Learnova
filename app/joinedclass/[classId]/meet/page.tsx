@@ -144,7 +144,7 @@ export default function MeetPage() {
     }
     
     // Redirect to meeting screen as participant
-    router.push(`/meet/lecture/${meetingId}?role=participant`);
+    router.push(`classroom/${classId}/meet/lecture/${meetingId}`);
   };
 
   return (
