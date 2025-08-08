@@ -76,6 +76,7 @@ export default function MeetPage() {
       // You could show a notification here
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handleMeetingNotification = (data: any) => {
       console.log('Meeting notification:', data);
     };

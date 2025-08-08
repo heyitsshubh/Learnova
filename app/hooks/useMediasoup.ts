@@ -86,7 +86,7 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
           }, 10000);
         } catch (error) {
           console.error('Error connecting send transport:', error);
-          errback(error);
+          errback(error as Error);
         }
       });
 
@@ -108,7 +108,7 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
           }, 10000);
         } catch (error) {
           console.error('Error producing:', error);
-          errback(error);
+          errback(error as Error);
         }
       });
 
@@ -150,7 +150,7 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
           }, 10000);
         } catch (error) {
           console.error('Error connecting receive transport:', error);
-          errback(error);
+          errback(error as Error);
         }
       });
 
@@ -210,16 +210,8 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
     try {
       if (!recvTransportRef.current || !deviceRef.current) return;
 
-      // Check if we can consume this producer
-      const canConsume = deviceRef.current.canConsume({
-        producerId,
-        rtpCapabilities: deviceRef.current.rtpCapabilities
-      });
-
-      if (!canConsume) {
-        console.warn('Cannot consume producer:', producerId);
-        return;
-      }
+      // Assume server only notifies about consumable producers
+      // (mediasoup-client Device does not have canConsume method)
 
       socket?.emit('start_consuming', { producerId });
 

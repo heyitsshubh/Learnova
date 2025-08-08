@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -37,8 +38,6 @@ export default function MeetPage() {
   const router = useRouter();
   const socket = useSocket();
 
-  const currentUserId = typeof window !== 'undefined' ? localStorage.getItem('userId') || '' : '';
-  const userRole = typeof window !== 'undefined' ? localStorage.getItem('userRole') || '' : '';
 
   // Update current time every second
   useEffect(() => {
@@ -347,7 +346,7 @@ export default function MeetPage() {
                         {canJoin ? (
                           <span className="text-green-600 font-medium"> Ready to join when teacher starts</span>
                         ) : timeStarted ? (
-                          <span className="text-yellow-600 font-medium">Teacher hasn't started the meeting yet</span>
+                          <span className="text-yellow-600 font-medium">Teacher hasn&apos;t started the meeting yet</span>
                         ) : (
                           <span className="text-gray-500">Meeting will be available at the scheduled time</span>
                         )}
