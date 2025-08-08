@@ -83,7 +83,7 @@ export default function MeetPage() {
       }
     };
 
-    const handleMeetingNotification = (data: any) => {
+    const handleMeetingNotification = (data: unknown) => {
       console.log('📋 Meeting notification:', data);
     };
 
@@ -346,7 +346,7 @@ export default function MeetPage() {
                         {canJoin ? (
                           <span className="text-green-600 font-medium"> Ready to join when teacher starts</span>
                         ) : timeStarted ? (
-                          <span className="text-yellow-600 font-medium">Teacher hasn&apos;t started the meeting yet</span>
+                          <span className="text-yellow-600 font-medium">Teacher hasn&#39;t  started the meeting yet</span>
                         ) : (
                           <span className="text-gray-500">Meeting will be available at the scheduled time</span>
                         )}
