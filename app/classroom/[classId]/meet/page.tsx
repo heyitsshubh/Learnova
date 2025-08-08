@@ -133,7 +133,7 @@ export default function MeetPage() {
       }
 
       // Redirect to meeting screen as host
-      router.push(`classroom/${classId}/meet/lecture/${meetingId}`);
+      router.push(`/classroom/${classId}/meet/lecture/${meetingId}`);
     } catch (error) {
       console.error('Error starting meeting:', error);
       alert('Failed to start the meeting. Please try again.');

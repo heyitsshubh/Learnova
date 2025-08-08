@@ -145,7 +145,7 @@ export default function MeetPage() {
     }
     
     // Redirect to meeting screen as participant
-    router.push(`classroom/${classId}/meet/lecture/${meetingId}`);
+    router.push(`/classroom/${classId}/meet/lecture/${meetingId}`);
   };
 
   return (
@@ -155,25 +155,6 @@ export default function MeetPage() {
           <div>
             <h1 className="text-3xl font-bold text-gray-800 mb-2">My Meetings</h1>
             <p className="text-lg text-gray-600">Join your scheduled classroom meetings</p>
-          </div>
-        </div>
-
-        {/* Current time display */}
-        <div className="mb-6 text-right">
-          <div className="inline-flex items-center px-4 py-2 bg-white rounded-lg shadow-sm border">
-            <span className="text-sm text-gray-600 mr-2">Current Time (IST):</span>
-            <span className="text-sm font-semibold text-gray-800">
-              {nowIST.toLocaleString('en-IN', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: true,
-                timeZone: 'Asia/Kolkata',
-              })}
-            </span>
           </div>
         </div>
 
