@@ -47,6 +47,7 @@ export default function MeetPage() {
     return () => clearInterval(interval);
   }, []);
 
+  
   const fetchMeetings = async () => {
     const classId = localStorage.getItem('currentClassId');
     if (!classId) return setLoading(false);
