@@ -12,6 +12,7 @@ import Announcement from '../../Components/Classroom/Announcement';
 import { getAssignments } from '../../services/assignment';
 import { deleteAssignment } from '../../services/assignment';
 import { useSocket } from '../../Components/Contexts/SocketContext';
+import ScheduleMeetModal from '../../Components/Classroom/Schedulemeet';
 
 interface Assignment {
   _id: string;
@@ -152,11 +153,11 @@ const handleBellClick = () => {
                 // Navigate to the meet page for this class
                 // If you want to pass classId as a param, use `/meet?classId=${classid}`
                 // If not, just `/meet`
-                router.push('/meet');
+                  router.push(`/classroom/${classid}/meet`);
               }}
             >
               <Plus className="w-5 h-5" />
-              <span>Schedule Meet</span>
+              <span>Scheduled Meets</span>
             </button>
             <button
               className="p-2 rounded-full hover:bg-gray-200 transition-colors relative"
@@ -261,8 +262,8 @@ const handleBellClick = () => {
       )}
       {scheduleMeetOpen && (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-opacity-40">
-    {/* <div className="bg-white rounded-lg shadow-lg p-8">
-      <ScheduleMeet
+    <div className="bg-white rounded-lg shadow-lg p-8">
+      <ScheduleMeetModal
         open={scheduleMeetOpen}
         onClose={() => setScheduleMeetOpen(false)}
         classId={classid as string}
@@ -271,7 +272,7 @@ const handleBellClick = () => {
           setScheduleMeetOpen(false);
         }}
       />
-    </div> */}
+    </div>
   </div>
 )}
     </div>
