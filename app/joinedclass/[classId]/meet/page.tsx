@@ -32,27 +32,31 @@ interface Meeting {
 export default function MeetPage() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
-  const [lectureAvailable, setLectureAvailable] = useState<{ [meetingId: string]: boolean }>({});
+  const [lectureStarted, setLectureStarted] = useState<{ [meetingId: string]: boolean }>({});
+  const [nowIST, setNowIST] = useState(new Date());
   const router = useRouter();
   const socket = useSocket();
 
-  const currentUserId =
-    typeof window !== 'undefined' ? localStorage.getItem('userId') || '' : '';
+  const currentUserId = typeof window !== 'undefined' ? localStorage.getItem('userId') || '' : '';
+  const userRole = typeof window !== 'undefined' ? localStorage.getItem('userRole') || '' : '';
 
-  // For showing current IST time
-  const [nowIST, setNowIST] = useState(new Date());
+  // Update current time every second
   useEffect(() => {
-    const interval = setInterval(() => setNowIST(new Date()), 1000);
+    const interval = setInterval(() => {
+      setNowIST(new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })));
+    }, 1000);
     return () => clearInterval(interval);
   }, []);
 
   const fetchMeetings = async () => {
     const classId = localStorage.getItem('currentClassId');
     if (!classId) return setLoading(false);
+    
     try {
       const res = await fetchMeetingsByClass(classId);
       setMeetings(res.meetings || []);
-    } catch {
+    } catch (error) {
+      console.error('Error fetching meetings:', error);
       setMeetings([]);
     } finally {
       setLoading(false);
@@ -63,58 +67,85 @@ export default function MeetPage() {
     fetchMeetings();
   }, []);
 
-  // Listen for lectureStarted event from backend
+  // Listen for meeting started event from backend
   useEffect(() => {
     if (!socket?.socket) return;
-    const handler = ({ meetingId }: { meetingId: string }) => {
-      setLectureAvailable((prev) => ({ ...prev, [meetingId]: true }));
-    };
-    socket.socket.on('lectureStarted', handler);
-    return () => {
-      if (socket?.socket) {
-        socket.socket.off('lectureStarted', handler);
+
+    const handleMeetingStarted = (data: { meetingId: string; title: string; meetingLink: string }) => {
+      console.log('📢 Meeting started:', data);
+      setLectureStarted((prev) => ({ ...prev, [data.meetingId]: true }));
+      
+      // Show notification to user
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Meeting Started!', {
+          body: `${data.title} has started. Click to join!`,
+          icon: '/favicon.ico',
+        });
       }
+    };
+
+    const handleMeetingNotification = (data: any) => {
+      console.log('📋 Meeting notification:', data);
+    };
+
+    socket.socket.on('meeting_started', handleMeetingStarted);
+    socket.socket.on('meeting_notification', handleMeetingNotification);
+
+    return () => {
+      socket.socket?.off('meeting_started', handleMeetingStarted);
+      socket.socket?.off('meeting_notification', handleMeetingNotification);
     };
   }, [socket]);
 
-  // Helper to check if meeting is started (IST)
-  const isMeetingStarted = (scheduledDate: string) => {
-    const now = new Date();
-    const nowIST = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
-    const meetingIST = parseAsIST(scheduledDate);
-    return (
-      nowIST.getFullYear() > meetingIST.getFullYear() ||
-      (nowIST.getFullYear() === meetingIST.getFullYear() &&
-        (nowIST.getMonth() > meetingIST.getMonth() ||
-          (nowIST.getMonth() === meetingIST.getMonth() && nowIST.getDate() >= meetingIST.getDate())))
-    );
-  };
-
-  // Helper to check if user is the class creator
-  const isClassCreator = (meeting: Meeting) => {
-    if (
-      typeof meeting.classId === 'object' &&
-      meeting.classId.createdBy &&
-      currentUserId
-    ) {
-      return String(meeting.classId.createdBy).trim() === String(currentUserId).trim();
+  // Request notification permission on mount
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
     }
-    return false;
+  }, []);
+
+  // Helper to check if meeting time has arrived (IST)
+  const isMeetingStarted = (scheduledDate: string) => {
+    const meetingIST = parseAsIST(scheduledDate);
+    return nowIST >= meetingIST;
   };
 
-  // Handler for joining a lecture (emit join_video_call and redirect to MeetScreen)
+  // Helper to check if user can join (meeting started by teacher)
+  const canJoinMeeting = (meeting: Meeting) => {
+    const timeStarted = isMeetingStarted(meeting.scheduledDate);
+    const teacherStarted = lectureStarted[meeting._id];
+    return timeStarted && teacherStarted;
+  };
+
+  // Get time until meeting starts
+  const getTimeUntilMeeting = (scheduledDate: string) => {
+    const meetingIST = parseAsIST(scheduledDate);
+    const diff = meetingIST.getTime() - nowIST.getTime();
+    
+    if (diff <= 0) return null;
+    
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    } else {
+      return `${minutes}m`;
+    }
+  };
+
+  // Handler for joining a lecture
   const handleJoinLecture = (meeting: Meeting) => {
     const meetingId = meeting._id;
     const classId = typeof meeting.classId === 'object' ? meeting.classId._id : meeting.classId;
+    
+    // Emit join event if socket is available
     if (socket?.socket) {
       socket.socket.emit('join_video_call', { classId, meetingId });
     }
+    
+    // Redirect to meeting screen as participant
     router.push(`/meet/lecture/${meetingId}?role=participant`);
-  };
-
-  // Handler for teacher to start lecture (redirect to MeetScreen as host)
-  const handleStartLecture = (meeting: Meeting) => {
-    router.push(`/meet/lecture/${meeting._id}?role=host`);
   };
 
   return (
@@ -122,23 +153,28 @@ export default function MeetPage() {
       <div className="flex-1 max-w-7xl mx-auto">
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Schedule Meetings</h1>
-            <p className="text-lg text-gray-600">Manage and join your classroom meetings</p>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">My Meetings</h1>
+            <p className="text-lg text-gray-600">Join your scheduled classroom meetings</p>
           </div>
         </div>
 
-        {/* Show current IST time */}
-        <div className="mb-4 text-right text-gray-600 text-sm">
-          Current IST Time: {nowIST.toLocaleString('en-IN', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: true,
-            timeZone: 'Asia/Kolkata',
-          })}
+        {/* Current time display */}
+        <div className="mb-6 text-right">
+          <div className="inline-flex items-center px-4 py-2 bg-white rounded-lg shadow-sm border">
+            <span className="text-sm text-gray-600 mr-2">Current Time (IST):</span>
+            <span className="text-sm font-semibold text-gray-800">
+              {nowIST.toLocaleString('en-IN', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true,
+                timeZone: 'Asia/Kolkata',
+              })}
+            </span>
+          </div>
         </div>
 
         <div className="relative h-48 rounded-2xl overflow-hidden shadow mb-6">
@@ -150,18 +186,29 @@ export default function MeetPage() {
             priority
           />
         </div>
+
         {loading ? (
-          <div>Loading...</div>
+          <div className="flex items-center justify-center py-16">
+            <div className="flex flex-col items-center space-y-4">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600"></div>
+              <div className="text-gray-600 text-lg">Loading meetings...</div>
+            </div>
+          </div>
         ) : meetings.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12">
-            <div className="w-full flex justify-center"></div>
+            <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+              <FaCalendarAlt className="w-8 h-8 text-gray-400" />
+            </div>
             <div className="text-gray-500 text-lg mb-2">No meetings scheduled.</div>
             <div className="text-gray-400 text-sm">Scheduled meetings will appear here.</div>
           </div>
         ) : (
           <div className="space-y-4">
             {meetings.map((meeting) => {
-              const started = isMeetingStarted(meeting.scheduledDate);
+              const timeStarted = isMeetingStarted(meeting.scheduledDate);
+              const teacherStarted = lectureStarted[meeting._id];
+              const canJoin = canJoinMeeting(meeting);
+              const timeUntil = getTimeUntilMeeting(meeting.scheduledDate);
 
               return (
                 <div key={meeting._id} className="border border-gray-200 rounded-xl p-6 bg-white shadow-sm hover:shadow-md transition-shadow">
@@ -169,12 +216,19 @@ export default function MeetPage() {
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex-1">
                       <h2 className="text-xl font-semibold text-gray-900 mb-1">{meeting.title}</h2>
-                      <p className="text-gray-600 text-sm">{meeting.description}</p>
+                      {meeting.description && (
+                        <p className="text-gray-600 text-sm">{meeting.description}</p>
+                      )}
                     </div>
-                    <div className="ml-4">
+                    <div className="ml-4 flex flex-col space-y-1">
                       <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
                         {typeof meeting.classId === 'object' ? meeting.classId.className : ''}
                       </span>
+                      {teacherStarted && (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+                          Live
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -196,7 +250,11 @@ export default function MeetPage() {
                               timeZone: 'Asia/Kolkata',
                             })}
                           </div>
-                          <div className="text-xs text-gray-400">Raw: {meeting.scheduledDate}</div>
+                          {timeUntil && (
+                            <div className="text-xs text-orange-600 font-medium">
+                              Starts in {timeUntil}
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -237,9 +295,13 @@ export default function MeetPage() {
                         </span>
                       )}
 
-                      {started && lectureAvailable[meeting._id] ? (
+                      {canJoin ? (
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
-                          <FaCheckCircle className="w-4 h-4 mr-1" /> Meeting Available
+                          <FaCheckCircle className="w-4 h-4 mr-1" /> Ready to Join
+                        </span>
+                      ) : timeStarted ? (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-50 text-yellow-700 border border-yellow-200">
+                          <FaHourglassHalf className="w-4 h-4 mr-1" /> Waiting for Teacher
                         </span>
                       ) : (
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200">
@@ -250,24 +312,50 @@ export default function MeetPage() {
 
                     {/* Action button */}
                     <div>
-                      {started && lectureAvailable[meeting._id] ? (
-                        isClassCreator(meeting) ? (
-                          <button
-                            className="inline-flex items-center px-6 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700"
-                            onClick={() => handleStartLecture(meeting)}
-                          >
-                            <FaVideo className="mr-2" /> Start Lecture
-                          </button>
-                        ) : (
-                          <button
-                            className="inline-flex items-center px-6 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700"
-                            onClick={() => handleJoinLecture(meeting)}
-                          >
-                            Join Lecture
-                          </button>
-                        )
+                      {canJoin ? (
+                        <button
+                          className="inline-flex items-center px-6 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200 shadow-md hover:shadow-lg"
+                          onClick={() => handleJoinLecture(meeting)}
+                        >
+                          <FaVideo className="w-4 h-4 mr-2" />
+                          Join Meeting
+                        </button>
+                      ) : timeStarted ? (
+                        <button
+                          className="inline-flex items-center px-6 py-2.5 border border-gray-300 text-sm font-medium rounded-lg text-gray-500 bg-gray-50 cursor-not-allowed"
+                          disabled
+                        >
+                          <FaHourglassHalf className="w-4 h-4 mr-2" />
+                          Waiting for Teacher
+                        </button>
                       ) : (
-                        <span className="text-sm text-gray-400 italic">Meeting not started yet</span>
+                        <button
+                          className="inline-flex items-center px-6 py-2.5 border border-gray-300 text-sm font-medium rounded-lg text-gray-500 bg-gray-50 cursor-not-allowed"
+                          disabled
+                        >
+                          <FaClock className="w-4 h-4 mr-2" />
+                          Not Started
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Additional info for students */}
+                  <div className="pt-4 border-t border-gray-100">
+                    <div className="flex items-center justify-between text-sm text-gray-500">
+                      <span>
+                        {canJoin ? (
+                          <span className="text-green-600 font-medium"> Ready to join when teacher starts</span>
+                        ) : timeStarted ? (
+                          <span className="text-yellow-600 font-medium">Teacher hasn't started the meeting yet</span>
+                        ) : (
+                          <span className="text-gray-500">Meeting will be available at the scheduled time</span>
+                        )}
+                      </span>
+                      {timeUntil && (
+                        <span className="text-orange-600 font-medium">
+                          Starts in {timeUntil}
+                        </span>
                       )}
                     </div>
                   </div>
