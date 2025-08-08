@@ -164,14 +164,6 @@ const getFileUrl = (attachment: Attachment) => {
               </p>
             </div>
           </div>
-             <div className="flex justify-end mb-4">
-          <button
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow transition"
-            onClick={() => router.push(`/joinedclass/${classId}/meet`)}
-          >
-            <span>Scheduled Meets</span>
-          </button>
-        </div>
           <div className="flex items-center gap-4">
             <button className="p-2 rounded-full hover:bg-gray-200 transition-colors">
               <FaBell className="text-xl text-gray-400" />

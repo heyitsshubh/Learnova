@@ -51,21 +51,31 @@ export default function MeetPage() {
 
 
   // Helper to check if meeting is started
-  const isMeetingStarted = (scheduledDate: string) => {
-    return new Date() >= new Date(scheduledDate);
-  };
-
+ const isMeetingStarted = (scheduledDate: string) => {
+  const today = new Date();
+  const meetingDate = new Date(scheduledDate);
+  // Compare only year, month, and date
+  return (
+    today.getFullYear() > meetingDate.getFullYear() ||
+    (today.getFullYear() === meetingDate.getFullYear() &&
+      (today.getMonth() > meetingDate.getMonth() ||
+        (today.getMonth() === meetingDate.getMonth() &&
+          today.getDate() >= meetingDate.getDate())))
+  );
+};
   // Helper to check if user is the class creator
-  const isClassCreator = (meeting: Meeting) => {
-    if (
-      typeof meeting.classId === 'object' &&
-      meeting.classId.createdBy &&
-      currentUserId
-    ) {
-      return String(meeting.classId.createdBy).trim() === String(currentUserId).trim();
-    }
-    return false;
-  };
+// Replace isClassCreator with:
+const isMeetingCreator = (meeting: Meeting) => {
+  return (
+    meeting.scheduledBy &&
+    meeting.scheduledBy._id &&
+    currentUserId &&
+    String(meeting.scheduledBy._id).trim() === String(currentUserId).trim()
+  );
+};
+
+// In your map:
+
 
   return (
     <div className="flex p-6">
@@ -99,7 +109,7 @@ export default function MeetPage() {
           <div className="space-y-4">
             {meetings.map((meeting) => {
               const started = isMeetingStarted(meeting.scheduledDate);
-              const creator = isClassCreator(meeting);
+              const creator = isMeetingCreator(meeting);
 
                 console.log({
     meetingId: meeting._id,
@@ -124,7 +134,7 @@ export default function MeetPage() {
                     {meeting.description}
                   </div>
                   <div className="text-xs text-gray-500 mb-1">
-                    Date:{' '}
+                    {' '}
                     {new Date(meeting.scheduledDate).toLocaleString('en-IN', {
                       year: 'numeric',
                       month: 'short',

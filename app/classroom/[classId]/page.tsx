@@ -156,7 +156,6 @@ const handleBellClick = () => {
                   router.push(`/classroom/${classid}/meet`);
               }}
             >
-              <Plus className="w-5 h-5" />
               <span>Scheduled Meets</span>
             </button>
             <button

@@ -71,6 +71,14 @@ export default function JoinedClass({ classData }: { classData: ClassData }) {
             </p>
           </div>
           <div className="flex items-center gap-4 ml-auto">
+                  <div className="flex justify-end mb-2">
+          <button
+            className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg shadow transition"
+            onClick={() => router.push(`/joinedclass/${classData._id}/meet`)}
+          >
+            <span>Scheduled Meets</span>
+          </button>
+        </div>
             <button className="p-2 rounded-full hover:bg-gray-200 transition-colors">
               <FaBell className="text-xl text-gray-400" />
             </button>
@@ -79,6 +87,7 @@ export default function JoinedClass({ classData }: { classData: ClassData }) {
             </button>
           </div>
         </div>
+        
 
         {/* Banner */}
         <div className="relative h-48 rounded-2xl overflow-hidden shadow mb-6">
