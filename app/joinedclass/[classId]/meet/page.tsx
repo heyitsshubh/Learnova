@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { fetchMeetingsByClass } from '../../../services/meet';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { FaCalendarAlt, FaUsers, FaClock, FaUser, FaLock, FaCheckCircle, FaHourglassHalf } from 'react-icons/fa';
 
 interface Meeting {
   _id: string;
@@ -47,7 +48,15 @@ export default function MeetPage() {
 
   // Helper to check if meeting is started
   const isMeetingStarted = (scheduledDate: string) => {
-    return new Date() >= new Date(scheduledDate);
+    // Only compare by date (not time)
+    const today = new Date();
+    const meetingDate = new Date(scheduledDate);
+    return (
+      today.getFullYear() > meetingDate.getFullYear() ||
+      (today.getFullYear() === meetingDate.getFullYear() &&
+        (today.getMonth() > meetingDate.getMonth() ||
+          (today.getMonth() === meetingDate.getMonth() && today.getDate() >= meetingDate.getDate())))
+    );
   };
 
   // Helper to check if user is the class creator
@@ -125,9 +134,7 @@ export default function MeetPage() {
                     {/* Left column */}
                     <div className="space-y-3">
                       <div className="flex items-center text-gray-600">
-                        <div className="w-5 h-5 mr-3 flex items-center justify-center">
-                          📅
-                        </div>
+                        <FaCalendarAlt className="w-5 h-5 mr-3" />
                         <div>
                           <div className="text-xs text-gray-500 uppercase tracking-wide font-medium">Scheduled Date</div>
                           <div className="text-sm font-medium text-gray-900">
@@ -145,9 +152,7 @@ export default function MeetPage() {
                       </div>
 
                       <div className="flex items-center text-gray-600">
-                        <div className="w-5 h-5 mr-3 flex items-center justify-center">
-                          👥
-                        </div>
+                        <FaUsers className="w-5 h-5 mr-3" />
                         <div>
                           <div className="text-xs text-gray-500 uppercase tracking-wide font-medium">Max Participants</div>
                           <div className="text-sm font-medium text-gray-900">{meeting.maxParticipants || 'N/A'}</div>
@@ -158,9 +163,7 @@ export default function MeetPage() {
                     {/* Right column */}
                     <div className="space-y-3">
                       <div className="flex items-center text-gray-600">
-                        <div className="w-5 h-5 mr-3 flex items-center justify-center">
-                          ⏱️
-                        </div>
+                        <FaClock className="w-5 h-5 mr-3" />
                         <div>
                           <div className="text-xs text-gray-500 uppercase tracking-wide font-medium">Duration</div>
                           <div className="text-sm font-medium text-gray-900">{meeting.duration} minutes</div>
@@ -168,9 +171,7 @@ export default function MeetPage() {
                       </div>
 
                       <div className="flex items-center text-gray-600">
-                        <div className="w-5 h-5 mr-3 flex items-center justify-center">
-                          👤
-                        </div>
+                        <FaUser className="w-5 h-5 mr-3" />
                         <div>
                           <div className="text-xs text-gray-500 uppercase tracking-wide font-medium">Scheduled by</div>
                           <div className="text-sm font-medium text-gray-900">{meeting.scheduledBy.name}</div>
@@ -184,17 +185,17 @@ export default function MeetPage() {
                     <div className="flex items-center space-x-3">
                       {meeting.isPrivate && (
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
-                          🔒 Private Meeting
+                          <FaLock className="w-4 h-4 mr-1" /> Private Meeting
                         </span>
                       )}
-                      
+
                       {started ? (
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
-                          🟢 Meeting Available
+                          <FaCheckCircle className="w-4 h-4 mr-1" /> Meeting Available
                         </span>
                       ) : (
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200">
-                          ⏳ Scheduled
+                          <FaHourglassHalf className="w-4 h-4 mr-1" /> Scheduled
                         </span>
                       )}
                     </div>
