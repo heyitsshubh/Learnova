@@ -3,61 +3,182 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import * as mediasoupClient from "mediasoup-client";
 import { useSocket } from "../Components/Contexts/SocketContext";
 
-interface Peer {
+// Connection State Enum
+export enum ConnectionState {
+  IDLE = 'idle',
+  INITIALIZING = 'initializing',
+  CONNECTING = 'connecting',
+  CONNECTED = 'connected',
+  RECONNECTING = 'reconnecting',
+  FAILED = 'failed',
+  DISCONNECTED = 'disconnected'
+}
+
+// Error Types for better categorization
+export interface MediasoupError {
+  type: 'DEVICE_INIT' | 'TRANSPORT' | 'PRODUCER' | 'CONSUMER' | 'PERMISSION' | 'NETWORK';
+  message: string;
+  retry?: boolean;
+  originalError?: any;
+}
+
+export interface Peer {
   id: string;
   name?: string;
   stream: MediaStream;
   consumers: Map<string, mediasoupClient.types.Consumer>;
 }
 
-interface UseMediasoupReturn {
+export interface UseMediasoupReturn {
   startLocalStream: () => Promise<MediaStream>;
   joinVideoCall: () => void;
   leaveVideoCall: () => void;
+  toggleVideo: () => void;
+  toggleAudio: () => void;
   peers: Peer[];
   localStreamRef: React.MutableRefObject<MediaStream | null>;
   isVideoCallReady: boolean;
   isConnecting: boolean;
-  error: string | null;
+  connectionState: ConnectionState;
+  error: MediasoupError | null;
+  retryConnection: () => void;
+  clearError: () => void;
+  isVideoEnabled: boolean;
+  isAudioEnabled: boolean;
 }
+
+// Retry configuration
+interface RetryConfig {
+  maxRetries: number;
+  baseDelay: number; // ms
+  maxDelay: number; // ms
+  multiplier: number;
+}
+
+const DEFAULT_RETRY_CONFIG: RetryConfig = {
+  maxRetries: 3,
+  baseDelay: 1000,
+  maxDelay: 10000,
+  multiplier: 2
+};
 
 export function useMediasoup(classId: string): UseMediasoupReturn {
   const { socket, isConnected } = useSocket();
+  
+  // MediaSoup refs
   const deviceRef = useRef<mediasoupClient.Device | null>(null);
   const sendTransportRef = useRef<mediasoupClient.types.Transport | null>(null);
   const recvTransportRef = useRef<mediasoupClient.types.Transport | null>(null);
   const producersRef = useRef<Map<string, mediasoupClient.types.Producer>>(new Map());
   const consumersRef = useRef<Map<string, mediasoupClient.types.Consumer>>(new Map());
+  
+  // State management
   const [peers, setPeers] = useState<Peer[]>([]);
   const localStreamRef = useRef<MediaStream | null>(null);
-  const [isVideoCallReady, setIsVideoCallReady] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [connectionState, setConnectionState] = useState<ConnectionState>(ConnectionState.IDLE);
+  const [error, setError] = useState<MediasoupError | null>(null);
+  const [isVideoEnabled, setIsVideoEnabled] = useState(true);
+  const [isAudioEnabled, setIsAudioEnabled] = useState(true);
+  
+  // Retry mechanism refs
+  const retryCountRef = useRef<number>(0);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isRetryingRef = useRef<boolean>(false);
+  
+  // Initialization flag
   const isInitializedRef = useRef(false);
+  const rtpCapabilitiesRef = useRef<any>(null);
+
+  // Computed states for backward compatibility
+  const isVideoCallReady = connectionState === ConnectionState.CONNECTED;
+  const isConnecting = [ConnectionState.INITIALIZING, ConnectionState.CONNECTING, ConnectionState.RECONNECTING].includes(connectionState);
+
+  // Helper functions
+  const setErrorWithType = (type: MediasoupError['type'], message: string, retry = false, originalError?: any) => {
+    const newError: MediasoupError = { type, message, retry, originalError };
+    setError(newError);
+    console.error(`[${type}] ${message}`, originalError || '');
+  };
 
   const clearError = () => setError(null);
 
-  // Initialize MediaSoup Device
+  const calculateRetryDelay = (attempt: number): number => {
+    const delay = DEFAULT_RETRY_CONFIG.baseDelay * Math.pow(DEFAULT_RETRY_CONFIG.multiplier, attempt);
+    return Math.min(delay, DEFAULT_RETRY_CONFIG.maxDelay);
+  };
+
+  const canRetry = (errorType: MediasoupError['type']): boolean => {
+    return ['TRANSPORT', 'NETWORK', 'DEVICE_INIT'].includes(errorType);
+  };
+
+  // Retry mechanism
+  const scheduleRetry = useCallback((errorType: MediasoupError['type'], retryFn: () => Promise<void>) => {
+    if (!canRetry(errorType) || retryCountRef.current >= DEFAULT_RETRY_CONFIG.maxRetries) {
+      setConnectionState(ConnectionState.FAILED);
+      return;
+    }
+
+    if (isRetryingRef.current) return;
+
+    const delay = calculateRetryDelay(retryCountRef.current);
+    retryCountRef.current++;
+    isRetryingRef.current = true;
+    
+    console.log(`⏰ Scheduling retry ${retryCountRef.current}/${DEFAULT_RETRY_CONFIG.maxRetries} in ${delay}ms`);
+    setConnectionState(ConnectionState.RECONNECTING);
+
+    retryTimeoutRef.current = setTimeout(async () => {
+      try {
+        await retryFn();
+        retryCountRef.current = 0; // Reset on success
+        isRetryingRef.current = false;
+      } catch (error) {
+        isRetryingRef.current = false;
+        console.error('Retry failed:', error);
+        scheduleRetry(errorType, retryFn); // Schedule next retry
+      }
+    }, delay);
+  }, []);
+
+  // Manual retry function
+  const retryConnection = useCallback(() => {
+    if (connectionState === ConnectionState.FAILED || error) {
+      console.log('🔄 Manual retry triggered');
+      retryCountRef.current = 0;
+      clearError();
+      joinVideoCall();
+    }
+  }, [connectionState, error]);
+
+  // Initialize MediaSoup Device with retry
   const initializeDevice = useCallback(async (rtpCapabilities: any) => {
     try {
+      setConnectionState(ConnectionState.INITIALIZING);
+      
       if (!deviceRef.current) {
         deviceRef.current = new mediasoupClient.Device();
       }
       
       if (!deviceRef.current.loaded) {
         await deviceRef.current.load({ routerRtpCapabilities: rtpCapabilities });
-        console.log('MediaSoup device loaded successfully');
+        console.log('📱 MediaSoup device loaded successfully');
       }
       
       return true;
     } catch (error) {
       console.error('Error loading MediaSoup device:', error);
-      setError('Failed to initialize media device');
+      setErrorWithType('DEVICE_INIT', 'Failed to initialize media device', true, error);
+      
+      // Schedule retry for device initialization
+      scheduleRetry('DEVICE_INIT', async () => {
+        await initializeDevice(rtpCapabilities);
+      });
+      
       return false;
     }
-  }, []);
+  }, [scheduleRetry]);
 
-  // Create Send Transport with proper error handling
+  // Create Send Transport with retry mechanism
   const createSendTransport = useCallback(async (transportParams: any) => {
     try {
       if (!deviceRef.current) throw new Error('Device not initialized');
@@ -66,7 +187,7 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
       
       sendTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
         try {
-          console.log('Send transport connecting...');
+          console.log('🔗 Send transport connecting...');
           
           const connectPromise = new Promise<void>((resolve, reject) => {
             const timeout = setTimeout(() => {
@@ -111,7 +232,7 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
 
       sendTransport.on('produce', async ({ kind, rtpParameters }, callback, errback) => {
         try {
-          console.log(`Producing ${kind}...`);
+          console.log(`📤 Producing ${kind}...`);
           
           const producePromise = new Promise<{ id: string }>((resolve, reject) => {
             const timeout = setTimeout(() => {
@@ -150,22 +271,31 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
       });
 
       sendTransport.on('connectionstatechange', (state) => {
-        console.log('Send transport connection state:', state);
-        if (state === 'failed' || state === 'disconnected') {
-          setError('Connection lost - send transport failed');
+        console.log('📡 Send transport connection state:', state);
+        
+        if (state === 'connected') {
+          clearError();
+        } else if (state === 'failed' || state === 'disconnected') {
+          setErrorWithType('TRANSPORT', 'Send transport connection failed', true);
+          
+          // Schedule retry for transport reconnection
+          scheduleRetry('TRANSPORT', async () => {
+            await createSendTransport(transportParams);
+          });
         }
       });
 
       sendTransportRef.current = sendTransport;
-      console.log('Send transport created successfully');
+      console.log('✅ Send transport created successfully');
       return sendTransport;
     } catch (error) {
       console.error('Error creating send transport:', error);
+      setErrorWithType('TRANSPORT', 'Failed to create send transport', true, error);
       throw error;
     }
-  }, [socket]);
+  }, [socket, scheduleRetry]);
 
-  // Create Receive Transport with proper error handling
+  // Create Receive Transport with retry mechanism
   const createReceiveTransport = useCallback(async (transportParams: any) => {
     try {
       if (!deviceRef.current) throw new Error('Device not initialized');
@@ -174,7 +304,7 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
       
       recvTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
         try {
-          console.log('Receive transport connecting...');
+          console.log('🔗 Receive transport connecting...');
           
           const connectPromise = new Promise<void>((resolve, reject) => {
             const timeout = setTimeout(() => {
@@ -218,22 +348,31 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
       });
 
       recvTransport.on('connectionstatechange', (state) => {
-        console.log('Receive transport connection state:', state);
-        if (state === 'failed' || state === 'disconnected') {
-          setError('Connection lost - receive transport failed');
+        console.log('📡 Receive transport connection state:', state);
+        
+        if (state === 'connected') {
+          clearError();
+        } else if (state === 'failed' || state === 'disconnected') {
+          setErrorWithType('TRANSPORT', 'Receive transport connection failed', true);
+          
+          // Schedule retry for transport reconnection
+          scheduleRetry('TRANSPORT', async () => {
+            await createReceiveTransport(transportParams);
+          });
         }
       });
 
       recvTransportRef.current = recvTransport;
-      console.log('Receive transport created successfully');
+      console.log('✅ Receive transport created successfully');
       return recvTransport;
     } catch (error) {
       console.error('Error creating receive transport:', error);
+      setErrorWithType('TRANSPORT', 'Failed to create receive transport', true, error);
       throw error;
     }
-  }, [socket]);
+  }, [socket, scheduleRetry]);
 
-  // Start Local Media Stream with better constraints
+  // Start Local Media Stream with better error handling
   const startLocalStream = useCallback(async (): Promise<MediaStream> => {
     try {
       // Try high quality first, fallback to lower quality
@@ -273,14 +412,50 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
       }
 
       localStreamRef.current = stream;
-      console.log('Local stream started with tracks:', 
+      
+      // Set initial enabled states based on tracks
+      const videoTrack = stream.getVideoTracks()[0];
+      const audioTrack = stream.getAudioTracks()[0];
+      
+      if (videoTrack) {
+        setIsVideoEnabled(videoTrack.enabled);
+      }
+      if (audioTrack) {
+        setIsAudioEnabled(audioTrack.enabled);
+      }
+      
+      console.log('📹 Local stream started with tracks:', 
         stream.getVideoTracks().length, 'video,', 
         stream.getAudioTracks().length, 'audio');
       return stream;
     } catch (error) {
       console.error('Error starting local stream:', error);
-      setError('Failed to access camera/microphone. Please check permissions.');
+      setErrorWithType('PERMISSION', 'Failed to access camera/microphone. Please check permissions.', false, error);
       throw error;
+    }
+  }, []);
+
+  // Toggle video with MediaSoup integration
+  const toggleVideo = useCallback(() => {
+    if (localStreamRef.current) {
+      const videoTrack = localStreamRef.current.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = !videoTrack.enabled;
+        setIsVideoEnabled(videoTrack.enabled);
+        console.log(`📹 Video ${videoTrack.enabled ? 'enabled' : 'disabled'}`);
+      }
+    }
+  }, []);
+
+  // Toggle audio with MediaSoup integration
+  const toggleAudio = useCallback(() => {
+    if (localStreamRef.current) {
+      const audioTrack = localStreamRef.current.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+        setIsAudioEnabled(audioTrack.enabled);
+        console.log(`🎤 Audio ${audioTrack.enabled ? 'enabled' : 'disabled'}`);
+      }
     }
   }, []);
 
@@ -308,9 +483,10 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
               producersRef.current.delete('video');
             });
 
-            console.log('Video producer created successfully');
+            console.log('✅ Video producer created successfully');
           } catch (error) {
             console.error('Error creating video producer:', error);
+            setErrorWithType('PRODUCER', 'Failed to create video producer', true, error);
           }
         };
         producePromises.push(produceVideo());
@@ -327,9 +503,10 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
               producersRef.current.delete('audio');
             });
 
-            console.log('Audio producer created successfully');
+            console.log('✅ Audio producer created successfully');
           } catch (error) {
             console.error('Error creating audio producer:', error);
+            setErrorWithType('PRODUCER', 'Failed to create audio producer', true, error);
           }
         };
         producePromises.push(produceAudio());
@@ -338,7 +515,7 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
       await Promise.allSettled(producePromises);
     } catch (error) {
       console.error('Error producing media:', error);
-      setError('Failed to share media');
+      setErrorWithType('PRODUCER', 'Failed to share media', true, error);
     }
   }, []);
 
@@ -355,7 +532,7 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
         return;
       }
 
-      console.log(`Starting to consume ${kind} from ${producerName}`);
+      console.log(`📥 Starting to consume ${kind} from ${producerName}`);
 
       const consumePromise = new Promise<void>((resolve, reject) => {
         const timeout = setTimeout(() => {
@@ -424,10 +601,11 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
                 }
               });
 
-              console.log(`Consumer created successfully for ${kind} from ${producerName}`);
+              console.log(`✅ Consumer created successfully for ${kind} from ${producerName}`);
               resolve();
             } catch (error) {
               console.error('Error creating consumer:', error);
+              setErrorWithType('CONSUMER', `Failed to consume ${kind} from ${producerName}`, true, error);
               reject(error);
             }
           }
@@ -438,6 +616,7 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
             clearTimeout(timeout);
             socket?.off('consumer_created', consumerHandler);
             socket?.off('consumer_error', errorHandler);
+            setErrorWithType('CONSUMER', data.error || 'Consumer creation failed', true);
             reject(new Error(data.error || 'Consumer creation failed'));
           }
         };
@@ -451,32 +630,45 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
 
     } catch (error) {
       console.error('Error consuming remote media:', error);
+      setErrorWithType('CONSUMER', `Failed to consume remote media: ${kind}`, true, error);
     }
   }, [socket]);
 
-  // Join Video Call with initialization check
+  // Join Video Call with enhanced state management
   const joinVideoCall = useCallback(() => {
     if (!socket || !isConnected) {
-      setError('Socket not connected');
+      setErrorWithType('NETWORK', 'Socket not connected', true);
       return;
     }
 
-    if (isInitializedRef.current) {
+    if (isInitializedRef.current && connectionState !== ConnectionState.FAILED) {
       console.warn('Video call already initialized');
       return;
     }
 
-    setIsConnecting(true);
+    // Cancel any pending retry
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
+
+    setConnectionState(ConnectionState.CONNECTING);
     clearError();
     isInitializedRef.current = true;
     console.log('🎥 Joining video call for class:', classId);
     
     socket.emit('join_video_call', { classId });
-  }, [socket, isConnected, classId]);
+  }, [socket, isConnected, classId, connectionState]);
 
   // Leave Video Call with proper cleanup
   const leaveVideoCall = useCallback(() => {
     console.log('👋 Leaving video call...');
+    
+    // Cancel any pending retry
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
     
     if (socket) {
       socket.emit('leave_video_call');
@@ -526,12 +718,16 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
 
     // Clear state
     setPeers([]);
-    setIsVideoCallReady(false);
-    setIsConnecting(false);
+    setConnectionState(ConnectionState.IDLE);
+    setIsVideoEnabled(true);
+    setIsAudioEnabled(true);
+    retryCountRef.current = 0;
+    isRetryingRef.current = false;
     isInitializedRef.current = false;
+    rtpCapabilitiesRef.current = null;
     clearError();
 
-    console.log('Video call cleanup completed');
+    console.log('✅ Video call cleanup completed');
   }, [socket]);
 
   // Socket Event Handlers
@@ -541,6 +737,7 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
     // Video call ready - device initialization
     const handleVideoCallReady = async (data: { rtpCapabilities: any }) => {
       console.log('📱 Video call ready, initializing device...');
+      rtpCapabilitiesRef.current = data.rtpCapabilities;
       
       try {
         const success = await initializeDevice(data.rtpCapabilities);
@@ -551,8 +748,7 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
         }
       } catch (error) {
         console.error('Error initializing device:', error);
-        setError('Failed to initialize video call');
-        setIsConnecting(false);
+        setErrorWithType('DEVICE_INIT', 'Failed to initialize video call', true, error);
       }
     };
 
@@ -566,8 +762,8 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
           createReceiveTransport(data.recvTransport)
         ]);
         
-        setIsVideoCallReady(true);
-        setIsConnecting(false);
+        setConnectionState(ConnectionState.CONNECTED);
+        clearError();
         
         // Produce local media after transports are ready
         await produceMedia();
@@ -575,8 +771,7 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
         console.log('✅ Video call setup complete');
       } catch (error) {
         console.error('Error setting up transports:', error);
-        setError('Failed to setup video call transports');
-        setIsConnecting(false);
+        setErrorWithType('TRANSPORT', 'Failed to setup video call transports', true, error);
       }
     };
 
@@ -600,15 +795,13 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
     // Video call left
     const handleVideoCallLeft = () => {
       console.log('📞 Video call left confirmation');
-      setIsVideoCallReady(false);
-      setIsConnecting(false);
+      setConnectionState(ConnectionState.DISCONNECTED);
     };
 
     // Error handling
     const handleError = (error: { message: string; code?: string }) => {
       console.error('🚨 Socket error:', error);
-      setError(error.message || 'An error occurred');
-      setIsConnecting(false);
+      setErrorWithType('NETWORK', error.message || 'An error occurred', true, error);
     };
 
     // Register event handlers
@@ -649,6 +842,8 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
     startLocalStream,
     joinVideoCall,
     leaveVideoCall,
+    toggleVideo,
+    toggleAudio,
     peers,
     localStreamRef,
     isVideoCallReady,
