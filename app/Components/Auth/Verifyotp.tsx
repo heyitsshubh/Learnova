@@ -4,7 +4,8 @@ import Image from 'next/image';
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { verifyOtpp, resendOtp } from '../../services/auth';
-import { setResetToken } from '../../utils/token'; // Import the setResetToken utility
+import { setResetToken } from '../../utils/token';
+import { toast } from 'react-hot-toast'; // <-- Add this import
 
 interface ApiError {
   response?: {
@@ -53,18 +54,19 @@ const VerifyOtp = () => {
       const res = await verifyOtpp({ email, otp: otpValue });
 
       if (res?.resetToken) {
-        // Use the setResetToken utility to store the reset token
         setResetToken(res.resetToken);
       }
 
+      toast.success('OTP verified successfully!');
       router.push('/reset-password');
     } catch (err: unknown) {
       const apiError = err as ApiError;
-      setError(
+      const msg =
         apiError?.response?.data?.message ||
         apiError?.message ||
-        'OTP verification failed'
-      );
+        'OTP verification failed';
+      // setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -78,13 +80,15 @@ const VerifyOtp = () => {
     try {
       await resendOtp({ email });
       setResendMessage('OTP resent successfully!');
+      toast.success('OTP resent successfully!');
     } catch (err: unknown) {
       const apiError = err as ApiError;
-      setError(
+      const msg =
         apiError?.response?.data?.message ||
         apiError?.message ||
-        'Failed to resend OTP'
-      );
+        'Failed to resend OTP';
+      // setError(msg);
+      toast.error(msg);
     } finally {
       setResendLoading(false);
     }
@@ -105,11 +109,11 @@ const VerifyOtp = () => {
         <div className="absolute inset-0 flex flex-col z-10">
           <div className="text-left m-20">
             <h2 className="text-3xl font-bold text-gray-800 mb-4">
-         Reset Password
+              Reset Password
             </h2>
             <p className="text-lg text-black-600">
-            Don&pos;t remember your password? 
- <br />Don&pos;t worry!!!we are here to help you.
+              Don&apos;t remember your password? 
+              <br />Don&apos;t worry!!! we are here to help you.
             </p>
           </div>
         </div>

@@ -6,9 +6,8 @@ import { useState } from 'react';
 import { signup } from '../../services/auth';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
-import { auth } from '../../utils/firebase'; // Import Firebase auth
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'; // Import Firebase Google auth
-
+import { auth } from '../../utils/firebase';
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 
 interface ApiError {
   response?: {
@@ -28,9 +27,10 @@ const SignupForm = () => {
     confirmPassword: '',
   });
   const [loading, setLoading] = useState(false);
+  const [showSpinner, setShowSpinner] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false); // State for toggling password visibility
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false); // State for toggling confirm password visibility
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -44,72 +44,92 @@ const SignupForm = () => {
   const handleGoogleSignup = async () => {
     const provider = new GoogleAuthProvider();
     try {
+      setShowSpinner(true);
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-
-      // Store user info as needed
       const accessToken = await user.getIdToken();
-      localStorage.setItem('accessToken', accessToken); // Store access token
-      localStorage.setItem('userName', user.displayName || ''); // Store user name
-      localStorage.setItem('userEmail', user.email || ''); // Store user email
-
-      router.push('/dashboard'); // Redirect to dashboard
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('userName', user.displayName || '');
+      localStorage.setItem('userEmail', user.email || '');
+      setTimeout(() => {
+        setShowSpinner(false);
+        router.push('/dashboard');
+      }, 1200);
     } catch (error) {
+      setShowSpinner(false);
       console.error('Google signup failed:', error);
       setError('Google signup failed. Please try again.');
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setError(null);
+    e.preventDefault();
+    setError(null);
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!form.email || !emailRegex.test(form.email)) {
-    setError('Please enter a valid email address');
-    toast.error('Please enter a valid email address');
-    return;
-  }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!form.email || !emailRegex.test(form.email)) {
+      // setError('Please enter a valid email address');
+      toast.error('Please enter a valid email address');
+      return;
+    }
 
-  const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{5,}$/;
-  if (!passwordRegex.test(form.password)) {
-    setError('Password must contain at least 1 special character, 1 number, and be at least 5 characters long');
-    toast.error('Password must contain at least 1 special character, 1 number, and be at least 5 characters long');
-    return;
-  }
+    const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{5,}$/;
+    if (!passwordRegex.test(form.password)) {
+      // setError('Password must contain at least 1 special character, 1 number, and be at least 5 characters long');
+      toast.error('Password must contain at least 1 special character, 1 number, and be at least 5 characters long');
+      return;
+    }
 
-  if (form.password !== form.confirmPassword) {
-    setError('Passwords do not match');
-    toast.error('Passwords do not match');
-    return;
-  }
+    if (form.password !== form.confirmPassword) {
+      // setError('Passwords do not match');
+      toast.error('Passwords do not match');
+      return;
+    }
 
-  setLoading(true);
-  try {
-    await signup({
-      name: form.name,
-      email: form.email,
-      password: form.password,
-    });
-    localStorage.setItem('userName', form.name);
-    localStorage.setItem('email', form.email);
-    toast.success('Signup successful!');
-    router.push('/otp');
-  } catch (err: unknown) {
-    const apiError = err as ApiError;
-    const errorMsg =
-      apiError?.response?.data?.message ||
-      apiError?.message ||
-      'Signup failed';
-    setError(errorMsg);
-    toast.error(errorMsg);
-  } finally {
-    setLoading(false);
-  }
-};
+    setLoading(true);
+    setShowSpinner(true);
+    try {
+      await signup({
+        name: form.name,
+        email: form.email,
+        password: form.password,
+      });
+      localStorage.setItem('userName', form.name);
+      localStorage.setItem('email', form.email);
+      toast.success('Signup successful!');
+      setTimeout(() => {
+        setShowSpinner(false);
+        router.push('/otp');
+      }, 1200);
+    } catch (err: unknown) {
+      setShowSpinner(false);
+      const apiError = err as ApiError;
+      const errorMsg =
+        apiError?.response?.data?.message ||
+        apiError?.message ||
+        'Signup failed';
+      // setError(errorMsg);
+      toast.error(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 w-screen h-screen flex">
+      {/* Spinner Overlay */}
+      {showSpinner && (
+        <div className="fixed inset-0  bg-opacity-30 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className="flex flex-col items-center">
+            <svg className="animate-spin h-12 w-12 text-blue-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+            </svg>
+            <span className="text-lg font-semibold text-white">Signing up...</span>
+          </div>
+        </div>
+      )}
+
       <div className="w-1/2 h-full relative ">
         <Image
           src="/Illustration.svg"

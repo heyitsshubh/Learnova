@@ -1,14 +1,14 @@
 'use client';
 
 import Image from 'next/image';
-import { FaEnvelope, FaLock } from 'react-icons/fa';
+import { FaEnvelope, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { login } from '../../services/auth'; 
 import { setTokens } from '../../utils/token';
 import { toast } from 'react-hot-toast';
-import { auth } from '../../utils/firebase'; // Import Firebase auth
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'; // Import Firebase Google auth
+import { auth } from '../../utils/firebase';
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 
 interface ApiError {
   response?: {
@@ -23,7 +23,9 @@ const Login = () => {
   const router = useRouter();
   const [form, setForm] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
+  const [showSpinner, setShowSpinner] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -36,69 +38,84 @@ const Login = () => {
 
   const handleSignup = (e: React.MouseEvent) => {
     e.preventDefault();
-    router.push('/signup'); // Navigate to the signup page
+    router.push('/signup');
   };
 
- const handleGoogleLogin = async () => {
-  const provider = new GoogleAuthProvider();
-  try {
-    const result = await signInWithPopup(auth, provider);
-    const user = result.user;
-    const accessToken = await user.getIdToken();
-    setTokens(accessToken, ''); // Store access token
-    localStorage.setItem('userName', user.displayName || ''); // Store user name
-    localStorage.setItem('userEmail', user.email || ''); // Store user email// Store user ID
-    toast.success('Logged in successfully!'); // <-- Success toast
-    router.push('/dashboard'); // Redirect to dashboard
-  } catch (error) {
-    console.error('Google login failed:', error);
-    setError('Google login failed. Please try again.');
-    toast.error('Google login failed. Please try again.'); // <-- Error toast
-  }
-};
+  const handleGoogleLogin = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      const accessToken = await user.getIdToken();
+      setTokens(accessToken, '');
+      localStorage.setItem('userName', user.displayName || '');
+      localStorage.setItem('userEmail', user.email || '');
+      toast.success('Logged in successfully!');
+      router.push('/dashboard');
+    } catch (error) {
+      console.error('Google login failed:', error);
+      toast.error('Google login failed. Please try again.');
+    }
+  };
 
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setError(null);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!form.email || !emailRegex.test(form.email)) {
-    setError('Please enter a valid email address');
-    toast.error('Please enter a valid email address'); // <-- Error toast
-    return;
-  }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!form.email || !emailRegex.test(form.email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
 
-  const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{5,}$/;
-  if (!passwordRegex.test(form.password)) {
-    setError('Password must contain at least 1 special character, 1 number, and be at least 5 characters long');
-    toast.error('Incorrect Password'); // <-- Error toast
-    return;
-  }
+    const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{5,}$/;
+    if (!passwordRegex.test(form.password)) {
+      toast.error('Incorrect Password');
+      return;
+    }
 
-  setLoading(true);
-  try {
-    const res = await login(form);
-    setTokens(res.accessToken, res.refreshToken);
-    localStorage.setItem('userName', res.username || '');
-    localStorage.setItem('userEmail', res.userEmail || '');
-    localStorage.setItem('userId', res.userId || ''); // Store user ID
-    toast.success('Logged in successfully!'); // <-- Success toast
-    router.push('/dashboard');
-  } catch (err: unknown) {
-    const apiError = err as ApiError;
-    const errorMsg =
-      apiError?.response?.data?.message ||
-      apiError?.message ||
-      'Login failed';
-    setError(errorMsg);
-    toast.error(errorMsg); // <-- Error toast
-  } finally {
-    setLoading(false);
-  }
-};
+    setLoading(true);
+    setShowSpinner(true);
+    try {
+      const res = await login(form);
+      setTokens(res.accessToken, res.refreshToken);
+      localStorage.setItem('userName', res.username || '');
+      localStorage.setItem('userEmail', res.userEmail || '');
+      localStorage.setItem('userId', res.userId || '');
+      toast.success('Logged in successfully!');
+      setTimeout(() => {
+        setShowSpinner(false);
+        router.push('/dashboard');
+      }, 1200); // Show spinner for a short time after success
+    } catch (err: unknown) {
+      const apiError = err as ApiError;
+      const errorMsg =
+        apiError?.response?.data?.message ||
+        apiError?.message ||
+        'Login failed';
+      setError(errorMsg);
+      toast.error(errorMsg);
+      setShowSpinner(false);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 w-screen h-screen flex">
+      {/* Spinner Overlay */}
+      {showSpinner && (
+        <div className="fixed inset-0  bg-opacity-40 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className="flex flex-col items-center">
+            <svg className="animate-spin h-12 w-12 text-blue-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+            </svg>
+            <span className="text-lg font-semibold text-white">Logging in...</span>
+          </div>
+        </div>
+      )}
+
       <div className="w-1/2 h-full relative ">
         <Image
           src="/Illustration.svg"
@@ -142,15 +159,24 @@ const handleSubmit = async (e: React.FormEvent) => {
           <div className="relative w-full flex items-center justify-center" style={{ width: 400, minWidth: 50 }}>
             <FaLock className="absolute left-4 text-gray-400 text-lg" />
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               name="password"
               value={form.password}
               onChange={handleChange}
               placeholder="Enter password"
-              className="pl-12 w-[200px] max-w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="pl-12 pr-12 w-[200px] max-w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               style={{ width: 400, minWidth: 50 }}
               required
             />
+            <button
+              type="button"
+              className="absolute right-4 text-gray-400 hover:text-gray-600 text-lg focus:outline-none"
+              tabIndex={-1}
+              onClick={() => setShowPassword((prev) => !prev)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <FaEyeSlash /> : <FaEye />}
+            </button>
           </div>
           <div className="w-full flex justify-end" style={{ width: 400, minWidth: 50 }}>
             <button
