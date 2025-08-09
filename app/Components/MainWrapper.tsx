@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 
 export default function MainWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const noMarginPages = ['/classroom'];
+  const noMarginPages = ['/', '/classroom'];
   const applyMargin = !noMarginPages.includes(pathname);
 
   return (
