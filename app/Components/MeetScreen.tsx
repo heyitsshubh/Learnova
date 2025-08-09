@@ -401,7 +401,7 @@ export default function MeetScreen({ classId }: MeetScreenProps) {
                     video.srcObject = peer.stream;
                   }
                 }}
-                className="w-full h-full object-cover"
+               className="w-full h-full object-contain bg-black"
               />
               
               {/* Enhanced Remote Video Overlay */}
