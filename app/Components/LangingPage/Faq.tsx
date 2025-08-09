@@ -42,46 +42,48 @@ export default function FAQ() {
   };
 
   return (
-    <section className="py-16 px-6 md:px-20 bg-gray-50">
-      <div className="grid md:grid-cols-3 gap-8">
-        {/* Left side heading */}
-        <div>
-          <h2 className="text-xl font-bold leading-snug">
-            Frequently <br /> Asked <br /> Questions
-          </h2>
-        </div>
-
-        {/* Right side FAQs */}
-        <div className="md:col-span-2">
-          <div className="flex justify-end mb-4">
-            <button
-              onClick={expandAll}
-              className="text-sm text-gray-600 hover:underline"
-            >
-              Expand all
-            </button>
+    <section className="py-16 px-2 md:px-0 bg-gray-50 min-h-screen flex items-center justify-center w-full">
+      <div className="w-full max-w-[1440px]">
+        <div className="grid md:grid-cols-3 gap-0 w-full">
+          {/* Left side heading */}
+          <div className="flex items-start justify-center md:justify-start py-8 pl-8">
+            <h2 className="text-1xl md:text-5xl font-semibold leading-snug text-black mb-80">
+              Frequently <br /> Asked <br /> Questions
+            </h2>
           </div>
 
-          <div className="divide-y">
-            {faqs.map((faq, index) => (
-              <div key={index} className="py-4">
-                <button
-                  onClick={() => toggleFAQ(index)}
-                  className="flex justify-between items-center w-full text-left"
-                >
-                  <span className="text-gray-800">{faq.question}</span>
-                  {openIndex === index || openIndex === "all" ? (
-                    <Minus className="w-5 h-5 text-gray-500" />
-                  ) : (
-                    <Plus className="w-5 h-5 text-gray-500" />
-                  )}
-                </button>
+          {/* Right side FAQs */}
+          <div className="md:col-span-2 flex flex-col justify-center w-full">
+            <div className="flex justify-end mb-4 pr-8">
+              <button
+                onClick={expandAll}
+                className="text-lg text-gray-700 hover:underline"
+              >
+                Expand all
+              </button>
+            </div>
 
-                {(openIndex === index || openIndex === "all") && (
-                  <p className="mt-2 text-gray-600 text-sm">{faq.answer}</p>
-                )}
-              </div>
-            ))}
+            <div className="divide-y divide-gray-300 mb-80">
+              {faqs.map((faq, index) => (
+                <div key={index} className="py-6 px-8">
+                  <button
+                    onClick={() => toggleFAQ(index)}
+                    className="flex justify-between items-center w-full text-left"
+                  >
+                    <span className="text-xl md:text-2xl text-black ">{faq.question}</span>
+                    {openIndex === index || openIndex === "all" ? (
+                      <Minus className="w-6 h-6 text-black" />
+                    ) : (
+                      <Plus className="w-6 h-6 text-black" />
+                    )}
+                  </button>
+
+                  {(openIndex === index || openIndex === "all") && (
+                    <p className="mt-3 text-lg md:text-xl text-black">{faq.answer}</p>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

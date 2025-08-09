@@ -4,6 +4,14 @@ import MainWrapper from './Components/MainWrapper';
 import { Toaster } from 'react-hot-toast';
 import { SocketProvider } from './Components/Contexts/SocketContext';
 
+import { Poppins } from 'next/font/google';
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-poppins',
+});
+
 export const metadata = {
   title: 'Learnova - Learning Management System',
   description: 'A comprehensive learning management system for students and teachers',
@@ -12,7 +20,7 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>
+      <body className={poppins.variable}>
         <SocketProvider>
           <Toaster 
             position="top-right"
