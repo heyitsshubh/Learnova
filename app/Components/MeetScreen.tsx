@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { io, Socket } from 'socket.io-client';
-import * as mediasoupClient from 'mediasoup-client';
+import { useMediasoup } from '../hooks/useMediasoup'; // Import your enhanced hook
+import { useSocket } from '../Components/Contexts/SocketContext';
 
 interface MeetScreenProps {
   classId: string;
@@ -17,36 +17,154 @@ interface Participant {
   stream?: MediaStream;
 }
 
+// Connection quality indicator component
+const ConnectionQuality: React.FC<{ 
+  connectionState: string;
+  error: any;
+}> = ({ connectionState, error }) => {
+  const getQualityInfo = () => {
+    if (error) return { color: '#f44336', label: 'Error', icon: '🔴' };
+    
+    switch (connectionState) {
+      case 'connected': return { color: '#4CAF50', label: 'Excellent', icon: '🟢' };
+      case 'connecting': 
+      case 'reconnecting': return { color: '#FF9800', label: 'Connecting', icon: '🟡' };
+      case 'failed': return { color: '#f44336', label: 'Failed', icon: '🔴' };
+      default: return { color: '#666', label: 'Idle', icon: '⚪' };
+    }
+  };
+
+  const quality = getQualityInfo();
+
+  return (
+    <div style={{ 
+      display: 'flex', 
+      alignItems: 'center', 
+      gap: '5px',
+      fontSize: '12px'
+    }}>
+      <span>{quality.icon}</span>
+      <span style={{ color: quality.color }}>{quality.label}</span>
+    </div>
+  );
+};
+
+// Error notification component
+const ErrorNotification: React.FC<{
+  error: any;
+  onClose: () => void;
+  onRetry?: () => void;
+}> = ({ error, onClose, onRetry }) => {
+  if (!error) return null;
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: '80px',
+      right: '20px',
+      backgroundColor: '#f44336',
+      color: 'white',
+      padding: '15px 20px',
+      borderRadius: '8px',
+      maxWidth: '400px',
+      boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+      zIndex: 1000,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '10px'
+    }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
+            {error.type || 'Error'}
+          </div>
+          <div style={{ fontSize: '14px' }}>{error.message}</div>
+        </div>
+        <button 
+          onClick={onClose}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: 'white',
+            cursor: 'pointer',
+            fontSize: '18px',
+            padding: '0',
+            width: '20px',
+            height: '20px'
+          }}
+        >
+          ×
+        </button>
+      </div>
+      
+      {error.retry && onRetry && (
+        <button
+          onClick={onRetry}
+          style={{
+            padding: '8px 15px',
+            backgroundColor: 'rgba(255,255,255,0.2)',
+            color: 'white',
+            border: '1px solid rgba(255,255,255,0.3)',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            alignSelf: 'flex-start'
+          }}
+        >
+          🔄 Retry Connection
+        </button>
+      )}
+    </div>
+  );
+};
+
 const MeetScreen: React.FC<MeetScreenProps> = ({ classId, token }) => {
-  const [socket, setSocket] = useState<Socket | null>(null);
+  // Use the socket context
+  const { socket, isConnected } = useSocket();
+  
+  // Use the enhanced MediaSoup hook
+  const {
+    startLocalStream,
+    joinVideoCall,
+    leaveVideoCall,
+    peers,
+    localStreamRef,
+    isVideoCallReady,
+    isConnecting,
+    connectionState,
+    error: mediasoupError,
+    retryConnection
+  } = useMediasoup(classId);
+
+  // Local state
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
-  const [isConnected, setIsConnected] = useState(false);
-  const [isInCall, setIsInCall] = useState(false);
-  const [error, setError] = useState<string>('');
-  const [participants, setParticipants] = useState<Participant[]>([]);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [currentUserName] = useState('You');
   const [meetingDuration, setMeetingDuration] = useState(0);
-  const [connectionQuality] = useState<'excellent' | 'good' | 'fair' | 'poor'>('excellent');
+  const [localError, setLocalError] = useState<string>('');
   
+  // Refs
   const localVideoRef = useRef<HTMLVideoElement>(null);
-  const localStreamRef = useRef<MediaStream | null>(null);
   const screenShareStreamRef = useRef<MediaStream | null>(null);
-  const deviceRef = useRef<mediasoupClient.Device | null>(null);
-  const sendTransportRef = useRef<mediasoupClient.types.Transport | null>(null);
-  const recvTransportRef = useRef<mediasoupClient.types.Transport | null>(null);
-  const producersRef = useRef<Map<string, mediasoupClient.types.Producer>>(new Map());
-  const consumersRef = useRef<Map<string, mediasoupClient.types.Consumer>>(new Map());
   const meetingStartTimeRef = useRef<Date | null>(null);
+
+  // Convert peers to participants for UI compatibility
+  const participants: Participant[] = peers.map(peer => ({
+    id: peer.id,
+    name: peer.name || 'Participant',
+    isVideoEnabled: peer.stream?.getVideoTracks()?.[0]?.enabled ?? false,
+    isAudioEnabled: peer.stream?.getAudioTracks()?.[0]?.enabled ?? false,
+    stream: peer.stream
+  }));
 
   // Timer for meeting duration
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isInCall && meetingStartTimeRef.current) {
+    if (isVideoCallReady && meetingStartTimeRef.current) {
       interval = setInterval(() => {
         const now = new Date();
         const duration = Math.floor((now.getTime() - meetingStartTimeRef.current!.getTime()) / 1000);
@@ -56,7 +174,7 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, token }) => {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isInCall]);
+  }, [isVideoCallReady]);
 
   // Format duration
   const formatDuration = (seconds: number) => {
@@ -70,177 +188,75 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, token }) => {
     return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Initialize Socket Connection (existing code)
+  // Handle local video display
   useEffect(() => {
-    const socketInstance = io(process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000', {
-      auth: { token },
-      transports: ['websocket', 'polling']
-    });
-
-    socketInstance.on('connect', () => {
-      console.log('✅ Connected to server');
-      setIsConnected(true);
-      setSocket(socketInstance);
-      socketInstance.emit('joinClass', { classId });
-    });
-
-    socketInstance.on('disconnect', () => {
-      console.log('❌ Disconnected from server');
-      setIsConnected(false);
-    });
-
-    socketInstance.on('error', (error) => {
-      console.error('Socket error:', error);
-      setError(error.message || 'Connection error');
-    });
-
-    // Listen for participant updates
-    socketInstance.on('participants_update', (data: { participants: Participant[] }) => {
-      setParticipants(data.participants);
-    });
-
-    return () => {
-      socketInstance.disconnect();
-    };
-  }, [classId, token]);
-
-  // Get User Media (existing code with slight modifications)
-  const getUserMedia = useCallback(async (): Promise<MediaStream> => {
-    try {
-      const mediaConfig: MediaStreamConstraints = {
-        video: {
-          width: { ideal: 1280, max: 1920 },
-          height: { ideal: 720, max: 1080 },
-          frameRate: { ideal: 30, max: 60 }
-        },
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        }
-      };
-
-      console.log('🎥 Requesting camera/microphone access...');
-      
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('getUserMedia is not supported in this browser');
-      }
-
-      const stream = await navigator.mediaDevices.getUserMedia(mediaConfig);
-      localStreamRef.current = stream;
-      
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-        localVideoRef.current.play().catch(e => console.error('Error playing local video:', e));
-      }
-      
-      console.log('✅ Camera/microphone access granted');
-      return stream;
-      
-    } catch (error: any) {
-      console.error('❌ Error accessing camera/microphone:', error);
-      
-      let errorMessage = 'Failed to access camera/microphone';
-      
-      switch (error.name) {
-        case 'NotAllowedError':
-          errorMessage = 'Camera/microphone access denied. Please allow permissions and refresh the page.';
-          break;
-        case 'NotFoundError':
-          errorMessage = 'No camera/microphone found. Please check your devices are connected.';
-          break;
-        case 'NotReadableError':
-          errorMessage = 'Camera/microphone is being used by another application. Please close other apps using the camera.';
-          break;
-        case 'OverconstrainedError':
-          errorMessage = 'Camera resolution not supported. Trying with lower quality...';
-          try {
-            const fallbackStream = await navigator.mediaDevices.getUserMedia({
-              video: { width: 640, height: 480 },
-              audio: true
-            });
-            localStreamRef.current = fallbackStream;
-            if (localVideoRef.current) {
-              localVideoRef.current.srcObject = fallbackStream;
-            }
-            return fallbackStream;
-          } catch {
-            errorMessage = 'Camera not supported with any resolution.';
-          }
-          break;
-        case 'SecurityError':
-          errorMessage = 'Security error: HTTPS is required for camera access in production.';
-          break;
-        default:
-          errorMessage = `Camera error: ${error.message}`;
-      }
-      
-      setError(errorMessage);
-      throw error;
+    if (localVideoRef.current && localStreamRef.current) {
+      localVideoRef.current.srcObject = localStreamRef.current;
+      localVideoRef.current.play().catch(e => console.error('Error playing local video:', e));
     }
-  }, []);
+  }, [localStreamRef.current]);
 
-  // Join Video Call (existing code)
-  const joinVideoCall = useCallback(async () => {
-    if (!socket) {
-      setError('Socket not connected');
-      return;
-    }
-
+  // Enhanced join video call with local stream
+  const handleJoinVideoCall = useCallback(async () => {
     try {
-      console.log('🎥 Joining video call...');
-      setError('');
+      setLocalError('');
+      console.log('🎥 Starting video call process...');
       
-      await getUserMedia();
-      const device = new mediasoupClient.Device();
-      deviceRef.current = device;
+      // Start local stream first
+      await startLocalStream();
       
-      socket.emit('join_video_call', { classId });
-      setIsInCall(true);
+      // Then join the video call
+      joinVideoCall();
       meetingStartTimeRef.current = new Date();
       
     } catch (error: any) {
       console.error('❌ Error joining video call:', error);
-      setError(`Failed to join video call: ${error.message}`);
+      setLocalError(`Failed to join video call: ${error.message}`);
     }
-  }, [socket, classId, getUserMedia]);
+  }, [startLocalStream, joinVideoCall]);
 
-  // Toggle video
+  // Enhanced leave video call
+  const handleLeaveVideoCall = useCallback(() => {
+    leaveVideoCall();
+    
+    // Clean up local state
+    if (screenShareStreamRef.current) {
+      screenShareStreamRef.current.getTracks().forEach(track => track.stop());
+      screenShareStreamRef.current = null;
+    }
+    
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null;
+    }
+    
+    setIsScreenSharing(false);
+    meetingStartTimeRef.current = null;
+    setMeetingDuration(0);
+    setLocalError('');
+    
+    console.log('👋 Left video call with cleanup');
+  }, [leaveVideoCall]);
+
+  // Toggle video with MediaSoup integration
   const toggleVideo = useCallback(() => {
     if (localStreamRef.current) {
       const videoTrack = localStreamRef.current.getVideoTracks()[0];
       if (videoTrack) {
         videoTrack.enabled = !videoTrack.enabled;
         setIsVideoEnabled(videoTrack.enabled);
-        
-        const videoProducer = producersRef.current.get('video');
-        if (videoProducer) {
-          if (videoTrack.enabled) {
-            videoProducer.resume();
-          } else {
-            videoProducer.pause();
-          }
-        }
+        console.log(`📹 Video ${videoTrack.enabled ? 'enabled' : 'disabled'}`);
       }
     }
   }, []);
 
-  // Toggle audio
+  // Toggle audio with MediaSoup integration
   const toggleAudio = useCallback(() => {
     if (localStreamRef.current) {
       const audioTrack = localStreamRef.current.getAudioTracks()[0];
       if (audioTrack) {
         audioTrack.enabled = !audioTrack.enabled;
         setIsAudioEnabled(audioTrack.enabled);
-        
-        const audioProducer = producersRef.current.get('audio');
-        if (audioProducer) {
-          if (audioTrack.enabled) {
-            audioProducer.resume();
-          } else {
-            audioProducer.pause();
-          }
-        }
+        console.log(`🎤 Audio ${audioTrack.enabled ? 'enabled' : 'disabled'}`);
       }
     }
   }, []);
@@ -263,74 +279,26 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, token }) => {
           screenShareStreamRef.current = null;
         };
         
+        console.log('🖥️ Screen sharing started');
       } else {
         if (screenShareStreamRef.current) {
           screenShareStreamRef.current.getTracks().forEach(track => track.stop());
           screenShareStreamRef.current = null;
         }
         setIsScreenSharing(false);
+        console.log('🖥️ Screen sharing stopped');
       }
     } catch (error) {
       console.error('Error toggling screen share:', error);
-      setError('Failed to share screen');
+      setLocalError('Failed to share screen');
     }
   }, [isScreenSharing]);
 
-  // Leave video call
-  const leaveVideoCall = useCallback(() => {
-    if (socket) {
-      socket.emit('leave_video_call');
-    }
-    
-    // Cleanup (existing code)
-    producersRef.current.forEach(producer => {
-      if (!producer.closed) {
-        producer.close();
-      }
-    });
-    producersRef.current.clear();
-    
-    consumersRef.current.forEach(consumer => {
-      if (!consumer.closed) {
-        consumer.close();
-      }
-    });
-    consumersRef.current.clear();
-    
-    if (sendTransportRef.current && !sendTransportRef.current.closed) {
-      sendTransportRef.current.close();
-    }
-    if (recvTransportRef.current && !recvTransportRef.current.closed) {
-      recvTransportRef.current.close();
-    }
-    
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach(track => track.stop());
-      localStreamRef.current = null;
-    }
-    
-    if (screenShareStreamRef.current) {
-      screenShareStreamRef.current.getTracks().forEach(track => track.stop());
-      screenShareStreamRef.current = null;
-    }
-    
-    if (localVideoRef.current) {
-      localVideoRef.current.srcObject = null;
-    }
-    
-    setParticipants([]);
-    setIsInCall(false);
-    setIsScreenSharing(false);
-    meetingStartTimeRef.current = null;
-    setMeetingDuration(0);
-    
-    console.log('👋 Left video call');
-  }, [socket]);
-
-  // Test camera (existing code)
+  // Test camera function
   const testCamera = useCallback(async () => {
     try {
       console.log('🧪 Testing camera access...');
+      setLocalError('');
       
       const testStream = await navigator.mediaDevices.getUserMedia({
         video: true,
@@ -343,7 +311,6 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, token }) => {
       }
       
       console.log('✅ Camera test successful');
-      setError('');
       
       setTimeout(() => {
         testStream.getTracks().forEach(track => track.stop());
@@ -354,7 +321,7 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, token }) => {
       
     } catch (error: any) {
       console.error('❌ Camera test failed:', error);
-      setError(`Camera test failed: ${error.message}`);
+      setLocalError(`Camera test failed: ${error.message}`);
     }
   }, []);
 
@@ -365,6 +332,14 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, token }) => {
       alert('Meeting link copied to clipboard!');
     });
   }, [classId]);
+
+  // Clear errors
+  const clearErrors = () => {
+    setLocalError('');
+  };
+
+  // Get current error to display
+  const currentError = mediasoupError || (localError ? { message: localError, type: 'LOCAL' } : null);
 
   return (
     <div className="meet-screen" style={{ 
@@ -387,7 +362,7 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, token }) => {
           <h2 style={{ margin: 0, fontSize: '18px' }}>
             Video Meeting - Class {classId.slice(-8)}
           </h2>
-          {isInCall && (
+          {isVideoCallReady && (
             <div style={{ 
               display: 'flex', 
               alignItems: 'center', 
@@ -397,28 +372,16 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, token }) => {
             }}>
               <span>🕐 {formatDuration(meetingDuration)}</span>
               <span>👥 {participants.length + 1} participants</span>
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '5px'
-              }}>
-                <div style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  backgroundColor: 
-                    connectionQuality === 'excellent' ? '#4CAF50' :
-                    connectionQuality === 'good' ? '#8BC34A' :
-                    connectionQuality === 'fair' ? '#FF9800' : '#f44336'
-                }}></div>
-                <span style={{ textTransform: 'capitalize' }}>{connectionQuality}</span>
-              </div>
+              <ConnectionQuality 
+                connectionState={connectionState} 
+                error={mediasoupError}
+              />
             </div>
           )}
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          {isInCall && (
+          {isVideoCallReady && (
             <>
               <button
                 onClick={copyMeetingLink}
@@ -551,6 +514,32 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, token }) => {
                   fontSize: '24px'
                 }}>
                   👤
+                </div>
+              )}
+
+              {/* Connection state indicator on video */}
+              {isConnecting && (
+                <div style={{
+                  position: 'absolute',
+                  top: '15px',
+                  right: '15px',
+                  backgroundColor: 'rgba(255, 152, 0, 0.9)',
+                  color: 'white',
+                  padding: '5px 10px',
+                  borderRadius: '15px',
+                  fontSize: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}>
+                  <div style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: '#FF9800',
+                    animation: 'pulse 1s infinite'
+                  }}></div>
+                  Connecting...
                 </div>
               )}
             </div>
@@ -711,6 +700,21 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, token }) => {
               <div style={{ flex: 1, padding: '20px' }}>
                 <h3 style={{ marginTop: 0, marginBottom: '20px' }}>Settings</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  {/* Connection Status */}
+                  <div>
+                    <h4 style={{ marginBottom: '10px' }}>Connection Status</h4>
+                    <div style={{ 
+                      padding: '10px',
+                      backgroundColor: '#1a1a1a',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}>
+                      <div>State: <span style={{ color: '#4CAF50' }}>{connectionState}</span></div>
+                      <div>Socket: {isConnected ? '🟢 Connected' : '🔴 Disconnected'}</div>
+                      <div>Peers: {participants.length}</div>
+                    </div>
+                  </div>
+
                   <div>
                     <h4 style={{ marginBottom: '10px' }}>Audio Settings</h4>
                     <button style={{
@@ -801,7 +805,7 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, token }) => {
         backgroundColor: '#2a2a2a',
         borderTop: '1px solid #444'
       }}>
-        {!isInCall ? (
+        {!isVideoCallReady ? (
           <div style={{ display: 'flex', gap: '15px' }}>
             <button
               onClick={testCamera}
@@ -820,20 +824,26 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, token }) => {
             </button>
             
             <button
-              onClick={joinVideoCall}
-              disabled={!isConnected}
+              onClick={handleJoinVideoCall}
+              disabled={!isConnected || isConnecting}
               style={{
                 padding: '12px 24px',
-                backgroundColor: isConnected ? '#4CAF50' : '#666',
+                backgroundColor: 
+                  isConnecting ? '#FF9800' : 
+                  isConnected ? '#4CAF50' : '#666',
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
-                cursor: isConnected ? 'pointer' : 'not-allowed',
+                cursor: (isConnected && !isConnecting) ? 'pointer' : 'not-allowed',
                 fontSize: '16px',
-                fontWeight: '500'
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
               }}
             >
-              🎥 Join Video Call
+              {isConnecting ? '⏳' : '🎥'} 
+              {isConnecting ? 'Connecting...' : 'Join Video Call'}
             </button>
           </div>
         ) : (
@@ -892,7 +902,7 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, token }) => {
             <div style={{ height: '30px', width: '1px', backgroundColor: '#666', margin: '0 10px' }}></div>
             
             <button
-              onClick={leaveVideoCall}
+              onClick={handleLeaveVideoCall}
               style={{
                 padding: '15px 30px',
                 backgroundColor: '#f44336',
@@ -911,43 +921,11 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, token }) => {
       </div>
 
       {/* Error Display */}
-      {error && (
-        <div style={{
-          position: 'fixed',
-          top: '80px',
-          right: '20px',
-          backgroundColor: '#f44336',
-          color: 'white',
-          padding: '15px 20px',
-          borderRadius: '8px',
-          maxWidth: '400px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-          zIndex: 1000,
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: '10px'
-        }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>Error</div>
-            <div style={{ fontSize: '14px' }}>{error}</div>
-          </div>
-          <button 
-            onClick={() => setError('')}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'white',
-              cursor: 'pointer',
-              fontSize: '18px',
-              padding: '0',
-              width: '20px',
-              height: '20px'
-            }}
-          >
-            ×
-          </button>
-        </div>
-      )}
+      <ErrorNotification 
+        error={currentError}
+        onClose={clearErrors}
+        onRetry={mediasoupError?.retry ? retryConnection : undefined}
+      />
 
       {/* Connection Status */}
       <div style={{
@@ -956,7 +934,11 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, token }) => {
         left: '20px',
         padding: '8px 15px',
         borderRadius: '20px',
-        backgroundColor: isConnected ? 'rgba(76, 175, 80, 0.9)' : 'rgba(244, 67, 54, 0.9)',
+        backgroundColor: 
+          connectionState === 'connected' ? 'rgba(76, 175, 80, 0.9)' :
+          connectionState === 'connecting' || connectionState === 'reconnecting' ? 'rgba(255, 152, 0, 0.9)' :
+          connectionState === 'failed' ? 'rgba(244, 67, 54, 0.9)' :
+          'rgba(102, 102, 102, 0.9)',
         color: 'white',
         fontSize: '12px',
         fontWeight: '500',
@@ -970,13 +952,23 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, token }) => {
           width: '8px',
           height: '8px',
           borderRadius: '50%',
-          backgroundColor: isConnected ? '#4CAF50' : '#f44336'
+          backgroundColor: 
+            connectionState === 'connected' ? '#4CAF50' :
+            connectionState === 'connecting' || connectionState === 'reconnecting' ? '#FF9800' :
+            connectionState === 'failed' ? '#f44336' :
+            '#666',
+          animation: (connectionState === 'connecting' || connectionState === 'reconnecting') ? 'pulse 1s infinite' : 'none'
         }}></div>
-        {isConnected ? 'Connected' : 'Disconnected'}
+        {connectionState === 'connected' ? 'Connected' :
+         connectionState === 'connecting' ? 'Connecting' :
+         connectionState === 'reconnecting' ? 'Reconnecting' :
+         connectionState === 'failed' ? 'Failed' :
+         connectionState === 'initializing' ? 'Initializing' :
+         'Disconnected'}
       </div>
 
       {/* Recording Indicator */}
-      {isInCall && (
+      {isVideoCallReady && (
         <div style={{
           position: 'fixed',
           top: '120px',
@@ -1000,12 +992,12 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, token }) => {
             borderRadius: '50%',
             backgroundColor: '#f44336'
           }}></div>
-          Recording
+          Live Meeting
         </div>
       )}
 
       {/* Floating Action Buttons for Mobile */}
-      {isInCall && window.innerWidth < 768 && (
+      {isVideoCallReady && window.innerWidth < 768 && (
         <div style={{
           position: 'fixed',
           right: '20px',
@@ -1148,13 +1140,18 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, token }) => {
         }}>
           <div><strong>Debug Info:</strong></div>
           <div>Socket: {isConnected ? '🟢' : '🔴'}</div>
-          <div>In Call: {isInCall ? '🟢' : '🔴'}</div>
+          <div>Connection: {connectionState}</div>
           <div>Local Stream: {localStreamRef.current ? '🟢' : '🔴'}</div>
           <div>Participants: {participants.length}</div>
           <div>Screen Share: {isScreenSharing ? '🟢' : '🔴'}</div>
           <div>Video: {isVideoEnabled ? '🟢' : '🔴'}</div>
           <div>Audio: {isAudioEnabled ? '🟢' : '🔴'}</div>
-          <div>Quality: {connectionQuality}</div>
+          <div>Error: {currentError ? '🔴' : '🟢'}</div>
+          {mediasoupError && (
+            <div style={{ marginTop: '5px', fontSize: '9px', color: '#f44336' }}>
+              {mediasoupError.type}: {mediasoupError.message.substring(0, 30)}...
+            </div>
+          )}
         </div>
       )}
     </div>
