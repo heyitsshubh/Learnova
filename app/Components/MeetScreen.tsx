@@ -1,127 +1,303 @@
-"use client";
-
-import { useEffect, useRef, useState, useCallback } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { useMediasoup } from "../hooks/useMediasoup";
-import { 
-  FaMicrophone, 
-  FaMicrophoneSlash, 
-  FaVideo, 
-  FaVideoSlash, 
-  FaPhoneSlash,
-  FaExpand,
-  FaCompress,
-  FaUsers,
-  FaCog,
-  FaExclamationTriangle,
-  FaSpinner,
-  FaDesktop,
-  FaVolumeUp,
-  FaVolumeMute
-} from "react-icons/fa";
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { io, Socket } from 'socket.io-client';
 
 interface MeetScreenProps {
   classId: string;
+  userId: string;
+  token: string;
 }
 
-export default function MeetScreen({ classId }: MeetScreenProps) {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const role = searchParams.get('role') || 'participant';
-  
-  const {
-    startLocalStream,
-    joinVideoCall,
-    leaveVideoCall,
-    peers,
-    localStreamRef,
-    isVideoCallReady,
-    isConnecting,
-    error
-  } = useMediasoup(classId);
+interface MediaConfig {
+  video: {
+    width: { ideal: 1280 },
+    height: { ideal: 720 },
+    frameRate: { ideal: 30 }
+  };
+  audio: true;
+}
 
-  const localVideoRef = useRef<HTMLVideoElement>(null);
+const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
+  const [socket, setSocket] = useState<Socket | null>(null);
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [localStreamStarted, setLocalStreamStarted] = useState(false);
-  const [retryAttempt, setRetryAttempt] = useState(0);
-  const [isRetrying, setIsRetrying] = useState(false);
-  // const [dominantSpeaker, setDominantSpeaker] = useState<string | null>(null);
-  const [isScreenShareEnabled, setIsScreenShareEnabled] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
+  const [error, setError] = useState<string>('');
+  const [peers, setPeers] = useState<Map<string, any>>(new Map());
+  
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const deviceRef = useRef<RTCRtpTransceiver | null>(null);
+  const sendTransportRef = useRef<any>(null);
+  const recvTransportRef = useRef<any>(null);
+  const producersRef = useRef<Map<string, any>>(new Map());
+  const consumersRef = useRef<Map<string, any>>(new Map());
 
-  // Auto-retry mechanism
-  const handleRetry = useCallback(async () => {
-    if (isRetrying) return;
-    
-    setIsRetrying(true);
-    setRetryAttempt(prev => prev + 1);
-    
+  // Initialize Socket Connection
+  useEffect(() => {
+    const socketInstance = io(process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000', {
+      auth: { token },
+      transports: ['websocket', 'polling']
+    });
+
+    socketInstance.on('connect', () => {
+      console.log('✅ Connected to server');
+      setIsConnected(true);
+      setSocket(socketInstance);
+      
+      // Join the class
+      socketInstance.emit('joinClass', { classId });
+    });
+
+    socketInstance.on('disconnect', () => {
+      console.log('❌ Disconnected from server');
+      setIsConnected(false);
+    });
+
+    socketInstance.on('error', (error) => {
+      console.error('Socket error:', error);
+      setError(error.message || 'Connection error');
+    });
+
+    return () => {
+      socketInstance.disconnect();
+    };
+  }, [classId, token]);
+
+  // Get User Media (Camera/Microphone)
+  const getUserMedia = useCallback(async (): Promise<MediaStream> => {
     try {
-      console.log(`Retry attempt ${retryAttempt + 1}`);
+      const mediaConfig: MediaStreamConstraints = {
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30 }
+        },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      };
+
+      console.log('🎥 Requesting camera/microphone access...');
+      const stream = await navigator.mediaDevices.getUserMedia(mediaConfig);
       
-      // Clean up existing connection
-      leaveVideoCall();
-      
-      // Wait a bit before retrying
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Restart the connection process
-      const stream = await startLocalStream();
-      setLocalStreamStarted(true);
+      localStreamRef.current = stream;
       
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
       }
       
-      joinVideoCall();
+      console.log('✅ Camera/microphone access granted');
+      return stream;
+      
+    } catch (error: any) {
+      console.error('❌ Error accessing camera/microphone:', error);
+      
+      let errorMessage = 'Failed to access camera/microphone';
+      
+      if (error.name === 'NotAllowedError') {
+        errorMessage = 'Camera/microphone access denied. Please allow permissions and refresh.';
+      } else if (error.name === 'NotFoundError') {
+        errorMessage = 'No camera/microphone found. Please check your devices.';
+      } else if (error.name === 'NotReadableError') {
+        errorMessage = 'Camera/microphone is being used by another application.';
+      } else if (error.name === 'OverconstrainedError') {
+        errorMessage = 'Camera/microphone constraints not supported.';
+      }
+      
+      setError(errorMessage);
+      throw error;
+    }
+  }, []);
+
+  // Join Video Call
+  const joinVideoCall = useCallback(async () => {
+    if (!socket) {
+      console.error('Socket not connected');
+      return;
+    }
+
+    try {
+      console.log('🎥 Joining video call...');
+      
+      // First get user media
+      await getUserMedia();
+      
+      // Join video call
+      socket.emit('join_video_call', { classId });
       
     } catch (error) {
-      console.error('Retry failed:', error);
-    } finally {
-      setIsRetrying(false);
+      console.error('❌ Error joining video call:', error);
     }
-  }, [retryAttempt, isRetrying, leaveVideoCall, startLocalStream, joinVideoCall]);
+  }, [socket, classId, getUserMedia]);
 
-  // Initialize local stream and join call
+  // Socket Event Handlers for WebRTC
   useEffect(() => {
-    let isMounted = true;
-    
-    const initializeCall = async () => {
-      try {
-        console.log('🚀 Initializing video call...');
-        
-        // Start local stream first
-        const stream = await startLocalStream();
-        
-        if (!isMounted) return;
-        
-        setLocalStreamStarted(true);
-        
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream;
-        }
+    if (!socket) return;
 
-        // Join the video call
-        joinVideoCall();
-        
-      } catch (error) {
-        console.error('❌ Failed to initialize call:', error);
-        if (isMounted && retryAttempt < 3) {
-          // Auto-retry for the first few attempts
-          setTimeout(handleRetry, 3000);
-        }
+    // Video call ready - receive RTP capabilities
+    socket.on('video_call_ready', async (data) => {
+      console.log('📡 Video call ready, setting RTP capabilities');
+      
+      // Set RTP capabilities (you'll need to implement this based on your WebRTC library)
+      socket.emit('set_rtp_capabilities', {
+        rtpCapabilities: data.rtpCapabilities // This should be your device's RTP capabilities
+      });
+    });
+
+    // Transports created
+    socket.on('transports_created', async (data) => {
+      console.log('🚛 Transports created');
+      
+      // Create send transport for sending video/audio
+      const sendTransportOptions = {
+        id: data.sendTransport.id,
+        iceParameters: data.sendTransport.iceParameters,
+        iceCandidates: data.sendTransport.iceCandidates,
+        dtlsParameters: data.sendTransport.dtlsParameters
+      };
+
+      // Create receive transport for receiving video/audio
+      const recvTransportOptions = {
+        id: data.recvTransport.id,
+        iceParameters: data.recvTransport.iceParameters,
+        iceCandidates: data.recvTransport.iceCandidates,
+        dtlsParameters: data.recvTransport.dtlsParameters
+      };
+
+      // You'll need to implement transport creation based on your WebRTC library
+      // For now, storing the options
+      sendTransportRef.current = sendTransportOptions;
+      recvTransportRef.current = recvTransportOptions;
+      
+      // Connect transports
+      socket.emit('connect_transport', {
+        transportId: data.sendTransport.id,
+        dtlsParameters: data.sendTransport.dtlsParameters,
+        direction: 'send'
+      });
+      
+      socket.emit('connect_transport', {
+        transportId: data.recvTransport.id,
+        dtlsParameters: data.recvTransport.dtlsParameters,
+        direction: 'recv'
+      });
+    });
+
+    // Transport connected
+    socket.on('transport_connected', (data) => {
+      console.log(`🔗 Transport connected: ${data.direction}`);
+      
+      if (data.direction === 'send' && localStreamRef.current) {
+        // Start producing video and audio
+        startProducing('video');
+        startProducing('audio');
       }
-    };
+    });
 
-    if (!localStreamStarted && !isRetrying) {
-      initializeCall();
-    }
+    // New producer available (someone else started video/audio)
+    socket.on('new_producer_available', (data) => {
+      console.log('🎬 New producer available:', data);
+      
+      // Start consuming this producer
+      socket.emit('start_consuming', {
+        producerId: data.producerId
+      });
+    });
+
+    // Consumer created
+    socket.on('consumer_created', (data) => {
+      console.log('🍿 Consumer created:', data);
+      
+      // Resume the consumer
+      socket.emit('resume_consumer', {
+        consumerId: data.consumerId
+      });
+    });
 
     return () => {
-      isMounted = false;
+      socket.off('video_call_ready');
+      socket.off('transports_created');
+      socket.off('transport_connected');
+      socket.off('new_producer_available');
+      socket.off('consumer_created');
     };
-  }, [startLocalStream, joinVideoCall, localStreamStarted, retryAttempt, handleRetry, isRetrying]);
+  }, [socket]);
+
+  // Start producing video or audio
+  const startProducing = useCallback(async (kind: 'video' | 'audio') => {
+    if (!socket || !localStreamRef.current) return;
+
+    try {
+      const track = kind === 'video' 
+        ? localStreamRef.current.getVideoTracks()[0]
+        : localStreamRef.current.getAudioTracks()[0];
+      
+      if (!track) {
+        console.error(`No ${kind} track found`);
+        return;
+      }
+
+      // This is a simplified version - you'll need proper RTP parameters
+      // In a real implementation, you'd use a WebRTC library like mediasoup-client
+      const rtpParameters = {
+        // You need to implement proper RTP parameters generation
+        // This depends on your WebRTC library
+      };
+
+      socket.emit('start_producing', {
+        kind,
+        rtpParameters // This should contain proper RTP parameters
+      });
+      
+    } catch (error) {
+      console.error(`❌ Error producing ${kind}:`, error);
+    }
+  }, [socket]);
+
+  // Toggle video
+  const toggleVideo = useCallback(() => {
+    if (localStreamRef.current) {
+      const videoTrack = localStreamRef.current.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = !videoTrack.enabled;
+        setIsVideoEnabled(videoTrack.enabled);
+      }
+    }
+  }, []);
+
+  // Toggle audio
+  const toggleAudio = useCallback(() => {
+    if (localStreamRef.current) {
+      const audioTrack = localStreamRef.current.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+        setIsAudioEnabled(audioTrack.enabled);
+      }
+    }
+  }, []);
+
+  // Leave video call
+  const leaveVideoCall = useCallback(() => {
+    if (socket) {
+      socket.emit('leave_video_call');
+    }
+    
+    // Stop local stream
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => track.stop());
+      localStreamRef.current = null;
+    }
+    
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null;
+    }
+    
+    // Clear all refs
+    producersRef.current.clear();
+    consumersRef.current.clear();
+  }, [socket]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -130,430 +306,162 @@ export default function MeetScreen({ classId }: MeetScreenProps) {
     };
   }, [leaveVideoCall]);
 
-  // Update local video ref when stream changes
-  useEffect(() => {
-    if (localVideoRef.current && localStreamRef.current) {
-      localVideoRef.current.srcObject = localStreamRef.current;
-    }
-  }, [localStreamRef.current]);
-
-  // --- FIX: Ensure video element always gets the latest stream ---
-  useEffect(() => {
-    if (localVideoRef.current && localStreamRef.current) {
-      localVideoRef.current.srcObject = localStreamRef.current;
-    }
-  }, [localStreamRef, localStreamStarted]);
-  // -------------------------------------------------------------
-
-  // Handle video toggle
-  const toggleVideo = useCallback(() => {
-    if (localStreamRef.current) {
-      const videoTrack = localStreamRef.current.getVideoTracks()[0];
-      if (videoTrack) {
-        videoTrack.enabled = !videoTrack.enabled;
-        setIsVideoEnabled(videoTrack.enabled);
-        console.log(`Video ${videoTrack.enabled ? 'enabled' : 'disabled'}`);
-      }
-    }
-  }, [localStreamRef]);
-
-  // Handle audio toggle
-  const toggleAudio = useCallback(() => {
-    if (localStreamRef.current) {
-      const audioTrack = localStreamRef.current.getAudioTracks()[0];
-      if (audioTrack) {
-        audioTrack.enabled = !audioTrack.enabled;
-        setIsAudioEnabled(audioTrack.enabled);
-        console.log(`Audio ${audioTrack.enabled ? 'enabled' : 'disabled'}`);
-      }
-    }
-  }, [localStreamRef]);
-
-  // Handle leave call
-  const handleLeaveCall = useCallback(() => {
-    leaveVideoCall();
-    router.back();
-  }, [leaveVideoCall, router]);
-
-  // Handle fullscreen toggle
-  const toggleFullscreen = useCallback(() => {
-    if (!isFullscreen) {
-      document.documentElement.requestFullscreen?.();
-    } else {
-      document.exitFullscreen?.();
-    }
-    setIsFullscreen(!isFullscreen);
-  }, [isFullscreen]);
-
-  // Screen sharing (placeholder for future implementation)
-  const toggleScreenShare = useCallback(() => {
-    // Placeholder for screen sharing functionality
-    console.log('Screen share toggle (not implemented)');
-    setIsScreenShareEnabled(!isScreenShareEnabled);
-  }, [isScreenShareEnabled]);
-
-  // Calculate grid layout based on participant count
-  const getGridLayout = (participantCount: number) => {
-    if (participantCount <= 1) return "grid-cols-1";
-    if (participantCount <= 2) return "grid-cols-1 lg:grid-cols-2";
-    if (participantCount <= 4) return "grid-cols-2";
-    if (participantCount <= 6) return "grid-cols-2 lg:grid-cols-3";
-    return "grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
-  };
-
-  const totalParticipants = peers.length + (localStreamStarted ? 1 : 0);
-
-  // Loading state with better UX
-  if (isConnecting || isRetrying) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gray-900 text-white">
-        <div className="text-center max-w-md">
-          <div className="relative mb-6">
-            <FaSpinner className="animate-spin text-4xl text-blue-500 mx-auto" />
-            {isRetrying && (
-              <div className="absolute -top-2 -right-2">
-                <div className="bg-yellow-500 text-black text-xs px-2 py-1 rounded-full font-bold">
-                  {retryAttempt}
-                </div>
-              </div>
-            )}
-          </div>
-          <h2 className="text-xl font-semibold mb-2">
-            {isRetrying 
-              ? `Reconnecting... (Attempt ${retryAttempt})`
-              : localStreamStarted 
-                ? 'Connecting to video call...' 
-                : 'Starting camera...'
-            }
-          </h2>
-          <p className="text-gray-400">
-            {isRetrying 
-              ? 'We\'re working to restore your connection...' 
-              : 'Please wait while we set up your video call'
-            }
-          </p>
-          {retryAttempt >= 2 && (
-            <button
-              onClick={handleRetry}
-              className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
-            >
-              Retry Now
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // Error state with retry options
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gray-900 text-white">
-        <div className="text-center max-w-md">
-          <FaExclamationTriangle className="text-red-500 text-6xl mb-4 mx-auto" />
-          <h2 className="text-xl font-semibold mb-2 text-red-400">Connection Error</h2>
-          <p className="text-gray-400 mb-2">{error}</p>
-          
-          {retryAttempt > 0 && (
-            <p className="text-sm text-gray-500 mb-6">
-              Retry attempts: {retryAttempt}/3
-            </p>
-          )}
-          
-          <div className="space-x-4">
-            <button
-              onClick={handleRetry}
-              disabled={isRetrying || retryAttempt >= 3}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-medium transition-colors"
-            >
-              {isRetrying ? 'Retrying...' : 'Retry'}
-            </button>
-            <button
-              onClick={handleLeaveCall}
-              className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
-            >
-              Go Back
-            </button>
-          </div>
-          
-          {retryAttempt >= 3 && (
-            <div className="mt-6 p-4 bg-gray-800 rounded-lg">
-              <p className="text-sm text-gray-300 mb-2">Still having trouble?</p>
-              <ul className="text-xs text-gray-400 text-left space-y-1">
-                <li>• Check your internet connection</li>
-                <li>• Allow camera and microphone permissions</li>
-                <li>• Try refreshing the page</li>
-                <li>• Use a different browser</li>
-              </ul>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col h-screen bg-gray-900 text-white overflow-hidden">
-      {/* Enhanced Header */}
-      <div className="flex items-center justify-between p-4 bg-gray-800 shadow-lg border-b border-gray-700">
-        <div className="flex items-center space-x-4">
-          <div>
-            <h1 className="text-xl font-semibold">
-              {role === 'host' ? 'Teaching Session' : 'Learning Session'}
-            </h1>
-            <span className="text-sm text-gray-400">Class ID: {classId}</span>
-          </div>
-          
-          {/* Connection Status Indicator */}
-          <div className="flex items-center space-x-2">
-            <div className={`w-2 h-2 rounded-full ${
-              isVideoCallReady ? 'bg-green-500' : 'bg-yellow-500'
-            }`}></div>
-            <span className="text-xs text-gray-400">
-              {isVideoCallReady ? 'Connected' : 'Connecting...'}
-            </span>
+    <div className="meet-screen">
+      <div className="video-grid">
+        {/* Local Video */}
+        <div className="video-container">
+          <video
+            ref={localVideoRef}
+            autoPlay
+            muted
+            playsInline
+            className="local-video"
+            style={{
+              width: '300px',
+              height: '200px',
+              backgroundColor: '#000',
+              borderRadius: '8px'
+            }}
+          />
+          <div className="video-controls">
+            <span>You</span>
           </div>
         </div>
         
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center text-sm text-gray-400 bg-gray-700 px-3 py-1 rounded-full">
-            <FaUsers className="mr-2" />
-            {totalParticipants} participant{totalParticipants !== 1 ? 's' : ''}
+        {/* Remote Videos */}
+        {Array.from(peers.entries()).map(([peerId, peer]) => (
+          <div key={peerId} className="video-container">
+            <video
+              autoPlay
+              playsInline
+              style={{
+                width: '300px',
+                height: '200px',
+                backgroundColor: '#000',
+                borderRadius: '8px'
+              }}
+            />
+            <div className="video-controls">
+              <span>{peer.userName}</span>
+            </div>
           </div>
-          
-          <button
-            onClick={toggleFullscreen}
-            className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors tooltip"
-            title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-          >
-            {isFullscreen ? <FaCompress /> : <FaExpand />}
-          </button>
-        </div>
+        ))}
       </div>
 
-      {/* Enhanced Video Grid */}
-      <div className="flex-1 p-4 overflow-hidden">
-        <div className={`h-full grid gap-4 ${getGridLayout(totalParticipants)}`}>
-          {/* Local Video with enhanced styling */}
-          {localStreamStarted && (
-            <div className="relative bg-gray-800 rounded-xl overflow-hidden shadow-xl border border-gray-700 group">
-              <video
-                ref={localVideoRef}
-                autoPlay
-                muted
-                playsInline
-                className="w-full h-full object-cover"
-              />
-              
-              {/* Enhanced Local Video Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
-              
-              <div className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-sm rounded-lg px-3 py-2">
-                <span className="text-sm font-medium flex items-center">
-                  You {role === 'host' && <span className="ml-2 text-xs bg-blue-500 px-2 py-1 rounded-full">Host</span>}
-                </span>
-              </div>
-              
-              {/* Audio/Video Status Indicators */}
-              <div className="absolute top-4 right-4 flex space-x-2">
-                {!isAudioEnabled && (
-                  <div className="bg-red-500 p-2 rounded-full">
-                    <FaMicrophoneSlash className="text-xs" />
-                  </div>
-                )}
-                {!isVideoEnabled && (
-                  <div className="bg-red-500 p-2 rounded-full">
-                    <FaVideoSlash className="text-xs" />
-                  </div>
-                )}
-              </div>
-              
-              {/* Video Disabled Overlay */}
-              {!isVideoEnabled && (
-                <div className="absolute inset-0 bg-gray-700 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-gray-600 rounded-full flex items-center justify-center mb-3 mx-auto">
-                      <span className="text-2xl font-bold">You</span>
-                    </div>
-                    <p className="text-gray-300">Camera Off</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Enhanced Remote Videos */}
-          {peers.map((peer) => (
-            <div 
-              key={peer.id} 
-              className={`relative bg-gray-800 rounded-xl overflow-hidden shadow-xl border transition-all duration-300 ${
-                // dominantSpeaker === peer.id 
-                //   ? 'border-blue-500 border-2 shadow-blue-500/25' 
-                //   : 
-                'border-gray-700 hover:border-gray-600'
-              } group`}
-            >
-              <video
-                autoPlay
-                playsInline
-                ref={(video) => {
-                  if (video && peer.stream) {
-                    video.srcObject = peer.stream;
-                  }
-                }}
-               className="w-full h-full object-contain bg-black"
-              />
-              
-              {/* Enhanced Remote Video Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
-              
-              <div className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-sm rounded-lg px-3 py-2">
-                <span className="text-sm font-medium">
-                  {peer.name || `Peer ${peer.id.slice(-4)}`}
-                </span>
-              </div>
-              
-              {/* Connection Quality Indicator */}
-              <div className="absolute top-4 left-4">
-                <div className="flex space-x-1">
-                  <div className="w-1 h-3 bg-green-500 rounded-full"></div>
-                  <div className="w-1 h-3 bg-green-500 rounded-full"></div>
-                  <div className="w-1 h-3 bg-gray-400 rounded-full"></div>
-                </div>
-              </div>
-              
-              {/* Audio Indicator for Remote Peers */}
-              <div className="absolute top-4 right-4">
-                {peer.stream && peer.stream.getAudioTracks()[0]?.enabled ? (
-                  <FaVolumeUp className="text-green-500" />
-                ) : (
-                  <FaVolumeMute className="text-red-500" />
-                )}
-              </div>
-              
-              {/* No Video Overlay */}
-              {(!peer.stream || peer.stream.getVideoTracks().length === 0 || !peer.stream.getVideoTracks()[0]?.enabled) && (
-                <div className="absolute inset-0 bg-gray-700 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mb-3 mx-auto shadow-lg">
-                      <span className="text-xl font-bold text-white">
-                        {peer.name ? peer.name.charAt(0).toUpperCase() : 'U'}
-                      </span>
-                    </div>
-                    <p className="text-gray-300 text-sm font-medium">{peer.name || 'Unknown User'}</p>
-                    <p className="text-gray-500 text-xs mt-1">Camera off</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-
-          {/* Enhanced Empty Slots */}
-          {Array.from({ length: Math.max(0, Math.min(6 - totalParticipants, 4)) }).map((_, index) => (
-            <div key={`empty-${index}`} className="bg-gray-800/50 rounded-xl border-2 border-dashed border-gray-600 flex items-center justify-center transition-all duration-300 hover:border-gray-500">
-              <div className="text-center text-gray-500">
-                <div className="w-12 h-12 bg-gray-700/50 rounded-full flex items-center justify-center mb-3 mx-auto">
-                  <FaUsers className="text-xl opacity-50" />
-                </div>
-                <p className="text-sm font-medium">Waiting for participants...</p>
-                <p className="text-xs mt-1 opacity-75">Share the class ID to invite others</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Enhanced Control Bar */}
-      <div className="p-6 bg-gray-800 border-t border-gray-700">
-        <div className="flex items-center justify-center space-x-6">
-          {/* Audio Toggle */}
-          <button
-            onClick={toggleAudio}
-            className={`p-4 rounded-full font-medium transition-all duration-200 transform hover:scale-105 shadow-lg ${
-              isAudioEnabled
-                ? 'bg-gray-700 hover:bg-gray-600 text-white shadow-gray-700/25'
-                : 'bg-red-600 hover:bg-red-700 text-white shadow-red-600/25'
-            }`}
-            title={isAudioEnabled ? 'Mute microphone' : 'Unmute microphone'}
-          >
-            {isAudioEnabled ? <FaMicrophone size={20} /> : <FaMicrophoneSlash size={20} />}
-          </button>
-
-          {/* Video Toggle */}
-          <button
-            onClick={toggleVideo}
-            className={`p-4 rounded-full font-medium transition-all duration-200 transform hover:scale-105 shadow-lg ${
-              isVideoEnabled
-                ? 'bg-gray-700 hover:bg-gray-600 text-white shadow-gray-700/25'
-                : 'bg-red-600 hover:bg-red-700 text-white shadow-red-600/25'
-            }`}
-            title={isVideoEnabled ? 'Turn off camera' : 'Turn on camera'}
-          >
-            {isVideoEnabled ? <FaVideo size={20} /> : <FaVideoSlash size={20} />}
-          </button>
-
-          {/* Screen Share Toggle (Host Only) */}
-          {role === 'host' && (
-            <button
-              onClick={toggleScreenShare}
-              className={`p-4 rounded-full font-medium transition-all duration-200 transform hover:scale-105 shadow-lg ${
-                isScreenShareEnabled
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/25'
-                  : 'bg-gray-700 hover:bg-gray-600 text-white shadow-gray-700/25'
-              }`}
-              title={isScreenShareEnabled ? 'Stop screen share' : 'Share screen'}
-            >
-              <FaDesktop size={20} />
-            </button>
-          )}
-
-          {/* Settings */}
-          <button
-            className="p-4 rounded-full bg-gray-700 hover:bg-gray-600 text-white font-medium transition-all duration-200 transform hover:scale-105 shadow-lg shadow-gray-700/25"
-            title="Settings"
-          >
-            <FaCog size={20} />
-          </button>
-
-          {/* Leave Call */}
-          <button
-            onClick={handleLeaveCall}
-            className="px-6 py-4 bg-red-600 hover:bg-red-700 text-white rounded-full font-medium transition-all duration-200 flex items-center space-x-2 transform hover:scale-105 shadow-lg shadow-red-600/25"
-            title="Leave call"
-          >
-            <FaPhoneSlash size={20} />
-            <span>Leave</span>
-          </button>
-        </div>
+      {/* Control Panel */}
+      <div className="control-panel" style={{ 
+        position: 'fixed', 
+        bottom: '20px', 
+        left: '50%', 
+        transform: 'translateX(-50%)',
+        display: 'flex',
+        gap: '10px',
+        backgroundColor: 'rgba(0,0,0,0.7)',
+        padding: '10px',
+        borderRadius: '8px'
+      }}>
+        <button
+          onClick={joinVideoCall}
+          disabled={!isConnected}
+          style={{
+            padding: '10px 20px',
+            backgroundColor: '#4CAF50',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          Join Video Call
+        </button>
         
-        {/* Enhanced Status Indicators */}
-        <div className="flex items-center justify-center mt-4 space-x-6 text-sm text-gray-400">
-          {isVideoCallReady && (
-            <span className="flex items-center bg-green-900/50 px-3 py-1 rounded-full">
-              <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-              Connected
-            </span>
-          )}
-          {!isAudioEnabled && (
-            <span className="flex items-center bg-red-900/50 px-3 py-1 rounded-full">
-              <FaMicrophoneSlash className="mr-2" />
-              Microphone off
-            </span>
-          )}
-          {!isVideoEnabled && (
-            <span className="flex items-center bg-red-900/50 px-3 py-1 rounded-full">
-              <FaVideoSlash className="mr-2" />
-              Camera off
-            </span>
-          )}
-          {isScreenShareEnabled && (
-            <span className="flex items-center bg-blue-900/50 px-3 py-1 rounded-full">
-              <FaDesktop className="mr-2" />
-              Sharing screen
-            </span>
-          )}
+        <button
+          onClick={toggleVideo}
+          style={{
+            padding: '10px 20px',
+            backgroundColor: isVideoEnabled ? '#4CAF50' : '#f44336',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          {isVideoEnabled ? '📹' : '📹‍❌'} Video
+        </button>
+        
+        <button
+          onClick={toggleAudio}
+          style={{
+            padding: '10px 20px',
+            backgroundColor: isAudioEnabled ? '#4CAF50' : '#f44336',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          {isAudioEnabled ? '🎤' : '🎤‍❌'} Audio
+        </button>
+        
+        <button
+          onClick={leaveVideoCall}
+          style={{
+            padding: '10px 20px',
+            backgroundColor: '#f44336',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          Leave Call
+        </button>
+      </div>
+
+      {/* Error Display */}
+      {error && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          backgroundColor: '#f44336',
+          color: 'white',
+          padding: '10px',
+          borderRadius: '4px',
+          maxWidth: '300px'
+        }}>
+          {error}
+          <button 
+            onClick={() => setError('')}
+            style={{
+              marginLeft: '10px',
+              background: 'transparent',
+              border: 'none',
+              color: 'white',
+              cursor: 'pointer'
+            }}
+          >
+            ×
+          </button>
         </div>
+      )}
+
+      {/* Connection Status */}
+      <div style={{
+        position: 'fixed',
+        top: '20px',
+        left: '20px',
+        padding: '5px 10px',
+        borderRadius: '4px',
+        backgroundColor: isConnected ? '#4CAF50' : '#f44336',
+        color: 'white',
+        fontSize: '12px'
+      }}>
+        {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
       </div>
     </div>
   );
-}
+};
+
+export default MeetScreen;
