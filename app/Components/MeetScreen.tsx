@@ -17,7 +17,7 @@ interface Participant {
   stream?: MediaStream;
 }
 
-const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
+const MeetScreen: React.FC<MeetScreenProps> = ({ classId, token }) => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
@@ -29,9 +29,9 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
   const [showParticipants, setShowParticipants] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [currentUserName, setCurrentUserName] = useState('You');
+  const [currentUserName] = useState('You');
   const [meetingDuration, setMeetingDuration] = useState(0);
-  const [connectionQuality, setConnectionQuality] = useState<'excellent' | 'good' | 'fair' | 'poor'>('excellent');
+  const [connectionQuality] = useState<'excellent' | 'good' | 'fair' | 'poor'>('excellent');
   
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
