@@ -47,7 +47,7 @@ export default function MeetScreen({ classId }: MeetScreenProps) {
   const [localStreamStarted, setLocalStreamStarted] = useState(false);
   const [retryAttempt, setRetryAttempt] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
-  const [dominantSpeaker, setDominantSpeaker] = useState<string | null>(null);
+  // const [dominantSpeaker, setDominantSpeaker] = useState<string | null>(null);
   const [isScreenShareEnabled, setIsScreenShareEnabled] = useState(false);
 
   // Auto-retry mechanism
@@ -379,9 +379,10 @@ export default function MeetScreen({ classId }: MeetScreenProps) {
             <div 
               key={peer.id} 
               className={`relative bg-gray-800 rounded-xl overflow-hidden shadow-xl border transition-all duration-300 ${
-                dominantSpeaker === peer.id 
-                  ? 'border-blue-500 border-2 shadow-blue-500/25' 
-                  : 'border-gray-700 hover:border-gray-600'
+                // dominantSpeaker === peer.id 
+                //   ? 'border-blue-500 border-2 shadow-blue-500/25' 
+                //   : 
+                'border-gray-700 hover:border-gray-600'
               } group`}
             >
               <video

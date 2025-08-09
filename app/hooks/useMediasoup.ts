@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useState, useCallback } from "react";
 import * as mediasoupClient from "mediasoup-client";
 import { useSocket } from "../Components/Contexts/SocketContext";
@@ -257,8 +258,16 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
         console.warn('High quality stream failed, trying lower quality:', error);
         // Fallback to lower quality
         constraints = {
-          video: { width: 640, height: 480, frameRate: 15 },
-          audio: true
+          video: { 
+            width: { ideal: 640 }, 
+            height: { ideal: 480 }, 
+            frameRate: { ideal: 15 } 
+          },
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
         };
         stream = await navigator.mediaDevices.getUserMedia(constraints);
       }

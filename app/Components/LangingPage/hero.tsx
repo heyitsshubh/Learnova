@@ -6,7 +6,8 @@ import Link from "next/link";
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen flex flex-col font-sans bg-[#F5F1F1] w-full">
+    <div className="min-h-screen flex flex-col font-sans  w-full"
+        style={{ background: "rgba(245, 241, 241, 1)" }}>
       {/* Navbar */}
       <header className="flex justify-between items-center px-8 py-4 bg-white shadow-sm w-full">
         <div className="flex items-center gap-2">
@@ -21,10 +22,10 @@ export default function LandingPage() {
                 <span className="font-bold" style={{ fontSize: 24 }}>learnOva</span>
         </div>
         <nav className="hidden md:flex gap-8 text-gray-700 font-medium">
-          <a href="#">Home</a>
-          <a href="#Feature">Features</a>
-          <a href="#">FAQs</a>
-          <a href="#">Contact Us</a>
+               <Link href="/">Home</Link>
+          <Link href="/#Feature">Features</Link>
+          <Link href="/faq">FAQs</Link>
+          <Link href="/contact">Contact Us</Link>
         </nav>
       <div className="hidden md:flex items-center gap-4">
           <Link href="/login">
