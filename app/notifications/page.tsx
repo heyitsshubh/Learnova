@@ -248,7 +248,7 @@ const Notifications = () => {
 
   return (
     <AppLayout>
-      <div className="pl-4 pr-6 pt-6">
+      <div className="pl-4 pr-6 pt-6 ">
         <div className="flex justify-between items-center mb-6">
           <div>
             <div className="flex items-center gap-3">

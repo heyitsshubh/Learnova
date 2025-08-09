@@ -137,6 +137,14 @@ export default function MeetScreen({ classId }: MeetScreenProps) {
     }
   }, [localStreamRef.current]);
 
+  // --- FIX: Ensure video element always gets the latest stream ---
+  useEffect(() => {
+    if (localVideoRef.current && localStreamRef.current) {
+      localVideoRef.current.srcObject = localStreamRef.current;
+    }
+  }, [localStreamRef, localStreamStarted]);
+  // -------------------------------------------------------------
+
   // Handle video toggle
   const toggleVideo = useCallback(() => {
     if (localStreamRef.current) {
@@ -147,7 +155,7 @@ export default function MeetScreen({ classId }: MeetScreenProps) {
         console.log(`Video ${videoTrack.enabled ? 'enabled' : 'disabled'}`);
       }
     }
-  }, []);
+  }, [localStreamRef]);
 
   // Handle audio toggle
   const toggleAudio = useCallback(() => {
@@ -159,7 +167,7 @@ export default function MeetScreen({ classId }: MeetScreenProps) {
         console.log(`Audio ${audioTrack.enabled ? 'enabled' : 'disabled'}`);
       }
     }
-  }, []);
+  }, [localStreamRef]);
 
   // Handle leave call
   const handleLeaveCall = useCallback(() => {
