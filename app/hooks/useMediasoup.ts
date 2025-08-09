@@ -27,6 +27,8 @@ export interface Peer {
   name?: string;
   stream: MediaStream;
   consumers: Map<string, mediasoupClient.types.Consumer>;
+  isVideoEnabled: boolean;
+  isAudioEnabled: boolean;
 }
 
 export interface UseMediasoupReturn {
@@ -48,17 +50,10 @@ export interface UseMediasoupReturn {
 }
 
 // Retry configuration
-interface RetryConfig {
-  maxRetries: number;
-  baseDelay: number; // ms
-  maxDelay: number; // ms
-  multiplier: number;
-}
-
-const DEFAULT_RETRY_CONFIG: RetryConfig = {
+const DEFAULT_RETRY_CONFIG = {
   maxRetries: 3,
-  baseDelay: 1000,
-  maxDelay: 10000,
+  baseDelay: 1000, // ms
+  maxDelay: 10000, // ms
   multiplier: 2
 };
 
@@ -87,7 +82,6 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
   
   // Initialization flag
   const isInitializedRef = useRef(false);
-  const rtpCapabilitiesRef = useRef<any>(null);
 
   // Computed states for backward compatibility
   const isVideoCallReady = connectionState === ConnectionState.CONNECTED;
@@ -111,7 +105,6 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
     return ['TRANSPORT', 'NETWORK', 'DEVICE_INIT'].includes(errorType);
   };
 
-  // Retry mechanism
   const scheduleRetry = useCallback((errorType: MediasoupError['type'], retryFn: () => Promise<void>) => {
     if (!canRetry(errorType) || retryCountRef.current >= DEFAULT_RETRY_CONFIG.maxRetries) {
       setConnectionState(ConnectionState.FAILED);
@@ -140,7 +133,6 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
     }, delay);
   }, []);
 
-  // Manual retry function
   const retryConnection = useCallback(() => {
     if (connectionState === ConnectionState.FAILED || error) {
       console.log('🔄 Manual retry triggered');
@@ -148,9 +140,8 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
       clearError();
       joinVideoCall();
     }
-  }, [connectionState, error]);
+  }, [connectionState, error, joinVideoCall]);
 
-  // Initialize MediaSoup Device with retry
   const initializeDevice = useCallback(async (rtpCapabilities: any) => {
     try {
       setConnectionState(ConnectionState.INITIALIZING);
@@ -169,7 +160,6 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
       console.error('Error loading MediaSoup device:', error);
       setErrorWithType('DEVICE_INIT', 'Failed to initialize media device', true, error);
       
-      // Schedule retry for device initialization
       scheduleRetry('DEVICE_INIT', async () => {
         await initializeDevice(rtpCapabilities);
       });
@@ -178,107 +168,49 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
     }
   }, [scheduleRetry]);
 
-  // Create Send Transport with retry mechanism
   const createSendTransport = useCallback(async (transportParams: any) => {
     try {
       if (!deviceRef.current) throw new Error('Device not initialized');
-
+      
+      if (sendTransportRef.current) {
+        return sendTransportRef.current;
+      }
+      
       const sendTransport = deviceRef.current.createSendTransport(transportParams);
       
       sendTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
         try {
-          console.log('🔗 Send transport connecting...');
-          
-          const connectPromise = new Promise<void>((resolve, reject) => {
-            const timeout = setTimeout(() => {
-              reject(new Error('Transport connection timeout'));
-            }, 15000);
-
-            const connectHandler = (data: any) => {
-              if (data.transportId === sendTransport.id && data.direction === 'send') {
-                clearTimeout(timeout);
-                socket?.off('transport_connected', connectHandler);
-                socket?.off('transport_connect_error', errorHandler);
-                resolve();
-              }
-            };
-
-            const errorHandler = (data: any) => {
-              if (data.transportId === sendTransport.id) {
-                clearTimeout(timeout);
-                socket?.off('transport_connected', connectHandler);
-                socket?.off('transport_connect_error', errorHandler);
-                reject(new Error(data.error || 'Transport connection failed'));
-              }
-            };
-
-            socket?.on('transport_connected', connectHandler);
-            socket?.on('transport_connect_error', errorHandler);
-          });
-
-          socket?.emit('connect_transport', {
+          await socket?.emitWithAck('connect_transport', {
             transportId: sendTransport.id,
             dtlsParameters,
             direction: 'send'
           });
-
-          await connectPromise;
           callback();
         } catch (error) {
           console.error('Error connecting send transport:', error);
           errback(error as Error);
         }
       });
-
-      sendTransport.on('produce', async ({ kind, rtpParameters }, callback, errback) => {
+      
+      sendTransport.on('produce', async ({ kind, rtpParameters, appData }, callback, errback) => {
         try {
-          console.log(`📤 Producing ${kind}...`);
-          
-          const producePromise = new Promise<{ id: string }>((resolve, reject) => {
-            const timeout = setTimeout(() => {
-              reject(new Error('Producer creation timeout'));
-            }, 15000);
-
-            const produceHandler = (data: any) => {
-              if (data.kind === kind) {
-                clearTimeout(timeout);
-                socket?.off('producer_created', produceHandler);
-                socket?.off('producer_error', errorHandler);
-                resolve({ id: data.producerId });
-              }
-            };
-
-            const errorHandler = (data: any) => {
-              if (data.kind === kind) {
-                clearTimeout(timeout);
-                socket?.off('producer_created', produceHandler);
-                socket?.off('producer_error', errorHandler);
-                reject(new Error(data.error || 'Producer creation failed'));
-              }
-            };
-
-            socket?.on('producer_created', produceHandler);
-            socket?.on('producer_error', errorHandler);
+          const { producerId } = await socket?.emitWithAck('start_producing', {
+            transportId: sendTransport.id,
+            kind,
+            rtpParameters,
+            appData,
           });
-
-          socket?.emit('start_producing', { kind, rtpParameters });
-          const result = await producePromise;
-          callback(result);
+          callback({ id: producerId });
         } catch (error) {
           console.error('Error producing:', error);
           errback(error as Error);
         }
       });
-
+      
       sendTransport.on('connectionstatechange', (state) => {
         console.log('📡 Send transport connection state:', state);
-        
-        if (state === 'connected') {
-          clearError();
-        } else if (state === 'failed' || state === 'disconnected') {
+        if (state === 'failed' || state === 'disconnected') {
           setErrorWithType('TRANSPORT', 'Send transport connection failed', true);
-          
-          // Schedule retry for transport reconnection
           scheduleRetry('TRANSPORT', async () => {
             await createSendTransport(transportParams);
           });
@@ -295,51 +227,23 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
     }
   }, [socket, scheduleRetry]);
 
-  // Create Receive Transport with retry mechanism
   const createReceiveTransport = useCallback(async (transportParams: any) => {
     try {
       if (!deviceRef.current) throw new Error('Device not initialized');
+
+      if (recvTransportRef.current) {
+        return recvTransportRef.current;
+      }
 
       const recvTransport = deviceRef.current.createRecvTransport(transportParams);
       
       recvTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
         try {
-          console.log('🔗 Receive transport connecting...');
-          
-          const connectPromise = new Promise<void>((resolve, reject) => {
-            const timeout = setTimeout(() => {
-              reject(new Error('Transport connection timeout'));
-            }, 15000);
-
-            const connectHandler = (data: any) => {
-              if (data.transportId === recvTransport.id && data.direction === 'recv') {
-                clearTimeout(timeout);
-                socket?.off('transport_connected', connectHandler);
-                socket?.off('transport_connect_error', errorHandler);
-                resolve();
-              }
-            };
-
-            const errorHandler = (data: any) => {
-              if (data.transportId === recvTransport.id) {
-                clearTimeout(timeout);
-                socket?.off('transport_connected', connectHandler);
-                socket?.off('transport_connect_error', errorHandler);
-                reject(new Error(data.error || 'Transport connection failed'));
-              }
-            };
-
-            socket?.on('transport_connected', connectHandler);
-            socket?.on('transport_connect_error', errorHandler);
-          });
-
-          socket?.emit('connect_transport', {
+          await socket?.emitWithAck('connect_transport', {
             transportId: recvTransport.id,
             dtlsParameters,
             direction: 'recv'
           });
-
-          await connectPromise;
           callback();
         } catch (error) {
           console.error('Error connecting receive transport:', error);
@@ -349,13 +253,8 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
 
       recvTransport.on('connectionstatechange', (state) => {
         console.log('📡 Receive transport connection state:', state);
-        
-        if (state === 'connected') {
-          clearError();
-        } else if (state === 'failed' || state === 'disconnected') {
+        if (state === 'failed' || state === 'disconnected') {
           setErrorWithType('TRANSPORT', 'Receive transport connection failed', true);
-          
-          // Schedule retry for transport reconnection
           scheduleRetry('TRANSPORT', async () => {
             await createReceiveTransport(transportParams);
           });
@@ -371,271 +270,133 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
       throw error;
     }
   }, [socket, scheduleRetry]);
-
-  // Start Local Media Stream with better error handling
+  
   const startLocalStream = useCallback(async (): Promise<MediaStream> => {
     try {
-      // Try high quality first, fallback to lower quality
-      let constraints = { 
-        video: { 
-          width: { ideal: 1280 }, 
-          height: { ideal: 720 },
-          frameRate: { ideal: 30 }
-        }, 
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        }
-      };
-
-      let stream: MediaStream;
-      
-      try {
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-      } catch (error) {
-        console.warn('High quality stream failed, trying lower quality:', error);
-        // Fallback to lower quality
-        constraints = {
-          video: { 
-            width: { ideal: 640 }, 
-            height: { ideal: 480 }, 
-            frameRate: { ideal: 15 } 
-          },
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true
-          }
-        };
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-      }
-
+      const constraints = { video: true, audio: true };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       localStreamRef.current = stream;
-      
-      // Set initial enabled states based on tracks
-      const videoTrack = stream.getVideoTracks()[0];
-      const audioTrack = stream.getAudioTracks()[0];
-      
-      if (videoTrack) {
-        setIsVideoEnabled(videoTrack.enabled);
-      }
-      if (audioTrack) {
-        setIsAudioEnabled(audioTrack.enabled);
-      }
-      
-      console.log('📹 Local stream started with tracks:', 
-        stream.getVideoTracks().length, 'video,', 
-        stream.getAudioTracks().length, 'audio');
+      setIsVideoEnabled(stream.getVideoTracks().length > 0);
+      setIsAudioEnabled(stream.getAudioTracks().length > 0);
+      console.log('📹 Local stream started');
       return stream;
     } catch (error) {
-      console.error('Error starting local stream:', error);
       setErrorWithType('PERMISSION', 'Failed to access camera/microphone. Please check permissions.', false, error);
       throw error;
     }
   }, []);
 
-  // Toggle video with MediaSoup integration
-  const toggleVideo = useCallback(() => {
-    if (localStreamRef.current) {
-      const videoTrack = localStreamRef.current.getVideoTracks()[0];
-      if (videoTrack) {
-        videoTrack.enabled = !videoTrack.enabled;
-        setIsVideoEnabled(videoTrack.enabled);
-        console.log(`📹 Video ${videoTrack.enabled ? 'enabled' : 'disabled'}`);
-      }
-    }
-  }, []);
-
-  // Toggle audio with MediaSoup integration
-  const toggleAudio = useCallback(() => {
-    if (localStreamRef.current) {
-      const audioTrack = localStreamRef.current.getAudioTracks()[0];
-      if (audioTrack) {
-        audioTrack.enabled = !audioTrack.enabled;
-        setIsAudioEnabled(audioTrack.enabled);
-        console.log(`🎤 Audio ${audioTrack.enabled ? 'enabled' : 'disabled'}`);
-      }
-    }
-  }, []);
-
-  // Produce Local Media with retry logic
   const produceMedia = useCallback(async () => {
-    try {
-      if (!sendTransportRef.current || !localStreamRef.current) {
-        console.warn('Cannot produce media - missing transport or stream');
-        return;
+    if (!sendTransportRef.current || !localStreamRef.current) {
+      console.warn('Cannot produce media - missing transport or stream');
+      return;
+    }
+
+    const videoTrack = localStreamRef.current.getVideoTracks()[0];
+    const audioTrack = localStreamRef.current.getAudioTracks()[0];
+
+    // Produce video track
+    if (videoTrack && !producersRef.current.has('video')) {
+      try {
+        const videoProducer = await sendTransportRef.current.produce({ track: videoTrack, encodings: [{ maxBitrate: 1000000 }] });
+        producersRef.current.set('video', videoProducer);
+        videoProducer.on('transportclose', () => producersRef.current.delete('video'));
+        console.log('✅ Video producer created successfully');
+      } catch (error) {
+        setErrorWithType('PRODUCER', 'Failed to create video producer', true, error);
       }
+    }
 
-      const videoTrack = localStreamRef.current.getVideoTracks()[0];
-      const audioTrack = localStreamRef.current.getAudioTracks()[0];
-
-      const producePromises = [];
-
-      if (videoTrack && !producersRef.current.has('video')) {
-        const produceVideo = async () => {
-          try {
-            const videoProducer = await sendTransportRef.current!.produce({ track: videoTrack });
-            producersRef.current.set('video', videoProducer);
-            
-            videoProducer.on('transportclose', () => {
-              console.log('Video producer transport closed');
-              producersRef.current.delete('video');
-            });
-
-            console.log('✅ Video producer created successfully');
-          } catch (error) {
-            console.error('Error creating video producer:', error);
-            setErrorWithType('PRODUCER', 'Failed to create video producer', true, error);
-          }
-        };
-        producePromises.push(produceVideo());
+    // Produce audio track
+    if (audioTrack && !producersRef.current.has('audio')) {
+      try {
+        const audioProducer = await sendTransportRef.current.produce({ track: audioTrack, encodings: [{ maxBitrate: 1000000 }] });
+        producersRef.current.set('audio', audioProducer);
+        audioProducer.on('transportclose', () => producersRef.current.delete('audio'));
+        console.log('✅ Audio producer created successfully');
+      } catch (error) {
+        setErrorWithType('PRODUCER', 'Failed to create audio producer', true, error);
       }
-
-      if (audioTrack && !producersRef.current.has('audio')) {
-        const produceAudio = async () => {
-          try {
-            const audioProducer = await sendTransportRef.current!.produce({ track: audioTrack });
-            producersRef.current.set('audio', audioProducer);
-            
-            audioProducer.on('transportclose', () => {
-              console.log('Audio producer transport closed');
-              producersRef.current.delete('audio');
-            });
-
-            console.log('✅ Audio producer created successfully');
-          } catch (error) {
-            console.error('Error creating audio producer:', error);
-            setErrorWithType('PRODUCER', 'Failed to create audio producer', true, error);
-          }
-        };
-        producePromises.push(produceAudio());
-      }
-
-      await Promise.allSettled(producePromises);
-    } catch (error) {
-      console.error('Error producing media:', error);
-      setErrorWithType('PRODUCER', 'Failed to share media', true, error);
     }
   }, []);
 
-  // Consume Remote Media with better error handling
   const consumeRemoteMedia = useCallback(async (
     producerId: string, 
     producerSocketId: string, 
     producerName: string, 
-    kind: string
+    kind: 'audio' | 'video'
   ) => {
     try {
       if (!recvTransportRef.current || !deviceRef.current) {
         console.warn('Cannot consume - missing transport or device');
         return;
       }
-
+      
       console.log(`📥 Starting to consume ${kind} from ${producerName}`);
-
-      const consumePromise = new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error('Consumer creation timeout'));
-        }, 15000);
-
-        const consumerHandler = async (data: any) => {
-          if (data.producerId === producerId) {
-            clearTimeout(timeout);
-            socket?.off('consumer_created', consumerHandler);
-            socket?.off('consumer_error', errorHandler);
-
-            try {
-              const consumer = await recvTransportRef.current!.consume({
-                id: data.consumerId,
-                producerId: data.producerId,
-                kind: data.kind,
-                rtpParameters: data.rtpParameters
-              });
-
-              consumersRef.current.set(consumer.id, consumer);
-
-              consumer.on('transportclose', () => {
-                console.log(`Consumer ${consumer.id} transport closed`);
-                consumersRef.current.delete(consumer.id);
-              });
-
-              // Resume the consumer
-              socket?.emit('resume_consumer', { consumerId: consumer.id });
-
-              const stream = new MediaStream([consumer.track]);
-
-              setPeers(prevPeers => {
-                const existingPeerIndex = prevPeers.findIndex(p => p.id === producerSocketId);
-                
-                if (existingPeerIndex >= 0) {
-                  const updatedPeers = [...prevPeers];
-                  const existingPeer = updatedPeers[existingPeerIndex];
-                  
-                  if (consumer.track.kind === 'video') {
-                    const videoTracks = existingPeer.stream.getVideoTracks();
-                    videoTracks.forEach(track => {
-                      existingPeer.stream.removeTrack(track);
-                      track.stop();
-                    });
-                    existingPeer.stream.addTrack(consumer.track);
-                  } else if (consumer.track.kind === 'audio') {
-                    const audioTracks = existingPeer.stream.getAudioTracks();
-                    audioTracks.forEach(track => {
-                      existingPeer.stream.removeTrack(track);
-                      track.stop();
-                    });
-                    existingPeer.stream.addTrack(consumer.track);
-                  }
-                  
-                  existingPeer.consumers.set(consumer.id, consumer);
-                  return updatedPeers;
-                } else {
-                  const newPeer: Peer = {
-                    id: producerSocketId,
-                    name: producerName,
-                    stream: stream,
-                    consumers: new Map([[consumer.id, consumer]])
-                  };
-                  return [...prevPeers, newPeer];
-                }
-              });
-
-              console.log(`✅ Consumer created successfully for ${kind} from ${producerName}`);
-              resolve();
-            } catch (error) {
-              console.error('Error creating consumer:', error);
-              setErrorWithType('CONSUMER', `Failed to consume ${kind} from ${producerName}`, true, error);
-              reject(error);
-            }
-          }
-        };
-
-        const errorHandler = (data: any) => {
-          if (data.producerId === producerId) {
-            clearTimeout(timeout);
-            socket?.off('consumer_created', consumerHandler);
-            socket?.off('consumer_error', errorHandler);
-            setErrorWithType('CONSUMER', data.error || 'Consumer creation failed', true);
-            reject(new Error(data.error || 'Consumer creation failed'));
-          }
-        };
-
-        socket?.on('consumer_created', consumerHandler);
-        socket?.on('consumer_error', errorHandler);
+      
+      const { consumerId, rtpParameters } = await socket?.emitWithAck('start_consuming', { 
+        transportId: recvTransportRef.current.id,
+        producerId,
+        rtpCapabilities: deviceRef.current.rtpCapabilities
       });
 
-      socket?.emit('start_consuming', { producerId });
-      await consumePromise;
+      const consumer = await recvTransportRef.current.consume({
+        id: consumerId,
+        producerId,
+        kind,
+        rtpParameters
+      });
+      
+      consumersRef.current.set(consumer.id, consumer);
+      socket?.emit('resume_consumer', { consumerId: consumer.id });
 
+      setPeers(prevPeers => {
+        let existingPeer = prevPeers.find(p => p.id === producerSocketId);
+        
+        if (!existingPeer) {
+          existingPeer = {
+            id: producerSocketId,
+            name: producerName,
+            stream: new MediaStream(),
+            consumers: new Map(),
+            isAudioEnabled: false,
+            isVideoEnabled: false
+          };
+          prevPeers = [...prevPeers, existingPeer];
+        }
+
+        existingPeer.consumers.set(consumer.id, consumer);
+        existingPeer.stream.addTrack(consumer.track);
+        
+        if (kind === 'video') {
+            existingPeer.isVideoEnabled = true;
+        } else if (kind === 'audio') {
+            existingPeer.isAudioEnabled = true;
+        }
+
+        consumer.on('trackended', () => {
+          console.log(`Consumer track ended: ${kind} from ${producerName}`);
+          if (kind === 'video') {
+            existingPeer.isVideoEnabled = false;
+          } else if (kind === 'audio') {
+            existingPeer.isAudioEnabled = false;
+          }
+          existingPeer.stream.removeTrack(consumer.track);
+          consumersRef.current.delete(consumer.id);
+          setPeers([...prevPeers]); // Trigger a re-render
+        });
+        
+        return [...prevPeers];
+      });
+
+      console.log(`✅ Consumer created successfully for ${kind} from ${producerName}`);
     } catch (error) {
       console.error('Error consuming remote media:', error);
       setErrorWithType('CONSUMER', `Failed to consume remote media: ${kind}`, true, error);
     }
   }, [socket]);
 
-  // Join Video Call with enhanced state management
-  const joinVideoCall = useCallback(() => {
+  const joinVideoCall = useCallback(async () => {
     if (!socket || !isConnected) {
       setErrorWithType('NETWORK', 'Socket not connected', true);
       return;
@@ -646,7 +407,6 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
       return;
     }
 
-    // Cancel any pending retry
     if (retryTimeoutRef.current) {
       clearTimeout(retryTimeoutRef.current);
       retryTimeoutRef.current = null;
@@ -657,14 +417,34 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
     isInitializedRef.current = true;
     console.log('🎥 Joining video call for class:', classId);
     
-    socket.emit('join_video_call', { classId });
-  }, [socket, isConnected, classId, connectionState]);
+    try {
+      const { rtpCapabilities } = await socket.emitWithAck('join_video_call', { classId });
+      
+      await initializeDevice(rtpCapabilities);
+      
+      const { sendTransport, recvTransport } = await socket.emitWithAck('create_transports');
+      
+      await Promise.all([
+        createSendTransport(sendTransport),
+        createReceiveTransport(recvTransport)
+      ]);
 
-  // Leave Video Call with proper cleanup
+      await startLocalStream();
+      await produceMedia();
+      
+      setConnectionState(ConnectionState.CONNECTED);
+      clearError();
+      console.log('✅ Video call setup complete');
+
+    } catch (error) {
+      console.error('Error during join_video_call flow:', error);
+      setErrorWithType('NETWORK', 'Failed to establish video call', true, error);
+    }
+  }, [socket, isConnected, classId, connectionState, initializeDevice, createSendTransport, createReceiveTransport, startLocalStream, produceMedia]);
+
   const leaveVideoCall = useCallback(() => {
     console.log('👋 Leaving video call...');
     
-    // Cancel any pending retry
     if (retryTimeoutRef.current) {
       clearTimeout(retryTimeoutRef.current);
       retryTimeoutRef.current = null;
@@ -674,49 +454,29 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
       socket.emit('leave_video_call');
     }
 
-    // Clean up local resources
     if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach(track => {
-        track.stop();
-        console.log(`Stopped ${track.kind} track`);
-      });
+      localStreamRef.current.getTracks().forEach(track => track.stop());
       localStreamRef.current = null;
     }
 
-    // Close producers
-    producersRef.current.forEach((producer, kind) => {
-      if (!producer.closed) {
-        producer.close();
-        console.log(`Closed ${kind} producer`);
-      }
-    });
+    producersRef.current.forEach(producer => !producer.closed && producer.close());
     producersRef.current.clear();
-
-    // Close consumers
-    consumersRef.current.forEach(consumer => {
-      if (!consumer.closed) {
-        consumer.close();
-      }
-    });
+    
+    consumersRef.current.forEach(consumer => !consumer.closed && consumer.close());
     consumersRef.current.clear();
 
-    // Close transports
     if (sendTransportRef.current && !sendTransportRef.current.closed) {
       sendTransportRef.current.close();
       sendTransportRef.current = null;
-      console.log('Closed send transport');
     }
 
     if (recvTransportRef.current && !recvTransportRef.current.closed) {
       recvTransportRef.current.close();
       recvTransportRef.current = null;
-      console.log('Closed receive transport');
     }
 
-    // Reset device
     deviceRef.current = null;
 
-    // Clear state
     setPeers([]);
     setConnectionState(ConnectionState.IDLE);
     setIsVideoEnabled(true);
@@ -724,89 +484,85 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
     retryCountRef.current = 0;
     isRetryingRef.current = false;
     isInitializedRef.current = false;
-    rtpCapabilitiesRef.current = null;
     clearError();
-
     console.log('✅ Video call cleanup completed');
   }, [socket]);
+  
+  const toggleVideo = useCallback(() => {
+    const videoProducer = producersRef.current.get('video');
+    if (videoProducer) {
+        if (videoProducer.paused) {
+            videoProducer.resume();
+            setIsVideoEnabled(true);
+        } else {
+            videoProducer.pause();
+            setIsVideoEnabled(false);
+        }
+        socket?.emit('toggle_media', { kind: 'video', paused: videoProducer.paused });
+        console.log(`📹 Video ${videoProducer.paused ? 'disabled' : 'enabled'}`);
+    }
+  }, [socket]);
 
-  // Socket Event Handlers
+  const toggleAudio = useCallback(() => {
+    const audioProducer = producersRef.current.get('audio');
+    if (audioProducer) {
+        if (audioProducer.paused) {
+            audioProducer.resume();
+            setIsAudioEnabled(true);
+        } else {
+            audioProducer.pause();
+            setIsAudioEnabled(false);
+        }
+        socket?.emit('toggle_media', { kind: 'audio', paused: audioProducer.paused });
+        console.log(`🎤 Audio ${audioProducer.paused ? 'disabled' : 'enabled'}`);
+    }
+  }, [socket]);
+  
   useEffect(() => {
     if (!socket) return;
-
-    // Video call ready - device initialization
+    
     const handleVideoCallReady = async (data: { rtpCapabilities: any }) => {
       console.log('📱 Video call ready, initializing device...');
-      rtpCapabilitiesRef.current = data.rtpCapabilities;
-      
       try {
         const success = await initializeDevice(data.rtpCapabilities);
         if (success && deviceRef.current) {
-          socket.emit('set_rtp_capabilities', {
-            rtpCapabilities: deviceRef.current.rtpCapabilities
-          });
+          socket.emit('set_rtp_capabilities', { rtpCapabilities: deviceRef.current.rtpCapabilities });
+          const { sendTransport, recvTransport } = await socket.emitWithAck('create_transports');
+          await Promise.all([createSendTransport(sendTransport), createReceiveTransport(recvTransport)]);
+          await startLocalStream();
+          await produceMedia();
+          setConnectionState(ConnectionState.CONNECTED);
+          clearError();
         }
       } catch (error) {
-        console.error('Error initializing device:', error);
+        console.error('Error initializing device and transports:', error);
         setErrorWithType('DEVICE_INIT', 'Failed to initialize video call', true, error);
       }
     };
-
-    // Transports created
-    const handleTransportsCreated = async (data: { sendTransport: any; recvTransport: any }) => {
-      console.log('🚛 Transports created, setting up...');
-      
-      try {
-        await Promise.all([
-          createSendTransport(data.sendTransport),
-          createReceiveTransport(data.recvTransport)
-        ]);
-        
-        setConnectionState(ConnectionState.CONNECTED);
-        clearError();
-        
-        // Produce local media after transports are ready
-        await produceMedia();
-        
-        console.log('✅ Video call setup complete');
-      } catch (error) {
-        console.error('Error setting up transports:', error);
-        setErrorWithType('TRANSPORT', 'Failed to setup video call transports', true, error);
+    
+    const handleNewProducer = (data: { producerId: string, kind: 'audio' | 'video', producerSocketId: string, producerName: string }) => {
+      console.log('🆕 New producer available:', data.kind, 'from', data.producerName);
+      if (data.producerSocketId !== socket.id) {
+        consumeRemoteMedia(data.producerId, data.producerSocketId, data.producerName, data.kind);
       }
     };
-
-    // New producer available
-    const handleNewProducer = (data: { 
-      producerId: string; 
-      kind: string; 
-      producerSocketId: string; 
-      producerName: string;
-    }) => {
-      console.log('🆕 New producer available:', data.kind, 'from', data.producerName);
-      consumeRemoteMedia(data.producerId, data.producerSocketId, data.producerName, data.kind);
-    };
-
-    // Peer disconnected
+    
     const handlePeerDisconnected = (data: { peerId: string }) => {
       console.log('👋 Peer disconnected:', data.peerId);
       setPeers(prevPeers => prevPeers.filter(peer => peer.id !== data.peerId));
     };
 
-    // Video call left
     const handleVideoCallLeft = () => {
       console.log('📞 Video call left confirmation');
       setConnectionState(ConnectionState.DISCONNECTED);
     };
 
-    // Error handling
-    const handleError = (error: { message: string; code?: string }) => {
+    const handleError = (error: { message: string }) => {
       console.error('🚨 Socket error:', error);
       setErrorWithType('NETWORK', error.message || 'An error occurred', true, error);
     };
 
-    // Register event handlers
     socket.on('video_call_ready', handleVideoCallReady);
-    socket.on('transports_created', handleTransportsCreated);
     socket.on('new_producer_available', handleNewProducer);
     socket.on('peer_disconnected', handlePeerDisconnected);
     socket.on('video_call_left', handleVideoCallLeft);
@@ -814,22 +570,17 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
 
     return () => {
       socket.off('video_call_ready', handleVideoCallReady);
-      socket.off('transports_created', handleTransportsCreated);
       socket.off('new_producer_available', handleNewProducer);
       socket.off('peer_disconnected', handlePeerDisconnected);
       socket.off('video_call_left', handleVideoCallLeft);
-      socket.off('transport_connected');
-      socket.off('transport_connect_error');
-      socket.off('producer_created');
-      socket.off('producer_error');
-      socket.off('consumer_created');
-      socket.off('consumer_error');
-      socket.off('consumer_resumed');
       socket.off('error', handleError);
+      
+      // Clean up transport-specific listeners
+      if (sendTransportRef.current) sendTransportRef.current.removeAllListeners();
+      if (recvTransportRef.current) recvTransportRef.current.removeAllListeners();
     };
-  }, [socket, initializeDevice, createSendTransport, createReceiveTransport, produceMedia, consumeRemoteMedia]);
+  }, [socket, initializeDevice, createSendTransport, createReceiveTransport, startLocalStream, produceMedia, consumeRemoteMedia]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (isInitializedRef.current) {
@@ -837,7 +588,7 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
       }
     };
   }, [leaveVideoCall]);
-
+  
   return {
     startLocalStream,
     joinVideoCall,
@@ -848,6 +599,11 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
     localStreamRef,
     isVideoCallReady,
     isConnecting,
-    error
+    connectionState,
+    error,
+    retryConnection,
+    clearError,
+    isVideoEnabled,
+    isAudioEnabled,
   };
 }
