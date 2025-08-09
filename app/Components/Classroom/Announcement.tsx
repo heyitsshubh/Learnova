@@ -79,7 +79,7 @@ export default function Announcement({ onClose, classId }: { onClose: () => void
         />
         
         <button 
-          className="bg-blue-600 text-sm w-full py-2 rounded hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          className=" bg-gray-800 text-sm w-full py-2 rounded hover bg-gray-800 transition disabled:opacity-50 cursor-pointer"
           onClick={handleAnnounce}
           disabled={!message.trim() || isLoading}
         >

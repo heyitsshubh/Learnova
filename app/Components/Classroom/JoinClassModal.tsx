@@ -33,10 +33,10 @@ const JoinClassModal: React.FC<Props> = ({ isOpen, onClose, onJoin }) => {
           className="w-full border p-2 rounded mb-4"
         />
         <div className="flex justify-end">
-          <button onClick={onClose} className="mr-2 px-4 py-2 bg-gray-200 rounded">
+          <button onClick={onClose} className="mr-2 px-4 py-2 bg-gray-200 rounded cursor-pointer">
             Cancel
           </button>
-          <button onClick={handleJoin} className="px-4 py-2 bg-gray-800 text-white rounded">
+          <button onClick={handleJoin} className="px-4 py-2 bg-gray-800 text-white rounded cursor-pointer">
             Join Class
           </button>
         </div>

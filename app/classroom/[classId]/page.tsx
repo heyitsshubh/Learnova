@@ -41,6 +41,13 @@ function MaterialCard({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClick = () => setMenuOpen(false);
+    window.addEventListener('click', handleClick);
+    return () => window.removeEventListener('click', handleClick);
+  }, [menuOpen]);
+
   return (
     <div className="relative cursor-pointer bg-white p-4 rounded-xl shadow hover:shadow-lg transition flex items-center gap-4">
       <div className="text-3xl text-purple-600 flex-shrink-0" onClick={onClick}>
@@ -149,6 +156,7 @@ const handleBellClick = () => {
             {/* Schedule Meet Button */}
             <button
               className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-600 text-white rounded-lg shadow transition"
+              style={{ cursor: 'pointer' }}
               onClick={() => {
                 // Navigate to the meet page for this class
                 // If you want to pass classId as a param, use `/meet?classId=${classid}`
@@ -160,6 +168,7 @@ const handleBellClick = () => {
             </button>
             <button
               className="p-2 rounded-full hover:bg-gray-200 transition-colors relative"
+                style={{ cursor: 'pointer' }}
               onClick={handleBellClick}
             >
               <FaBell className="text-xl text-gray-400" />
@@ -170,6 +179,7 @@ const handleBellClick = () => {
               )}
             </button>
             <button className="p-2 rounded-full hover:bg-gray-200 transition-colors"
+              style={{ cursor: 'pointer' }}
               onClick={() => router.push('/Settings')}>
               <FaCog className="text-xl text-gray-400" />
             </button>
@@ -207,9 +217,11 @@ const handleBellClick = () => {
                       width={70}
                       height={70}
                       className="rounded"
+                      
                     />
                   }
                   onClick={() => router.push(`/classroom/${classid}/assignment/${assignment._id}`)}
+             
                   onDelete={() => handleDeleteAssignment(assignment._id)}
                 />
               ))}
@@ -222,7 +234,7 @@ const handleBellClick = () => {
       </div>
       <button
         className="fixed bottom-6 right-6 text-white p-4 rounded-full shadow-lg"
-        style={{ backgroundColor: 'rgba(73, 73, 73, 1)' }}
+        style={{ cursor: 'pointer', backgroundColor: 'rgba(73, 73, 73, 1)' }}
         onClick={() => setSidebarMenuOpen(true)}
       >
         <Plus />

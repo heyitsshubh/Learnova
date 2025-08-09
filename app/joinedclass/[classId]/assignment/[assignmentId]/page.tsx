@@ -165,10 +165,16 @@ const getFileUrl = (attachment: Attachment) => {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <button className="p-2 rounded-full hover:bg-gray-200 transition-colors">
+               <button
+              className="p-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer"
+              onClick={() => router.push('/notifications')}
+            >
               <FaBell className="text-xl text-gray-400" />
             </button>
-            <button className="p-2 rounded-full hover:bg-gray-200 transition-colors">
+            <button
+              className="p-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer"
+              onClick={() => router.push('/Settings')}
+            >
               <FaCog className="text-xl text-gray-400" />
             </button>
           </div>
@@ -291,11 +297,11 @@ const getFileUrl = (attachment: Attachment) => {
       </div>
       {!assignment.hasSubmitted && (
         <button
-          className="fixed bottom-6 right-6 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-shadow"
+          className="fixed bottom-6 right-6 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
           style={{ backgroundColor: 'rgba(73, 73, 73, 1)' }}
           onClick={() => setSubmitModalOpen(true)}
         >
-          <Plus className="w-6 h-6" />
+          <Plus className="w-6 h-6 " />
         </button>
       )}
       {submitModalOpen && (

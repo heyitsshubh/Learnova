@@ -188,6 +188,7 @@ export default function ClassroomPage() {
           image: '/class.svg',
           title: 'No Joined Classes',
           description: "You haven't joined any classes yet.",
+          
           buttonAction: () => setJoinModalOpen(true),
         };
       case 'create':
@@ -230,10 +231,16 @@ export default function ClassroomPage() {
             </p>
           </div>
           <div className="flex items-center gap-4">
-            <button className="p-2 rounded-full hover:bg-gray-200 transition-colors">
+                <button
+              className="p-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer"
+              onClick={() => router.push('/notifications')}
+            >
               <FaBell className="text-xl text-gray-400" />
             </button>
-            <button className="p-2 rounded-full hover:bg-gray-200 transition-colors">
+            <button
+              className="p-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer"
+              onClick={() => router.push('/Settings')}
+            >
               <FaCog className="text-xl text-gray-400" />
             </button>
             <div className="relative w-66 max-w-md">
@@ -323,7 +330,7 @@ export default function ClassroomPage() {
         
         <button
           className="fixed bottom-6 right-6 text-white p-4 rounded-full shadow-lg"
-          style={{ backgroundColor: 'rgba(73, 73, 73, 1)' }}
+          style={{ backgroundColor: 'rgba(73, 73, 73, 1)', cursor: 'pointer' }}
           onClick={() => setModalOpen(true)}
         >
           <Plus />

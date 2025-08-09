@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { FiVideo, FiSend, FiPaperclip } from 'react-icons/fi';
+import {  FiSend, FiPaperclip } from 'react-icons/fi';
 import { FaSearch } from 'react-icons/fa';
 import ClassmatesBox from './ClassmatesBox';
 import { useSocket } from '../Contexts/SocketContext';
@@ -127,7 +127,7 @@ useEffect(() => {
               <span className="w-2 h-2 rounded-full" title="Connected" />
             )}
           </div>
-          <FiVideo className="text-gray-500 cursor-pointer hover:text-gray-700" />
+          {/* <FiVideo className="text-gray-500 cursor-pointer hover:text-gray-700" /> */}
         </div>
 
 <div className="h-32 px-3 py-2 text-sm overflow-y-auto">

@@ -9,6 +9,7 @@ import { FaBell, FaCog } from 'react-icons/fa';
 import Sidebarmenu from '../../../../Components/Classroom/Sidebarmenu';
 import Announcement from '../../../../Components/Classroom/Announcement';
 import { getAssignments } from '../../../../services/assignment';
+import { useRouter } from 'next/navigation';
 
 interface Attachment {
   _id: string;
@@ -79,17 +80,18 @@ function MaterialCard({
 
 export default function AssignmentListPage({ params }: { params: Promise<{ classId: string }> }) {
   const { classId } = use(params);
-  const [userName, setUserName] = useState('');
+  // const [userName, setUserName] = useState('');
   const [sidebarMenuOpen, setSidebarMenuOpen] = useState(false);
   const [announcementOpen, setAnnouncementOpen] = useState(false);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
+ const router = useRouter(); 
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setUserName(localStorage.getItem('userName') || '');
-    }
-  }, []);
+  // useEffect(() => {
+  //   if (typeof window !== 'undefined') {
+  //     setUserName(localStorage.getItem('userName') || '');
+  //   }
+  // }, []);
 
   useEffect(() => {
     if (classId) {
@@ -120,15 +122,22 @@ export default function AssignmentListPage({ params }: { params: Promise<{ class
           <div>
             <h1 className="text-xl font-semibold text-gray-800">Classroom</h1>
             <p className="text-sm text-gray-500">
-              {userName ? `${userName} / ${classId}` : 'Classroom'}
+              {/* {userName ? `${userName} / ` : 'Classroom'} */}
             </p>
           </div>
-          <div className="flex items-center gap-4">
-            <button className="p-2 rounded-full hover:bg-gray-200 transition-colors
-            " >
+           <div className="flex items-center gap-4">
+            <button
+              className="p-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer"
+                 style={{ cursor: 'pointer' }}
+              onClick={() => router.push('/notifications')}
+            >
               <FaBell className="text-xl text-gray-400" />
             </button>
-            <button className="p-2 rounded-full hover:bg-gray-200 transition-colors">
+            <button
+              className="p-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer"
+                 style={{ cursor: 'pointer' }}
+              onClick={() => router.push('/Settings')}
+            >
               <FaCog className="text-xl text-gray-400" />
             </button>
           </div>
@@ -177,7 +186,7 @@ export default function AssignmentListPage({ params }: { params: Promise<{ class
       </div>
       <button
         className="fixed bottom-6 right-6 text-white p-4 rounded-full shadow-lg"
-        style={{ backgroundColor: 'rgba(73, 73, 73, 1)' }}
+        style={{ backgroundColor: 'rgba(73, 73, 73, 1)', cursor: 'pointer' }}
         onClick={() => setSidebarMenuOpen(true)}
       >
         <Plus />

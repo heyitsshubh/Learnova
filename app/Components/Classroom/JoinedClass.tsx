@@ -73,16 +73,22 @@ export default function JoinedClass({ classData }: { classData: ClassData }) {
           <div className="flex items-center gap-4 ml-auto">
                   <div className="flex justify-end mb-2">
           <button
-            className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg shadow transition"
+            className="flex items-center gap-2 px-3 py-1 bg-gray-800 hover:bg-gray-700 text-white rounded-lg shadow transition cursor-pointer"
             onClick={() => router.push(`/joinedclass/${classData._id}/meet`)}
           >
             <span>Scheduled Meets</span>
           </button>
         </div>
-            <button className="p-2 rounded-full hover:bg-gray-200 transition-colors">
+             <button
+              className="p-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer"
+              onClick={() => router.push('/notifications')}
+            >
               <FaBell className="text-xl text-gray-400" />
             </button>
-            <button className="p-2 rounded-full hover:bg-gray-200 transition-colors">
+            <button
+              className="p-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer"
+              onClick={() => router.push('/Settings')}
+            >
               <FaCog className="text-xl text-gray-400" />
             </button>
           </div>
@@ -111,13 +117,23 @@ export default function JoinedClass({ classData }: { classData: ClassData }) {
           ) : assignments.length === 0 ? (
             <div className="text-red-500">No assignments found.</div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {assignments.map((assignment) => (
                 <div
                   key={assignment._id}
-                  className="bg-white p-4 rounded-xl shadow hover:shadow-lg transition flex flex-col cursor-pointer"
+                  className="bg-white p-4 rounded-xl shadow hover:shadow-lg transition flex flex-col cursor-pointer relative"
                   onClick={() => handleAssignmentClick(assignment._id)}
                 >
+                  {/* Book Icon */}
+                  <div className="absolute top-4 right-4">
+                    <Image
+                      src="/books.svg"
+                      alt="Book"
+                      width={70}
+                      height={70}
+                      className="object-contain"
+                    />
+                  </div>
                   <h3 className="font-semibold">{assignment.title}</h3>
                   <p className="text-sm text-gray-500">{assignment.description}</p>
                   <p className="text-xs text-gray-400 mt-1">

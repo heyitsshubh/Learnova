@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BsThreeDotsVertical } from 'react-icons/bs';
 import { useRouter } from 'next/navigation';
 
@@ -30,7 +30,23 @@ const ClassCard: React.FC<ClassCardProps> = ({
   onCardClick,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleClick(event: MouseEvent) {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(event.target as Node)
+      ) {
+        setMenuOpen(false);
+      }
+    }
+    window.addEventListener('mousedown', handleClick);
+    return () => window.removeEventListener('mousedown', handleClick);
+  }, [menuOpen]);
 
   const handleCardClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.menu-btn')) return;
@@ -58,7 +74,11 @@ const ClassCard: React.FC<ClassCardProps> = ({
           <BsThreeDotsVertical size={22} className="text-white" />
         </button>
         {menuOpen && (
-          <div className="absolute right-0 mt-2 w-40 bg-white border rounded shadow-lg z-20">
+          <div
+            ref={menuRef}
+            className="absolute right-0 mt-2 w-40 bg-white border rounded shadow-lg z-20"
+            onClick={e => e.stopPropagation()}
+          >
             {showCopyCode && onCopyCode && (
               <>
                 <button
@@ -69,7 +89,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                     onCopyCode();
                   }}
                 >
-                  Copy Class Code
+                  Copy Code
                 </button>
                 {onDelete && <hr className="border-t border-gray-200" />}
               </>

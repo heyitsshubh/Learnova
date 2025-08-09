@@ -81,13 +81,13 @@ const CreateClassModal: React.FC<Props> = ({ isOpen, onClose, onCreate }) => {
             <button
               type="button"
               onClick={handleClose}
-              className="mr-2 px-4 py-2 bg-gray-200 rounded"
+              className="mr-2 px-4 py-2 bg-gray-200 rounded cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-gray-700 text-white rounded"
+              className="px-4 py-2 bg-gray-700 text-white rounded cursor-pointer"
             >
               Create Class
             </button>

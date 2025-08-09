@@ -98,10 +98,10 @@ export default function SubmitAssignment({ onClose, assignmentId }: SubmitAssign
         </div>
       )}
 
-      <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+      <div className="fixed inset-0 flex items-center justify-center bg-opacity-40 z-50">
         <div className="bg-[#1f1f1f] w-96 max-h-[90vh] overflow-y-auto p-5 rounded-md shadow-md relative text-white border border-gray-500">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold">Submit Assignment</h2>
+            <h2 className="text-lg font-semibold cursor-pointer">Submit Assignment</h2>
             <button onClick={onClose} className="hover:bg-gray-700 p-1 rounded" disabled={isSubmitting}>
               <X className="w-5 h-5" />
             </button>
@@ -176,7 +176,7 @@ export default function SubmitAssignment({ onClose, assignmentId }: SubmitAssign
           </div>
 
           <button 
-            className="bg-blue-600 text-sm w-full py-2 rounded hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            className="bg-gray-800 text-sm w-full py-2 rounded hover:bg-gray-800 transition disabled:opacity-50 cursor-pointer flex items-center justify-center"
             onClick={handleSubmit}
             disabled={(!description.trim() && !file) || isSubmitting || showSuccessToast}
           >
