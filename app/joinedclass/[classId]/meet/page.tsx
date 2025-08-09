@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { fetchMeetingsByClass } from '../../../services/meet';
+import { fetchMeetingsByClass, joinMeeting } from '../../../services/meet';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { FaLock, FaCheckCircle, FaHourglassHalf, FaUsers, FaCalendarAlt, FaClock, FaUser, FaVideo } from 'react-icons/fa';
@@ -38,7 +38,6 @@ export default function MeetPage() {
   const router = useRouter();
   const socket = useSocket();
 
-
   // Update current time every second
   useEffect(() => {
     const interval = setInterval(() => {
@@ -47,11 +46,10 @@ export default function MeetPage() {
     return () => clearInterval(interval);
   }, []);
 
-  
   const fetchMeetings = async () => {
     const classId = localStorage.getItem('currentClassId');
     if (!classId) return setLoading(false);
-    
+
     try {
       const res = await fetchMeetingsByClass(classId);
       setMeetings(res.meetings || []);
@@ -74,7 +72,7 @@ export default function MeetPage() {
     const handleMeetingStarted = (data: { meetingId: string; title: string; meetingLink: string }) => {
       console.log('📢 Meeting started:', data);
       setLectureStarted((prev) => ({ ...prev, [data.meetingId]: true }));
-      
+
       // Show notification to user
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('Meeting Started!', {
@@ -121,12 +119,12 @@ export default function MeetPage() {
   const getTimeUntilMeeting = (scheduledDate: string) => {
     const meetingIST = parseAsIST(scheduledDate);
     const diff = meetingIST.getTime() - nowIST.getTime();
-    
+
     if (diff <= 0) return null;
-    
+
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    
+
     if (hours > 0) {
       return `${hours}h ${minutes}m`;
     } else {
@@ -135,17 +133,25 @@ export default function MeetPage() {
   };
 
   // Handler for joining a lecture
-  const handleJoinLecture = (meeting: Meeting) => {
+  const handleJoinLecture = async (meeting: Meeting) => {
     const meetingId = meeting._id;
     const classId = typeof meeting.classId === 'object' ? meeting.classId._id : meeting.classId;
-    
-    // Emit join event if socket is available
-    if (socket?.socket) {
-      socket.socket.emit('join_video_call', { classId, meetingId });
+
+    try {
+      // Call the join meeting API
+      await joinMeeting(meetingId);
+
+      // Emit join event if socket is available
+      if (socket?.socket) {
+        socket.socket.emit('join_video_call', { classId, meetingId });
+      }
+
+      // Redirect to meeting screen as participant
+      router.push(`/classroom/${classId}/meet/lecture/${meetingId}`);
+    } catch (error) {
+      alert('Failed to join the meeting. Please try again.');
+      console.error('Join meeting error:', error);
     }
-    
-    // Redirect to meeting screen as participant
-    router.push(`/classroom/${classId}/meet/lecture/${meetingId}`);
   };
 
   return (
@@ -328,7 +334,7 @@ export default function MeetPage() {
                         {canJoin ? (
                           <span className="text-green-600 font-medium"> Ready to join when teacher starts</span>
                         ) : timeStarted ? (
-                          <span className="text-yellow-600 font-medium">Teacher hasn&#39;t  started the meeting yet</span>
+                          <span className="text-yellow-600 font-medium">Teacher hasn&#39;t started the meeting yet</span>
                         ) : (
                           <span className="text-gray-500">Meeting will be available at the scheduled time</span>
                         )}

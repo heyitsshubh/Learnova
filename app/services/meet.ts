@@ -46,7 +46,7 @@ export const fetchMeetingsByClass = async (classId: string) => {
   }
 };
 
-// ...existing imports and code...
+
 
 export const startMeeting = async (meetingId: string) => {
   try {
@@ -62,6 +62,26 @@ export const startMeeting = async (meetingId: string) => {
     return response.data;
   } catch (error) {
     console.error('Error starting meeting:', error);
+    throw error;
+  }
+};
+
+
+
+export const joinMeeting = async (meetingId: string) => {
+  try {
+    const response = await axios.post(
+      `https://project2-zphf.onrender.com/api/meetings/${meetingId}/join`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error joining meeting:', error);
     throw error;
   }
 };
