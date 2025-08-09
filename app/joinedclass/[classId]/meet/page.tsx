@@ -196,6 +196,7 @@ export default function MeetPage() {
               const teacherStarted = lectureStarted[meeting._id];
               const canJoin = canJoinMeeting(meeting);
               const timeUntil = getTimeUntilMeeting(meeting.scheduledDate);
+              console.log('canJoin', meeting._id, canJoin, { timeStarted, teacherStarted });
 
               return (
                 <div key={meeting._id} className="border border-gray-200 rounded-xl p-6 bg-white shadow-sm hover:shadow-md transition-shadow">

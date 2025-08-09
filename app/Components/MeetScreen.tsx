@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
+import * as mediasoupClient from 'mediasoup-client';
 
 interface MeetScreenProps {
   classId: string;
@@ -7,30 +9,22 @@ interface MeetScreenProps {
   token: string;
 }
 
-interface MediaConfig {
-  video: {
-    width: { ideal: 1280 },
-    height: { ideal: 720 },
-    frameRate: { ideal: 30 }
-  };
-  audio: true;
-}
-
-const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
+const MeetScreen: React.FC<MeetScreenProps> = ({ classId, token }) => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
+  const [isInCall, setIsInCall] = useState(false);
   const [error, setError] = useState<string>('');
-  const [peers, setPeers] = useState<Map<string, any>>(new Map());
+  const [remoteVideos, setRemoteVideos] = useState<Map<string, { stream: MediaStream, userName: string }>>(new Map());
   
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
-  const deviceRef = useRef<RTCRtpTransceiver | null>(null);
-  const sendTransportRef = useRef<any>(null);
-  const recvTransportRef = useRef<any>(null);
-  const producersRef = useRef<Map<string, any>>(new Map());
-  const consumersRef = useRef<Map<string, any>>(new Map());
+  const deviceRef = useRef<mediasoupClient.Device | null>(null);
+  const sendTransportRef = useRef<mediasoupClient.types.Transport | null>(null);
+  const recvTransportRef = useRef<mediasoupClient.types.Transport | null>(null);
+  const producersRef = useRef<Map<string, mediasoupClient.types.Producer>>(new Map());
+  const consumersRef = useRef<Map<string, mediasoupClient.types.Consumer>>(new Map());
 
   // Initialize Socket Connection
   useEffect(() => {
@@ -68,9 +62,9 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
     try {
       const mediaConfig: MediaStreamConstraints = {
         video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 30 }
+          width: { ideal: 1280, max: 1920 },
+          height: { ideal: 720, max: 1080 },
+          frameRate: { ideal: 30, max: 60 }
         },
         audio: {
           echoCancellation: true,
@@ -80,15 +74,25 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
       };
 
       console.log('🎥 Requesting camera/microphone access...');
+      
+      // Check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('getUserMedia is not supported in this browser');
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia(mediaConfig);
       
       localStreamRef.current = stream;
       
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
+        localVideoRef.current.play().catch(e => console.error('Error playing local video:', e));
       }
       
       console.log('✅ Camera/microphone access granted');
+      console.log('📹 Video tracks:', stream.getVideoTracks().length);
+      console.log('🎤 Audio tracks:', stream.getAudioTracks().length);
+      
       return stream;
       
     } catch (error: any) {
@@ -96,14 +100,38 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
       
       let errorMessage = 'Failed to access camera/microphone';
       
-      if (error.name === 'NotAllowedError') {
-        errorMessage = 'Camera/microphone access denied. Please allow permissions and refresh.';
-      } else if (error.name === 'NotFoundError') {
-        errorMessage = 'No camera/microphone found. Please check your devices.';
-      } else if (error.name === 'NotReadableError') {
-        errorMessage = 'Camera/microphone is being used by another application.';
-      } else if (error.name === 'OverconstrainedError') {
-        errorMessage = 'Camera/microphone constraints not supported.';
+      switch (error.name) {
+        case 'NotAllowedError':
+          errorMessage = 'Camera/microphone access denied. Please allow permissions and refresh the page.';
+          break;
+        case 'NotFoundError':
+          errorMessage = 'No camera/microphone found. Please check your devices are connected.';
+          break;
+        case 'NotReadableError':
+          errorMessage = 'Camera/microphone is being used by another application. Please close other apps using the camera.';
+          break;
+        case 'OverconstrainedError':
+          errorMessage = 'Camera resolution not supported. Trying with lower quality...';
+          // Fallback to lower quality
+          try {
+            const fallbackStream = await navigator.mediaDevices.getUserMedia({
+              video: { width: 640, height: 480 },
+              audio: true
+            });
+            localStreamRef.current = fallbackStream;
+            if (localVideoRef.current) {
+              localVideoRef.current.srcObject = fallbackStream;
+            }
+            return fallbackStream;
+          } catch {
+            errorMessage = 'Camera not supported with any resolution.';
+          }
+          break;
+        case 'SecurityError':
+          errorMessage = 'Security error: HTTPS is required for camera access in production.';
+          break;
+        default:
+          errorMessage = `Camera error: ${error.message}`;
       }
       
       setError(errorMessage);
@@ -111,24 +139,30 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
     }
   }, []);
 
-  // Join Video Call
+  // Join Video Call with MediaSoup
   const joinVideoCall = useCallback(async () => {
     if (!socket) {
-      console.error('Socket not connected');
+      setError('Socket not connected');
       return;
     }
 
     try {
       console.log('🎥 Joining video call...');
+      setError(''); // Clear any previous errors
       
       // First get user media
       await getUserMedia();
       
-      // Join video call
+      // Create MediaSoup device
+      const device = new mediasoupClient.Device();
+      deviceRef.current = device;
+      
+      // Join video call to get RTP capabilities
       socket.emit('join_video_call', { classId });
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error joining video call:', error);
+      setError(`Failed to join video call: ${error.message}`);
     }
   }, [socket, classId, getUserMedia]);
 
@@ -138,123 +172,241 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
 
     // Video call ready - receive RTP capabilities
     socket.on('video_call_ready', async (data) => {
-      console.log('📡 Video call ready, setting RTP capabilities');
-      
-      // Set RTP capabilities (you'll need to implement this based on your WebRTC library)
-      socket.emit('set_rtp_capabilities', {
-        rtpCapabilities: data.rtpCapabilities // This should be your device's RTP capabilities
-      });
+      try {
+        console.log('📡 Video call ready, loading device with RTP capabilities');
+        
+        if (!deviceRef.current) {
+          console.error('Device not initialized');
+          return;
+        }
+
+        // Load the device with server's RTP capabilities
+        await deviceRef.current.load({ routerRtpCapabilities: data.rtpCapabilities });
+        
+        console.log('✅ Device loaded successfully');
+        console.log('📱 RTP capabilities:', deviceRef.current.rtpCapabilities);
+        
+        // Send our RTP capabilities to server
+        socket.emit('set_rtp_capabilities', {
+          rtpCapabilities: deviceRef.current.rtpCapabilities
+        });
+        
+      } catch (error) {
+        console.error('❌ Error loading device:', error);
+        setError(`Failed to initialize WebRTC device: ${error}`);
+      }
     });
 
     // Transports created
     socket.on('transports_created', async (data) => {
-      console.log('🚛 Transports created');
-      
-      // Create send transport for sending video/audio
-      const sendTransportOptions = {
-        id: data.sendTransport.id,
-        iceParameters: data.sendTransport.iceParameters,
-        iceCandidates: data.sendTransport.iceCandidates,
-        dtlsParameters: data.sendTransport.dtlsParameters
-      };
+      try {
+        console.log('🚛 Creating transports');
+        
+        if (!deviceRef.current) {
+          console.error('Device not loaded');
+          return;
+        }
 
-      // Create receive transport for receiving video/audio
-      const recvTransportOptions = {
-        id: data.recvTransport.id,
-        iceParameters: data.recvTransport.iceParameters,
-        iceCandidates: data.recvTransport.iceCandidates,
-        dtlsParameters: data.recvTransport.dtlsParameters
-      };
+        // Create send transport
+        const sendTransport = deviceRef.current.createSendTransport({
+          id: data.sendTransport.id,
+          iceParameters: data.sendTransport.iceParameters,
+          iceCandidates: data.sendTransport.iceCandidates,
+          dtlsParameters: data.sendTransport.dtlsParameters
+        });
 
-      // You'll need to implement transport creation based on your WebRTC library
-      // For now, storing the options
-      sendTransportRef.current = sendTransportOptions;
-      recvTransportRef.current = recvTransportOptions;
-      
-      // Connect transports
-      socket.emit('connect_transport', {
-        transportId: data.sendTransport.id,
-        dtlsParameters: data.sendTransport.dtlsParameters,
-        direction: 'send'
-      });
-      
-      socket.emit('connect_transport', {
-        transportId: data.recvTransport.id,
-        dtlsParameters: data.recvTransport.dtlsParameters,
-        direction: 'recv'
-      });
-    });
+        // Create receive transport
+        const recvTransport = deviceRef.current.createRecvTransport({
+          id: data.recvTransport.id,
+          iceParameters: data.recvTransport.iceParameters,
+          iceCandidates: data.recvTransport.iceCandidates,
+          dtlsParameters: data.recvTransport.dtlsParameters
+        });
 
-    // Transport connected
-    socket.on('transport_connected', (data) => {
-      console.log(`🔗 Transport connected: ${data.direction}`);
-      
-      if (data.direction === 'send' && localStreamRef.current) {
-        // Start producing video and audio
-        startProducing('video');
-        startProducing('audio');
+        // Handle send transport connect
+        sendTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
+          try {
+            socket.emit('connect_transport', {
+              transportId: sendTransport.id,
+              dtlsParameters,
+              direction: 'send'
+            });
+            
+            // Wait for server confirmation
+            socket.once('transport_connected', (response) => {
+              if (response.direction === 'send' && response.success) {
+                callback();
+              } else {
+                errback(new Error('Failed to connect send transport'));
+              }
+            });
+          } catch (error) {
+            errback(error as Error);
+          }
+        });
+
+        // Handle send transport produce
+        sendTransport.on('produce', async ({ kind, rtpParameters }, callback, errback) => {
+          try {
+            socket.emit('start_producing', { kind, rtpParameters });
+            
+            socket.once('producer_created', (response) => {
+              if (response.kind === kind) {
+                callback({ id: response.producerId });
+              } else {
+                errback(new Error('Failed to create producer'));
+              }
+            });
+          } catch (error) {
+            errback(error as Error);
+          }
+        });
+
+        // Handle receive transport connect
+        recvTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
+          try {
+            socket.emit('connect_transport', {
+              transportId: recvTransport.id,
+              dtlsParameters,
+              direction: 'recv'
+            });
+            
+            socket.once('transport_connected', (response) => {
+              if (response.direction === 'recv' && response.success) {
+                callback();
+              } else {
+                errback(new Error('Failed to connect receive transport'));
+              }
+            });
+          } catch (error) {
+            errback(error as Error);
+          }
+        });
+
+        sendTransportRef.current = sendTransport;
+        recvTransportRef.current = recvTransport;
+
+        console.log('✅ Transports created successfully');
+        
+        // Start producing if we have a local stream
+        if (localStreamRef.current) {
+          await startProducing();
+        }
+        
+      } catch (error) {
+        console.error('❌ Error creating transports:', error);
+        setError(`Failed to create transports: ${error}`);
       }
     });
 
     // New producer available (someone else started video/audio)
-    socket.on('new_producer_available', (data) => {
-      console.log('🎬 New producer available:', data);
-      
-      // Start consuming this producer
-      socket.emit('start_consuming', {
-        producerId: data.producerId
-      });
+    socket.on('new_producer_available', async (data) => {
+      try {
+        console.log('🎬 New producer available:', data);
+        
+        if (!recvTransportRef.current) {
+          console.error('Receive transport not ready');
+          return;
+        }
+
+        // Start consuming this producer
+        const consumer = await recvTransportRef.current.consume({
+          id: data.producerId,
+          producerId: data.producerId,
+          kind: data.kind,
+          rtpParameters: data.rtpParameters // Use the RTP parameters provided by the server
+        });
+
+        // Store consumer
+        consumersRef.current.set(data.producerId, consumer);
+        
+        // Add remote video stream
+        if (data.kind === 'video') {
+          const stream = new MediaStream([consumer.track]);
+          setRemoteVideos(prev => new Map(prev.set(data.producerSocketId, {
+            stream,
+            userName: data.producerName || 'Unknown'
+          })));
+        }
+
+        console.log(`✅ Started consuming ${data.kind} from ${data.producerName}`);
+        
+      } catch (error) {
+        console.error('❌ Error consuming producer:', error);
+      }
     });
 
     // Consumer created
-    socket.on('consumer_created', (data) => {
-      console.log('🍿 Consumer created:', data);
-      
-      // Resume the consumer
-      socket.emit('resume_consumer', {
-        consumerId: data.consumerId
-      });
+    socket.on('consumer_created', async (data) => {
+      try {
+        console.log('🍿 Consumer created:', data);
+        
+        // Resume the consumer
+        socket.emit('resume_consumer', {
+          consumerId: data.consumerId
+        });
+        
+      } catch (error) {
+        console.error('❌ Error handling consumer created:', error);
+      }
     });
 
     return () => {
       socket.off('video_call_ready');
       socket.off('transports_created');
-      socket.off('transport_connected');
       socket.off('new_producer_available');
       socket.off('consumer_created');
     };
   }, [socket]);
 
-  // Start producing video or audio
-  const startProducing = useCallback(async (kind: 'video' | 'audio') => {
-    if (!socket || !localStreamRef.current) return;
+  // Start producing video and audio
+  const startProducing = useCallback(async () => {
+    if (!sendTransportRef.current || !localStreamRef.current) {
+      console.error('Send transport or local stream not available');
+      return;
+    }
 
     try {
-      const track = kind === 'video' 
-        ? localStreamRef.current.getVideoTracks()[0]
-        : localStreamRef.current.getAudioTracks()[0];
-      
-      if (!track) {
-        console.error(`No ${kind} track found`);
-        return;
+      // Produce video
+      const videoTrack = localStreamRef.current.getVideoTracks()[0];
+      if (videoTrack) {
+        const videoProducer = await sendTransportRef.current.produce({
+          track: videoTrack,
+          codecOptions: {
+            videoGoogleStartBitrate: 1000
+          }
+        });
+        
+        producersRef.current.set('video', videoProducer);
+        console.log('📹 Video producer created');
+        
+        videoProducer.on('trackended', () => {
+          console.log('Video track ended');
+        });
       }
 
-      // This is a simplified version - you'll need proper RTP parameters
-      // In a real implementation, you'd use a WebRTC library like mediasoup-client
-      const rtpParameters = {
-        // You need to implement proper RTP parameters generation
-        // This depends on your WebRTC library
-      };
+      // Produce audio
+      const audioTrack = localStreamRef.current.getAudioTracks()[0];
+      if (audioTrack) {
+        const audioProducer = await sendTransportRef.current.produce({
+          track: audioTrack
+        });
+        
+        producersRef.current.set('audio', audioProducer);
+        console.log('🎤 Audio producer created');
+        
+        audioProducer.on('trackended', () => {
+          console.log('Audio track ended');
+        });
+      }
 
-      socket.emit('start_producing', {
-        kind,
-        rtpParameters // This should contain proper RTP parameters
-      });
+      setIsInCall(true);
       
     } catch (error) {
-      console.error(`❌ Error producing ${kind}:`, error);
+      console.error('❌ Error starting production:', error);
+      setError(`Failed to start video/audio: ${error}`);
     }
-  }, [socket]);
+  }, []);
 
   // Toggle video
   const toggleVideo = useCallback(() => {
@@ -263,6 +415,16 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
       if (videoTrack) {
         videoTrack.enabled = !videoTrack.enabled;
         setIsVideoEnabled(videoTrack.enabled);
+        
+        // Also pause/resume producer if it exists
+        const videoProducer = producersRef.current.get('video');
+        if (videoProducer) {
+          if (videoTrack.enabled) {
+            videoProducer.resume();
+          } else {
+            videoProducer.pause();
+          }
+        }
       }
     }
   }, []);
@@ -274,6 +436,16 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
       if (audioTrack) {
         audioTrack.enabled = !audioTrack.enabled;
         setIsAudioEnabled(audioTrack.enabled);
+        
+        // Also pause/resume producer if it exists
+        const audioProducer = producersRef.current.get('audio');
+        if (audioProducer) {
+          if (audioTrack.enabled) {
+            audioProducer.resume();
+          } else {
+            audioProducer.pause();
+          }
+        }
       }
     }
   }, []);
@@ -282,6 +454,30 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
   const leaveVideoCall = useCallback(() => {
     if (socket) {
       socket.emit('leave_video_call');
+    }
+    
+    // Close all producers
+    producersRef.current.forEach(producer => {
+      if (!producer.closed) {
+        producer.close();
+      }
+    });
+    producersRef.current.clear();
+    
+    // Close all consumers
+    consumersRef.current.forEach(consumer => {
+      if (!consumer.closed) {
+        consumer.close();
+      }
+    });
+    consumersRef.current.clear();
+    
+    // Close transports
+    if (sendTransportRef.current && !sendTransportRef.current.closed) {
+      sendTransportRef.current.close();
+    }
+    if (recvTransportRef.current && !recvTransportRef.current.closed) {
+      recvTransportRef.current.close();
     }
     
     // Stop local stream
@@ -294,10 +490,45 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
       localVideoRef.current.srcObject = null;
     }
     
-    // Clear all refs
-    producersRef.current.clear();
-    consumersRef.current.clear();
+    // Clear remote videos
+    setRemoteVideos(new Map());
+    setIsInCall(false);
+    
+    console.log('👋 Left video call');
   }, [socket]);
+
+  // Test camera access independently
+  const testCamera = useCallback(async () => {
+    try {
+      console.log('🧪 Testing camera access...');
+      
+      // Simple test without MediaSoup
+      const testStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true
+      });
+      
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = testStream;
+        localVideoRef.current.play();
+      }
+      
+      console.log('✅ Camera test successful');
+      setError('');
+      
+      // Stop test stream after 2 seconds
+      setTimeout(() => {
+        testStream.getTracks().forEach(track => track.stop());
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = null;
+        }
+      }, 2000);
+      
+    } catch (error: any) {
+      console.error('❌ Camera test failed:', error);
+      setError(`Camera test failed: ${error.message}`);
+    }
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -307,10 +538,19 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
   }, [leaveVideoCall]);
 
   return (
-    <div className="meet-screen">
-      <div className="video-grid">
+    <div className="meet-screen" style={{ padding: '20px', height: '100vh', backgroundColor: '#1a1a1a' }}>
+      <h2 style={{ color: 'white', textAlign: 'center', marginBottom: '20px' }}>
+        Video Meeting - Class {classId}
+      </h2>
+      
+      <div className="video-grid" style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+        gap: '20px',
+        marginBottom: '100px'
+      }}>
         {/* Local Video */}
-        <div className="video-container">
+        <div className="video-container" style={{ position: 'relative' }}>
           <video
             ref={localVideoRef}
             autoPlay
@@ -318,32 +558,57 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
             playsInline
             className="local-video"
             style={{
-              width: '300px',
+              width: '100%',
               height: '200px',
               backgroundColor: '#000',
-              borderRadius: '8px'
+              borderRadius: '8px',
+              objectFit: 'cover'
             }}
           />
-          <div className="video-controls">
-            <span>You</span>
+          <div style={{
+            position: 'absolute',
+            bottom: '10px',
+            left: '10px',
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            color: 'white',
+            padding: '5px 10px',
+            borderRadius: '4px',
+            fontSize: '12px'
+          }}>
+            You {!isVideoEnabled && '(Video Off)'} {!isAudioEnabled && '(Muted)'}
           </div>
         </div>
         
         {/* Remote Videos */}
-        {Array.from(peers.entries()).map(([peerId, peer]) => (
-          <div key={peerId} className="video-container">
+        {Array.from(remoteVideos.entries()).map(([peerId, peer]) => (
+          <div key={peerId} className="video-container" style={{ position: 'relative' }}>
             <video
               autoPlay
               playsInline
+              ref={(el) => {
+                if (el && peer.stream) {
+                  el.srcObject = peer.stream;
+                }
+              }}
               style={{
-                width: '300px',
+                width: '100%',
                 height: '200px',
                 backgroundColor: '#000',
-                borderRadius: '8px'
+                borderRadius: '8px',
+                objectFit: 'cover'
               }}
             />
-            <div className="video-controls">
-              <span>{peer.userName}</span>
+            <div style={{
+              position: 'absolute',
+              bottom: '10px',
+              left: '10px',
+              backgroundColor: 'rgba(0,0,0,0.7)',
+              color: 'white',
+              padding: '5px 10px',
+              borderRadius: '4px',
+              fontSize: '12px'
+            }}>
+              {peer.userName}
             </div>
           </div>
         ))}
@@ -357,66 +622,97 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
         transform: 'translateX(-50%)',
         display: 'flex',
         gap: '10px',
-        backgroundColor: 'rgba(0,0,0,0.7)',
-        padding: '10px',
-        borderRadius: '8px'
+        backgroundColor: 'rgba(0,0,0,0.8)',
+        padding: '15px',
+        borderRadius: '12px',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
       }}>
-        <button
-          onClick={joinVideoCall}
-          disabled={!isConnected}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: '#4CAF50',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          Join Video Call
-        </button>
-        
-        <button
-          onClick={toggleVideo}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: isVideoEnabled ? '#4CAF50' : '#f44336',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          {isVideoEnabled ? '📹' : '📹‍❌'} Video
-        </button>
-        
-        <button
-          onClick={toggleAudio}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: isAudioEnabled ? '#4CAF50' : '#f44336',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          {isAudioEnabled ? '🎤' : '🎤‍❌'} Audio
-        </button>
-        
-        <button
-          onClick={leaveVideoCall}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: '#f44336',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          Leave Call
-        </button>
+        {!isInCall ? (
+          <>
+            <button
+              onClick={testCamera}
+              style={{
+                padding: '12px 20px',
+                backgroundColor: '#2196F3',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
+            >
+              🧪 Test Camera
+            </button>
+            
+            <button
+              onClick={joinVideoCall}
+              disabled={!isConnected}
+              style={{
+                padding: '12px 20px',
+                backgroundColor: isConnected ? '#4CAF50' : '#666',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: isConnected ? 'pointer' : 'not-allowed',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
+            >
+              🎥 Join Video Call
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={toggleVideo}
+              style={{
+                padding: '12px 20px',
+                backgroundColor: isVideoEnabled ? '#4CAF50' : '#f44336',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
+            >
+              {isVideoEnabled ? '📹' : '📹‍❌'} Video
+            </button>
+            
+            <button
+              onClick={toggleAudio}
+              style={{
+                padding: '12px 20px',
+                backgroundColor: isAudioEnabled ? '#4CAF50' : '#f44336',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
+            >
+              {isAudioEnabled ? '🎤' : '🎤‍❌'} Audio
+            </button>
+            
+            <button
+              onClick={leaveVideoCall}
+              style={{
+                padding: '12px 20px',
+                backgroundColor: '#f44336',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
+            >
+              📞 Leave Call
+            </button>
+          </>
+        )}
       </div>
 
       {/* Error Display */}
@@ -427,19 +723,25 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
           right: '20px',
           backgroundColor: '#f44336',
           color: 'white',
-          padding: '10px',
-          borderRadius: '4px',
-          maxWidth: '300px'
+          padding: '15px',
+          borderRadius: '8px',
+          maxWidth: '400px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+          zIndex: 1000
         }}>
-          {error}
+          <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>Camera Error</div>
+          <div style={{ fontSize: '14px' }}>{error}</div>
           <button 
             onClick={() => setError('')}
             style={{
-              marginLeft: '10px',
+              position: 'absolute',
+              top: '10px',
+              right: '10px',
               background: 'transparent',
               border: 'none',
               color: 'white',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              fontSize: '16px'
             }}
           >
             ×
@@ -452,14 +754,36 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
         position: 'fixed',
         top: '20px',
         left: '20px',
-        padding: '5px 10px',
-        borderRadius: '4px',
+        padding: '8px 12px',
+        borderRadius: '6px',
         backgroundColor: isConnected ? '#4CAF50' : '#f44336',
         color: 'white',
-        fontSize: '12px'
+        fontSize: '12px',
+        fontWeight: '500',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
       }}>
         {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
       </div>
+
+      {/* Debug Info */}
+      {process.env.NODE_ENV === 'development' && (
+        <div style={{
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          backgroundColor: 'rgba(0,0,0,0.8)',
+          color: 'white',
+          padding: '10px',
+          borderRadius: '6px',
+          fontSize: '10px',
+          maxWidth: '200px'
+        }}>
+          <div>Socket: {isConnected ? 'Connected' : 'Disconnected'}</div>
+          <div>In Call: {isInCall ? 'Yes' : 'No'}</div>
+          <div>Local Stream: {localStreamRef.current ? 'Active' : 'None'}</div>
+          <div>Remote Peers: {remoteVideos.size}</div>
+        </div>
+      )}
     </div>
   );
 };
