@@ -17,7 +17,7 @@ export enum ConnectionState {
 
 // Error Types for better categorization
 export interface MediasoupError {
-  type: 'DEVICE_INIT' | 'TRANSPORT' | 'PRODUCER' | 'CONSUMER' | 'PERMISSION' | 'NETWORK';
+  type: 'DEVICE_INIT' | 'TRANSPORT' | 'PRODUCER' | 'CONSUMER' | 'PERMISSION' | 'NETWORK' | 'CLASS_ERROR';
   message: string;
   retry?: boolean;
   originalError?: any;
@@ -34,6 +34,7 @@ export interface Peer {
 
 export interface UseMediasoupReturn {
   startLocalStream: () => Promise<MediaStream>;
+  joinClass: () => Promise<void>;
   joinVideoCall: () => void;
   leaveVideoCall: () => void;
   toggleVideo: () => void;
@@ -58,7 +59,55 @@ const DEFAULT_RETRY_CONFIG = {
   multiplier: 2
 };
 
-export function useMediasoup(classId: string): UseMediasoupReturn {
+// Helper function for promise-based socket events
+const createEventPromise = <T>(
+  socket: any,
+  successEvent: string,
+  errorEvent: string = 'error',
+  timeout: number = 10000,
+  condition?: (data: any) => boolean
+): Promise<T> => {
+  return new Promise<T>((resolve, reject) => {
+    const timeoutHandle = setTimeout(() => {
+      cleanup();
+      reject(new Error(`${successEvent} timeout after ${timeout}ms`));
+    }, timeout);
+
+    const successHandler = (data: any) => {
+      if (!condition || condition(data)) {
+        cleanup();
+        resolve(data);
+      }
+    };
+
+    const errorHandler = (error: any) => {
+      // Only handle relevant errors
+      if (errorEvent === 'error' || error.code === errorEvent) {
+        cleanup();
+        reject(error);
+      }
+    };
+
+    const cleanup = () => {
+      clearTimeout(timeoutHandle);
+      socket.off(successEvent, successHandler);
+      if (errorEvent !== 'error') {
+        socket.off(errorEvent, errorHandler);
+      } else {
+        socket.off('error', errorHandler);
+      }
+    };
+
+    socket.on(successEvent, successHandler);
+    if (errorEvent !== 'error') {
+      socket.on(errorEvent, errorHandler);
+    } else {
+      socket.on('error', errorHandler);
+    }
+  });
+};
+
+export function useMediasoup(classId: string, userId?: string, token?: string): UseMediasoupReturn {
   const { socket, isConnected } = useSocket();
   
   // MediaSoup refs
@@ -84,6 +133,8 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
   // Initialization flag
   const isInitializedRef = useRef(false);
   const pendingConsumersRef = useRef<Set<string>>(new Set());
+  const hasJoinedClassRef = useRef(false);
+  const cleanupFunctionsRef = useRef<(() => void)[]>([]);
 
   // Computed states for backward compatibility
   const isVideoCallReady = connectionState === ConnectionState.CONNECTED;
@@ -104,10 +155,8 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
   };
 
   const canRetry = (errorType: MediasoupError['type']): boolean => {
-    return ['TRANSPORT', 'NETWORK', 'DEVICE_INIT'].includes(errorType);
+    return ['TRANSPORT', 'NETWORK', 'DEVICE_INIT', 'CLASS_ERROR'].includes(errorType);
   };
-
-  // Fixed socket promise utility
 
   const scheduleRetry = useCallback((errorType: MediasoupError['type'], retryFn: () => Promise<void>) => {
     if (!canRetry(errorType) || retryCountRef.current >= DEFAULT_RETRY_CONFIG.maxRetries) {
@@ -137,18 +186,72 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
     }, delay);
   }, []);
 
+  // Cleanup utility
+  const addCleanupFunction = (cleanup: () => void) => {
+    cleanupFunctionsRef.current.push(cleanup);
+  };
+
+  const runCleanup = () => {
+    cleanupFunctionsRef.current.forEach(cleanup => {
+      try {
+        cleanup();
+      } catch (error) {
+        console.error('Error during cleanup:', error);
+      }
+    });
+    cleanupFunctionsRef.current = [];
+  };
+
+  // Join class function
+  const joinClass = useCallback(async (): Promise<void> => {
+    if (!socket || !isConnected) {
+      throw new Error('Socket not connected');
+    }
+
+    if (hasJoinedClassRef.current) {
+      console.log('✅ Already joined class');
+      return;
+    }
+
+    console.log('🏫 Joining class:', classId);
+
+    try {
+      // Join class with user credentials if available
+      const joinData: any = { classId };
+      if (userId) joinData.userId = userId;
+      if (token) joinData.token = token;
+
+      socket.emit('join_class', joinData);
+
+      await createEventPromise(
+        socket,
+        'class_joined',
+        'class_join_error', // More specific error event
+        10000
+      );
+
+      hasJoinedClassRef.current = true;
+      console.log('✅ Class joined successfully');
+    } catch (error) {
+      console.error('❌ Failed to join class:', error);
+      const errorMessage = (typeof error === 'object' && error !== null && 'message' in error) ? (error as any).message : 'Failed to join class';
+      setErrorWithType('CLASS_ERROR', errorMessage, true, error);
+      throw error;
+    }
+  }, [socket, isConnected, classId, userId, token]);
+
+  // Ensure a return value in all code paths (should always reach here)
+  // The rest of the function remains unchanged.
+
   const initializeDevice = useCallback(async (rtpCapabilities: any) => {
     try {
       setConnectionState(ConnectionState.INITIALIZING);
       
-      if (!deviceRef.current) {
-        deviceRef.current = new mediasoupClient.Device();
-      }
+      // Always create a new device to ensure clean state
+      deviceRef.current = new mediasoupClient.Device();
       
-      if (!deviceRef.current.loaded) {
-        await deviceRef.current.load({ routerRtpCapabilities: rtpCapabilities });
-        console.log('📱 MediaSoup device loaded successfully');
-      }
+      await deviceRef.current.load({ routerRtpCapabilities: rtpCapabilities });
+      console.log('📱 MediaSoup device loaded successfully');
       
       return true;
     } catch (error) {
@@ -167,6 +270,15 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
     try {
       if (!deviceRef.current) throw new Error('Device not initialized');
       
+      // Close existing transport if it's in a bad state
+      if (sendTransportRef.current && 
+          (sendTransportRef.current.closed || 
+           sendTransportRef.current.connectionState === 'failed' ||
+           sendTransportRef.current.connectionState === 'disconnected')) {
+        sendTransportRef.current.close();
+        sendTransportRef.current = null;
+      }
+      
       if (sendTransportRef.current && !sendTransportRef.current.closed) {
         return sendTransportRef.current;
       }
@@ -181,7 +293,13 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
             direction: 'send'
           });
           
-          // Wait for transport_connected event
+          await createEventPromise(
+            socket,
+            'transport_connected',
+            'transport_connect_error',
+            10000,
+            (data) => data.transportId === sendTransport.id && data.direction === 'send'
+          );
           
           callback();
         } catch (error) {
@@ -197,25 +315,16 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
             rtpParameters,
           });
           
-          const response = await new Promise<any>((resolve, reject) => {
-            const timeout = setTimeout(() => reject(new Error('Produce timeout')), 10000);
-            
-            const handler = (data: any) => {
-              clearTimeout(timeout);
-              if (data.kind === kind) {
-                resolve({ id: data.producerId });
-              }
-            };
-            
-            socket?.on('producer_created', handler);
-            
-            // Cleanup listener after timeout
-            setTimeout(() => {
-              socket?.off('producer_created', handler);
-            }, 10000);
-          });
+          const response = await createEventPromise(
+            socket,
+            'producer_created',
+            'producer_create_error',
+            10000,
+            (data) => data.kind === kind
+          );
           
-          callback(response);
+          const producerResponse = response as { producerId: string };
+          callback({ id: producerResponse.producerId });
         } catch (error) {
           console.error('Error producing:', error);
           errback(error as Error);
@@ -246,6 +355,15 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
     try {
       if (!deviceRef.current) throw new Error('Device not initialized');
 
+      // Close existing transport if it's in a bad state
+      if (recvTransportRef.current && 
+          (recvTransportRef.current.closed || 
+           recvTransportRef.current.connectionState === 'failed' ||
+           recvTransportRef.current.connectionState === 'disconnected')) {
+        recvTransportRef.current.close();
+        recvTransportRef.current = null;
+      }
+
       if (recvTransportRef.current && !recvTransportRef.current.closed) {
         return recvTransportRef.current;
       }
@@ -260,27 +378,13 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
             direction: 'recv'
           });
           
-          const response = await new Promise<any>((resolve, reject) => {
-            const timeout = setTimeout(() => reject(new Error('Connect timeout')), 10000);
-            
-            const handler = (data: any) => {
-              clearTimeout(timeout);
-              if (data.transportId === recvTransport.id && data.direction === 'recv') {
-                if (data.success) {
-                  resolve(data);
-                } else {
-                  reject(new Error(data.error || 'Connection failed'));
-                }
-              }
-            };
-            
-            socket?.on('transport_connected', handler);
-            
-            // Cleanup listener after timeout
-            setTimeout(() => {
-              socket?.off('transport_connected', handler);
-            }, 10000);
-          });
+          await createEventPromise(
+            socket,
+            'transport_connected',
+            'transport_connect_error',
+            10000,
+            (data) => data.transportId === recvTransport.id && data.direction === 'recv'
+          );
           
           callback();
         } catch (error) {
@@ -333,9 +437,16 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
       setIsVideoEnabled(!!videoTrack && videoTrack.enabled);
       setIsAudioEnabled(!!audioTrack && audioTrack.enabled);
       
-      console.log('📹 Local stream started');
+      console.log('📹 Local stream started with tracks:', {
+        video: !!videoTrack,
+        audio: !!audioTrack,
+        videoEnabled: videoTrack?.enabled,
+        audioEnabled: audioTrack?.enabled
+      });
+      
       return stream;
     } catch (error) {
+      console.error('Failed to get user media:', error);
       setErrorWithType('PERMISSION', 'Failed to access camera/microphone. Please check permissions.', false, error);
       throw error;
     }
@@ -353,6 +464,7 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
     try {
       // Produce video track
       if (videoTrack && !producersRef.current.has('video')) {
+        console.log('🎬 Starting video production...');
         const videoProducer = await sendTransportRef.current.produce({ 
           track: videoTrack,
           encodings: [
@@ -364,21 +476,30 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
         
         producersRef.current.set('video', videoProducer);
         
-        videoProducer.on('transportclose', () => {
+        const cleanupVideoProducer = () => {
           producersRef.current.delete('video');
+          if (!videoProducer.closed) {
+            videoProducer.close();
+          }
+        };
+
+        videoProducer.on('transportclose', () => {
+          cleanupVideoProducer();
           console.log('Video producer transport closed');
         });
         
         videoProducer.on('trackended', () => {
-          producersRef.current.delete('video');
+          cleanupVideoProducer();
           console.log('Video producer track ended');
         });
         
+        addCleanupFunction(cleanupVideoProducer);
         console.log('✅ Video producer created successfully');
       }
 
       // Produce audio track
       if (audioTrack && !producersRef.current.has('audio')) {
+        console.log('🎤 Starting audio production...');
         const audioProducer = await sendTransportRef.current.produce({ 
           track: audioTrack,
           encodings: [{ maxBitrate: 128000 }]
@@ -386,16 +507,24 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
         
         producersRef.current.set('audio', audioProducer);
         
-        audioProducer.on('transportclose', () => {
+        const cleanupAudioProducer = () => {
           producersRef.current.delete('audio');
+          if (!audioProducer.closed) {
+            audioProducer.close();
+          }
+        };
+
+        audioProducer.on('transportclose', () => {
+          cleanupAudioProducer();
           console.log('Audio producer transport closed');
         });
         
         audioProducer.on('trackended', () => {
-          producersRef.current.delete('audio');
+          cleanupAudioProducer();
           console.log('Audio producer track ended');
         });
         
+        addCleanupFunction(cleanupAudioProducer);
         console.log('✅ Audio producer created successfully');
       }
     } catch (error) {
@@ -426,132 +555,123 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
       
       console.log(`📥 Starting to consume ${kind} from ${producerName}`);
       
-      // Send consume request
-      socket?.emit('start_consuming', { producerId });
+      try {
+        // Send consume request
+        socket?.emit('start_consuming', { producerId });
 
-      // Wait for consumer_created event
-      const consumerData = await new Promise<any>((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          pendingConsumersRef.current.delete(producerId);
-          reject(new Error('Consumer creation timeout'));
-        }, 15000);
-        
-        const handler = (data: any) => {
-          if (data.producerId === producerId) {
-            clearTimeout(timeout);
-            resolve(data);
-          }
-        };
-        
-        socket?.on('consumer_created', handler);
-        
-        // Cleanup listener after timeout
-        setTimeout(() => {
-          socket?.off('consumer_created', handler);
-        }, 15000);
-      });
+        // Wait for consumer_created event
+        const consumerData = await createEventPromise(
+          socket,
+          'consumer_created',
+          'consumer_create_error',
+          15000,
+          (data) => data.producerId === producerId
+        );
 
-      const consumer = await recvTransportRef.current.consume({
-        id: consumerData.consumerId,
-        producerId,
-        kind,
-        rtpParameters: consumerData.rtpParameters
-      });
-      
-      consumersRef.current.set(consumer.id, consumer);
+        const typedConsumerData = consumerData as { consumerId: string; rtpParameters: any };
+        const consumer = await recvTransportRef.current.consume({
+          id: typedConsumerData.consumerId,
+          producerId,
+          kind,
+          rtpParameters: typedConsumerData.rtpParameters
+        });
+        
+        consumersRef.current.set(consumer.id, consumer);
 
-      // Resume the consumer
-      socket?.emit('resume_consumer', { consumerId: consumer.id });
+        // Resume the consumer
+        socket?.emit('resume_consumer', { consumerId: consumer.id });
 
-      // Wait for consumer_resumed event
-      await new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error('Consumer resume timeout')), 10000);
-        
-        const handler = (data: any) => {
-          if (data.consumerId === consumer.id) {
-            clearTimeout(timeout);
-            if (data.success) {
-              resolve();
-            } else {
-              reject(new Error(data.error || 'Failed to resume consumer'));
-            }
-          }
-        };
-        
-        socket?.once('consumer_resumed', handler);
-        
-        // Cleanup listener after timeout
-        setTimeout(() => {
-          socket?.off('consumer_resumed', handler);
-        }, 10000);
-      });
+        // Wait for consumer_resumed event
+        await createEventPromise(
+          socket,
+          'consumer_resumed',
+          'consumer_resume_error',
+          10000,
+          (data) => data.consumerId === consumer.id && data.success
+        );
 
-      // Update peers state
-      setPeers(prevPeers => {
-        const existingPeerIndex = prevPeers.findIndex(p => p.id === producerSocketId);
-        const updatedPeers = [...prevPeers];
-        
-        if (existingPeerIndex >= 0) {
-          const existingPeer = updatedPeers[existingPeerIndex];
-          existingPeer.consumers.set(consumer.id, consumer);
-          existingPeer.stream.addTrack(consumer.track);
-          
-          if (kind === 'video') {
-            existingPeer.isVideoEnabled = true;
-          } else if (kind === 'audio') {
-            existingPeer.isAudioEnabled = true;
-          }
-        } else {
-          const newStream = new MediaStream();
-          newStream.addTrack(consumer.track);
-          
-          const newPeer: Peer = {
-            id: producerSocketId,
-            name: producerName,
-            stream: newStream,
-            consumers: new Map([[consumer.id, consumer]]),
-            isAudioEnabled: kind === 'audio',
-            isVideoEnabled: kind === 'video'
-          };
-          
-          updatedPeers.push(newPeer);
-        }
-        
-        return updatedPeers;
-      });
-
-      // Handle consumer events
-      consumer.on('trackended', () => {
-        console.log(`Consumer track ended: ${kind} from ${producerName}`);
-        consumersRef.current.delete(consumer.id);
-        
+        // Update peers state
         setPeers(prevPeers => {
-          const peerIndex = prevPeers.findIndex(p => p.id === producerSocketId);
-          if (peerIndex >= 0) {
-            const updatedPeers = [...prevPeers];
-            const peer = updatedPeers[peerIndex];
-            peer.consumers.delete(consumer.id);
-            peer.stream.removeTrack(consumer.track);
+          const existingPeerIndex = prevPeers.findIndex(p => p.id === producerSocketId);
+          const updatedPeers = [...prevPeers];
+          
+          if (existingPeerIndex >= 0) {
+            const existingPeer = updatedPeers[existingPeerIndex];
+            existingPeer.consumers.set(consumer.id, consumer);
+            existingPeer.stream.addTrack(consumer.track);
             
             if (kind === 'video') {
-              peer.isVideoEnabled = false;
+              existingPeer.isVideoEnabled = true;
             } else if (kind === 'audio') {
-              peer.isAudioEnabled = false;
+              existingPeer.isAudioEnabled = true;
             }
+          } else {
+            const newStream = new MediaStream();
+            newStream.addTrack(consumer.track);
             
-            return updatedPeers;
+            const newPeer: Peer = {
+              id: producerSocketId,
+              name: producerName,
+              stream: newStream,
+              consumers: new Map([[consumer.id, consumer]]),
+              isAudioEnabled: kind === 'audio',
+              isVideoEnabled: kind === 'video'
+            };
+            
+            updatedPeers.push(newPeer);
           }
-          return prevPeers;
+          
+          return updatedPeers;
         });
-      });
 
-      consumer.on('transportclose', () => {
-        console.log(`Consumer transport closed: ${kind} from ${producerName}`);
-        consumersRef.current.delete(consumer.id);
-      });
+        // Handle consumer events
+        const cleanupConsumer = () => {
+          consumersRef.current.delete(consumer.id);
+          if (!consumer.closed) {
+            consumer.close();
+          }
+          
+          setPeers(prevPeers => {
+            const peerIndex = prevPeers.findIndex(p => p.id === producerSocketId);
+            if (peerIndex >= 0) {
+              const updatedPeers = [...prevPeers];
+              const peer = updatedPeers[peerIndex];
+              peer.consumers.delete(consumer.id);
+              
+              try {
+                peer.stream.removeTrack(consumer.track);
+              } catch (error) {
+                console.warn('Error removing track:', error);
+              }
+              
+              if (kind === 'video') {
+                peer.isVideoEnabled = false;
+              } else if (kind === 'audio') {
+                peer.isAudioEnabled = false;
+              }
+              
+              return updatedPeers;
+            }
+            return prevPeers;
+          });
+        };
 
-      pendingConsumersRef.current.delete(producerId);
-      console.log(`✅ Consumer created and resumed successfully for ${kind} from ${producerName}`);
+        consumer.on('trackended', () => {
+          console.log(`Consumer track ended: ${kind} from ${producerName}`);
+          cleanupConsumer();
+        });
+
+        consumer.on('transportclose', () => {
+          console.log(`Consumer transport closed: ${kind} from ${producerName}`);
+          cleanupConsumer();
+        });
+
+        addCleanupFunction(cleanupConsumer);
+        console.log(`✅ Consumer created and resumed successfully for ${kind} from ${producerName}`);
+        
+      } finally {
+        pendingConsumersRef.current.delete(producerId);
+      }
       
     } catch (error) {
       pendingConsumersRef.current.delete(producerId);
@@ -566,11 +686,18 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
       return;
     }
 
+    // Check if class has been joined
+    if (!hasJoinedClassRef.current) {
+      setErrorWithType('CLASS_ERROR', 'Must join class before joining video call', true);
+      return;
+    }
+
     if (isInitializedRef.current && connectionState !== ConnectionState.FAILED) {
       console.warn('Video call already initialized');
       return;
     }
 
+    // Clear any existing retry timeout
     if (retryTimeoutRef.current) {
       clearTimeout(retryTimeoutRef.current);
       retryTimeoutRef.current = null;
@@ -586,38 +713,35 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
       socket.emit('join_video_call', { classId });
       
       // Step 2: Wait for video_call_ready
-      const rtpCapabilities = await new Promise<any>((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error('Join timeout')), 20000);
-        
-        const handler = (data: any) => {
-          clearTimeout(timeout);
-          resolve(data.rtpCapabilities);
-        };
-        
-        socket.once('video_call_ready', handler);
-      });
+      const readyData = await createEventPromise(
+        socket,
+        'video_call_ready',
+        'video_call_error',
+        20000
+      );
       
       // Step 3: Initialize device
+      const { rtpCapabilities } = readyData as { rtpCapabilities: any };
       const deviceInitialized = await initializeDevice(rtpCapabilities);
       if (!deviceInitialized) {
         throw new Error('Failed to initialize device');
       }
       
       // Step 4: Set RTP capabilities and wait for transports
+      if (!deviceRef.current?.rtpCapabilities) {
+        throw new Error('Device RTP capabilities not available');
+      }
+
       socket.emit('set_rtp_capabilities', { 
-        rtpCapabilities: deviceRef.current!.rtpCapabilities 
+        rtpCapabilities: deviceRef.current.rtpCapabilities 
       });
       
-      const transports = await new Promise<any>((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error('Transport timeout')), 20000);
-        
-        const handler = (data: any) => {
-          clearTimeout(timeout);
-          resolve(data);
-        };
-        
-        socket.once('transports_created', handler);
-      });
+      const transports = await createEventPromise(
+        socket,
+        'transports_created',
+        'transport_create_error',
+        20000
+      ) as { sendTransport: any; recvTransport: any };
       
       // Step 5: Create transports
       await Promise.all([
@@ -635,8 +759,14 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
 
     } catch (error) {
       console.error('Error during join_video_call flow:', error);
-      setErrorWithType('NETWORK', 'Failed to establish video call', true, error);
+      const errorMessage = (typeof error === 'object' && error !== null && 'message' in error)
+        ? (error as any).message
+        : 'Failed to establish video call';
+      setErrorWithType('NETWORK', errorMessage, true, error);
       setConnectionState(ConnectionState.FAILED);
+      
+      // Clean up partial state on failure
+      runCleanup();
     }
   }, [socket, isConnected, classId, connectionState, initializeDevice, createSendTransport, createReceiveTransport, startLocalStream, produceMedia]);
 
@@ -647,6 +777,9 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
       clearTimeout(retryTimeoutRef.current);
       retryTimeoutRef.current = null;
     }
+    
+    // Run all cleanup functions
+    runCleanup();
     
     if (socket) {
       socket.emit('leave_video_call');
@@ -724,6 +857,14 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
       } catch (error) {
         console.error('Error toggling video:', error);
       }
+    } else if (localStreamRef.current) {
+      // If no producer but we have local stream, toggle the track directly
+      const videoTrack = localStreamRef.current.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = !videoTrack.enabled;
+        setIsVideoEnabled(videoTrack.enabled);
+        console.log(`📹 Video ${videoTrack.enabled ? 'enabled' : 'disabled'} (local track)`);
+      }
     }
   }, [socket]);
 
@@ -745,6 +886,14 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
       } catch (error) {
         console.error('Error toggling audio:', error);
       }
+    } else if (localStreamRef.current) {
+      // If no producer but we have local stream, toggle the track directly
+      const audioTrack = localStreamRef.current.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+        setIsAudioEnabled(audioTrack.enabled);
+        console.log(`🎤 Audio ${audioTrack.enabled ? 'enabled' : 'disabled'} (local track)`);
+      }
     }
   }, [socket]);
   
@@ -756,6 +905,11 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
       console.log('📱 Video call ready event received');
       // This is handled in joinVideoCall flow
     };
+
+    const handleClassJoined = (data: any) => {
+      console.log('🏫 Class joined successfully:', data);
+      hasJoinedClassRef.current = true;
+    };
     
     const handleNewProducer = (data: { producerId: string, kind: 'audio' | 'video', producerSocketId: string, producerName: string }) => {
       console.log('🆕 New producer available:', data.kind, 'from', data.producerName);
@@ -766,12 +920,38 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
     
     const handlePeerDisconnected = (data: { peerId: string }) => {
       console.log('👋 Peer disconnected:', data.peerId);
-      setPeers(prevPeers => prevPeers.filter(peer => peer.id !== data.peerId));
+      setPeers(prevPeers => {
+        const updatedPeers = prevPeers.filter(peer => peer.id !== data.peerId);
+        // Clean up any consumers for this peer
+        const disconnectedPeer = prevPeers.find(peer => peer.id === data.peerId);
+        if (disconnectedPeer) {
+          disconnectedPeer.consumers.forEach(consumer => {
+            if (!consumer.closed) {
+              consumer.close();
+            }
+            consumersRef.current.delete(consumer.id);
+          });
+        }
+        return updatedPeers;
+      });
     };
 
     const handlePeerLeftVideo = (data: { peerId: string, peerName: string }) => {
       console.log('📞 Peer left video:', data.peerName);
-      setPeers(prevPeers => prevPeers.filter(peer => peer.id !== data.peerId));
+      setPeers(prevPeers => {
+        const updatedPeers = prevPeers.filter(peer => peer.id !== data.peerId);
+        // Clean up any consumers for this peer
+        const leftPeer = prevPeers.find(peer => peer.id === data.peerId);
+        if (leftPeer) {
+          leftPeer.consumers.forEach(consumer => {
+            if (!consumer.closed) {
+              consumer.close();
+            }
+            consumersRef.current.delete(consumer.id);
+          });
+        }
+        return updatedPeers;
+      });
     };
 
     const handleVideoCallLeft = () => {
@@ -781,11 +961,19 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
 
     const handleError = (error: { message: string, code?: string }) => {
       console.error('🚨 Socket error:', error);
+      // Only handle errors that are relevant to video calls
       if (error.code === 'VIDEO_CALL_ERROR') {
         setErrorWithType('NETWORK', error.message || 'Video call error occurred', true, error);
-      } else {
-        setErrorWithType('NETWORK', error.message || 'An error occurred', true, error);
+      } else if (error.code === 'CLASS_ERROR') {
+        setErrorWithType('CLASS_ERROR', error.message || 'Class error occurred', true, error);
+      } else if (error.code === 'TRANSPORT_ERROR') {
+        setErrorWithType('TRANSPORT', error.message || 'Transport error occurred', true, error);
+      } else if (error.code === 'PRODUCER_ERROR') {
+        setErrorWithType('PRODUCER', error.message || 'Producer error occurred', true, error);
+      } else if (error.code === 'CONSUMER_ERROR') {
+        setErrorWithType('CONSUMER', error.message || 'Consumer error occurred', true, error);
       }
+      // Ignore other socket errors that might not be related to video calls
     };
 
     const handlePeerMediaStateChanged = (data: { peerId: string, peerName: string, kind: 'audio' | 'video', enabled: boolean }) => {
@@ -813,8 +1001,41 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
       // This will be handled when producers are available
     };
 
+    const handleProducerClosed = (data: { producerId: string, peerId: string, kind: 'audio' | 'video' }) => {
+      console.log(`🚫 Producer closed: ${data.kind} from peer ${data.peerId}`);
+      // Clean up any related consumers
+      const consumersToClose = Array.from(consumersRef.current.entries())
+        .filter(([_, consumer]) => consumer.producerId === data.producerId);
+      
+      consumersToClose.forEach(([consumerId, consumer]) => {
+        if (!consumer.closed) {
+          consumer.close();
+        }
+        consumersRef.current.delete(consumerId);
+      });
+
+      // Update peer state
+      setPeers(prevPeers => {
+        const peerIndex = prevPeers.findIndex(p => p.id === data.peerId);
+        if (peerIndex >= 0) {
+          const updatedPeers = [...prevPeers];
+          const peer = updatedPeers[peerIndex];
+          
+          if (data.kind === 'video') {
+            peer.isVideoEnabled = false;
+          } else if (data.kind === 'audio') {
+            peer.isAudioEnabled = false;
+          }
+          
+          return updatedPeers;
+        }
+        return prevPeers;
+      });
+    };
+
     // Register event listeners
     socket.on('video_call_ready', handleVideoCallReady);
+    socket.on('class_joined', handleClassJoined);
     socket.on('new_producer_available', handleNewProducer);
     socket.on('peer_disconnected', handlePeerDisconnected);
     socket.on('peer_left_video', handlePeerLeftVideo);
@@ -822,9 +1043,11 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
     socket.on('error', handleError);
     socket.on('peer_media_state_changed', handlePeerMediaStateChanged);
     socket.on('user_joined_video', handleUserJoinedVideo);
+    socket.on('producer_closed', handleProducerClosed);
 
     return () => {
       socket.off('video_call_ready', handleVideoCallReady);
+      socket.off('class_joined', handleClassJoined);
       socket.off('new_producer_available', handleNewProducer);
       socket.off('peer_disconnected', handlePeerDisconnected);
       socket.off('peer_left_video', handlePeerLeftVideo);
@@ -832,6 +1055,7 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
       socket.off('error', handleError);
       socket.off('peer_media_state_changed', handlePeerMediaStateChanged);
       socket.off('user_joined_video', handleUserJoinedVideo);
+      socket.off('producer_closed', handleProducerClosed);
     };
   }, [socket, consumeRemoteMedia]);
 
@@ -858,12 +1082,15 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
       retryCountRef.current = 0;
       isRetryingRef.current = false;
       isInitializedRef.current = false;
+      hasJoinedClassRef.current = false; // Reset class join status on retry
+      clearError();
       joinVideoCall();
     }
   }, [connectionState, joinVideoCall]);
 
   return {
     startLocalStream,
+    joinClass,
     joinVideoCall,
     leaveVideoCall,
     toggleVideo,

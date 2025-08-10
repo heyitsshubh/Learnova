@@ -7,7 +7,7 @@ type MeetScreenProps = {
   token: string;
 };
 
-const MeetScreen: React.FC<MeetScreenProps> = ({ classId }) => {
+const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
   const {
     joinVideoCall,
     leaveVideoCall,
@@ -22,23 +22,63 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId }) => {
     retryConnection,
     clearError,
     isVideoEnabled,
-    isAudioEnabled
-  } = useMediasoup(classId);
+    isAudioEnabled,
+    joinClass // Add this to the hook
+  } = useMediasoup(classId, userId, token); // Pass userId and token
 
   const [meetingDuration, setMeetingDuration] = useState(0);
   const [showParticipants, setShowParticipants] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [hasJoinedClass, setHasJoinedClass] = useState(false);
   
   const meetingStartTimeRef = useRef<Date | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Attach local video stream
+  // Join class first on component mount
   useEffect(() => {
-    if (localVideoRef.current && localStreamRef.current) {
-      localVideoRef.current.srcObject = localStreamRef.current;
+    const handleJoinClass = async () => {
+      try {
+        console.log('🏫 Joining class first...');
+        await joinClass();
+        setHasJoinedClass(true);
+        console.log('✅ Class joined successfully');
+      } catch (error) {
+        console.error('Failed to join class:', error);
+      }
+    };
+
+    if (!hasJoinedClass) {
+      handleJoinClass();
     }
-  }, [localStreamRef.current]);
+  }, [joinClass, hasJoinedClass]);
+
+  // Attach local video stream with better error handling
+  useEffect(() => {
+    const attachLocalVideo = async () => {
+      if (localVideoRef.current && localStreamRef.current) {
+        try {
+          // Ensure the video element is ready
+          localVideoRef.current.srcObject = localStreamRef.current;
+          
+          // Force video to play if paused
+          if (localVideoRef.current.paused) {
+            try {
+              await localVideoRef.current.play();
+              console.log('📹 Local video started playing');
+            } catch (playError) {
+              console.warn('Video autoplay prevented:', playError);
+              // This is often blocked by browsers, but the video will still show
+            }
+          }
+        } catch (error) {
+          console.error('Error attaching local video:', error);
+        }
+      }
+    };
+
+    attachLocalVideo();
+  }, [localStreamRef.current, isVideoCallReady]);
 
   // Track meeting duration
   useEffect(() => {
@@ -132,13 +172,22 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId }) => {
     }
   };
 
+  const handleJoinVideoCall = () => {
+    if (!hasJoinedClass) {
+      console.warn('Must join class before joining video call');
+      return;
+    }
+    joinVideoCall();
+  };
+
   // Error display
   if (error && !isConnecting) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white p-4">
         <div className="bg-red-900/50 border border-red-500 rounded-lg p-6 max-w-md w-full">
           <h2 className="text-xl font-semibold mb-2 text-red-300">
-            {error.type === 'PERMISSION' ? 'Permission Required' : 'Connection Error'}
+            {error.type === 'PERMISSION' ? 'Permission Required' : 
+             error.type === 'CLASS_ERROR' ? 'Class Join Required' : 'Connection Error'}
           </h2>
           <p className="text-red-200 mb-4">{error.message}</p>
           <div className="flex gap-2">
@@ -177,6 +226,11 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId }) => {
             <div className="w-2 h-2 rounded-full bg-current animate-pulse" />
             <span className="text-sm">{getConnectionStatusText()}</span>
           </div>
+          {!hasJoinedClass && (
+            <div className="text-yellow-500 text-sm">
+              Joining class...
+            </div>
+          )}
         </div>
         
         <div className="flex items-center gap-4">
@@ -213,18 +267,21 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId }) => {
             <div className="flex flex-col items-center justify-center h-full">
               <div className="text-center">
                 <h2 className="text-2xl font-semibold mb-4">
-                  {isConnecting ? 'Joining Meeting...' : 'Ready to Join'}
+                  {isConnecting ? 'Joining Meeting...' : 
+                   !hasJoinedClass ? 'Joining Class...' : 'Ready to Join'}
                 </h2>
-                {isConnecting && (
+                {(isConnecting || !hasJoinedClass) && (
                   <div className="mb-4">
                     <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
-                    <p className="text-gray-400 mt-2">{getConnectionStatusText()}</p>
+                    <p className="text-gray-400 mt-2">
+                      {!hasJoinedClass ? 'Joining class...' : getConnectionStatusText()}
+                    </p>
                   </div>
                 )}
-                {!isConnecting && (
+                {!isConnecting && hasJoinedClass && (
                   <button
-                    onClick={joinVideoCall}
-                    disabled={isConnecting}
+                    onClick={handleJoinVideoCall}
+                    disabled={isConnecting || !hasJoinedClass}
                     className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg text-lg transition-colors"
                   >
                     Join Video Call
@@ -244,6 +301,18 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId }) => {
                   muted 
                   playsInline 
                   className="w-full h-full object-cover"
+                  onLoadedMetadata={() => {
+                    console.log('📹 Local video metadata loaded');
+                    // Ensure video plays
+                    if (localVideoRef.current) {
+                      localVideoRef.current.play().catch(e => 
+                        console.warn('Video play prevented:', e)
+                      );
+                    }
+                  }}
+                  onError={(e) => {
+                    console.error('Local video error:', e);
+                  }}
                 />
                 <div className="absolute bottom-2 left-2 bg-black/50 px-2 py-1 rounded text-sm">
                   You {!isVideoEnabled && "(Video Off)"} {!isAudioEnabled && "(Muted)"}
