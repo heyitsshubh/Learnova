@@ -46,20 +46,28 @@ export default function MeetPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const fetchMeetings = async () => {
-    const classId = localStorage.getItem('currentClassId');
-    if (!classId) return setLoading(false);
+ const fetchMeetings = async () => {
+  const classId = localStorage.getItem('currentClassId');
+  if (!classId) return setLoading(false);
 
-    try {
-      const res = await fetchMeetingsByClass(classId);
-      setMeetings(res.meetings || []);
-    } catch (error) {
-      console.error('Error fetching meetings:', error);
-      setMeetings([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    const res = await fetchMeetingsByClass(classId);
+    setMeetings(res.meetings || []);
+
+    // Set lectureStarted state based on meeting status
+    const startedMap: { [meetingId: string]: boolean } = {};
+    (res.meetings || []).forEach((m: Meeting) => {
+      startedMap[m._id] = m.status === 'live';
+    });
+    setLectureStarted(startedMap);
+
+  } catch (error) {
+    console.error('Error fetching meetings:', error);
+    setMeetings([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchMeetings();

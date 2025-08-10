@@ -757,6 +757,17 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
       await startLocalStream();
       await produceMedia();
       
+socket.on('existing_producers', (producers: Array<{ producerId: string, kind: 'audio' | 'video', producerSocketId: string, producerName: string }>) => {
+  producers.forEach((producer) => {
+    if (producer.producerSocketId !== socket.id) {
+      consumeRemoteMedia(producer.producerId, producer.producerSocketId, producer.producerName, producer.kind);
+    }
+  });
+});
+
+// Request the list of existing producers after joining and producing
+socket.emit('get_existing_producers', { classId });
+      
       setConnectionState(ConnectionState.CONNECTED);
       clearError();
       console.log('✅ Video call setup complete');
