@@ -49,6 +49,7 @@ export interface UseMediasoupReturn {
   clearError: () => void;
   isVideoEnabled: boolean;
   isAudioEnabled: boolean;
+    isConnected: boolean;
 }
 
 // Retry configuration
@@ -221,7 +222,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
       if (userId) joinData.userId = userId;
       if (token) joinData.token = token;
 
-      socket.emit('join_class', joinData);
+      socket.emit('joinClass', joinData);
 
       await createEventPromise(
         socket,
@@ -239,9 +240,6 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
       throw error;
     }
   }, [socket, isConnected, classId, userId, token]);
-
-  // Ensure a return value in all code paths (should always reach here)
-  // The rest of the function remains unchanged.
 
   const initializeDevice = useCallback(async (rtpCapabilities: any) => {
     try {
@@ -686,23 +684,29 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
       return;
     }
 
+    // Add socket connection validation
+    if (!socket.connected) {
+      setErrorWithType('NETWORK', 'Socket not properly connected', true);
+      return;
+    }
+    
     // Check if class has been joined
     if (!hasJoinedClassRef.current) {
       setErrorWithType('CLASS_ERROR', 'Must join class before joining video call', true);
       return;
     }
-
+    
     if (isInitializedRef.current && connectionState !== ConnectionState.FAILED) {
       console.warn('Video call already initialized');
       return;
     }
-
+    
     // Clear any existing retry timeout
     if (retryTimeoutRef.current) {
       clearTimeout(retryTimeoutRef.current);
       retryTimeoutRef.current = null;
     }
-
+    
     setConnectionState(ConnectionState.CONNECTING);
     clearError();
     isInitializedRef.current = true;
@@ -731,7 +735,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
       if (!deviceRef.current?.rtpCapabilities) {
         throw new Error('Device RTP capabilities not available');
       }
-
+      
       socket.emit('set_rtp_capabilities', { 
         rtpCapabilities: deviceRef.current.rtpCapabilities 
       });
@@ -748,7 +752,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
         createSendTransport(transports.sendTransport),
         createReceiveTransport(transports.recvTransport)
       ]);
-
+      
       // Step 6: Start local stream and produce media
       await startLocalStream();
       await produceMedia();
@@ -756,7 +760,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
       setConnectionState(ConnectionState.CONNECTED);
       clearError();
       console.log('✅ Video call setup complete');
-
+      
     } catch (error) {
       console.error('Error during join_video_call flow:', error);
       const errorMessage = (typeof error === 'object' && error !== null && 'message' in error)
@@ -896,14 +900,14 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
       }
     }
   }, [socket]);
-  
-  // Socket event handlers
+
+  // Socket event handlers - MOVED TO PROPER POSITION AFTER ALL FUNCTIONS ARE DEFINED
   useEffect(() => {
     if (!socket) return;
     
     const handleVideoCallReady = async (data: { rtpCapabilities: any }) => {
       console.log('📱 Video call ready event received');
-      // This is handled in joinVideoCall flow
+      // This will be handled in the joinVideoCall flow via the promise
     };
 
     const handleClassJoined = (data: any) => {
@@ -1033,7 +1037,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
       });
     };
 
-    // Register event listeners
+    // Register all event listeners
     socket.on('video_call_ready', handleVideoCallReady);
     socket.on('class_joined', handleClassJoined);
     socket.on('new_producer_available', handleNewProducer);
@@ -1046,6 +1050,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
     socket.on('producer_closed', handleProducerClosed);
 
     return () => {
+      // Cleanup all event listeners
       socket.off('video_call_ready', handleVideoCallReady);
       socket.off('class_joined', handleClassJoined);
       socket.off('new_producer_available', handleNewProducer);
@@ -1058,7 +1063,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
       socket.off('producer_closed', handleProducerClosed);
     };
   }, [socket, consumeRemoteMedia]);
-
+  
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -1105,5 +1110,6 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
     clearError,
     isVideoEnabled,
     isAudioEnabled,
+    isConnected
   };
 }

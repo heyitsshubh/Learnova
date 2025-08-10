@@ -23,19 +23,20 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
     clearError,
     isVideoEnabled,
     isAudioEnabled,
-    joinClass // Add this to the hook
+    joinClass, // Add this to the hook
+    isConnected // <-- Make sure useMediasoup returns this!
   } = useMediasoup(classId, userId, token); // Pass userId and token
 
   const [meetingDuration, setMeetingDuration] = useState(0);
   const [showParticipants, setShowParticipants] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [hasJoinedClass, setHasJoinedClass] = useState(false);
-  
+
   const meetingStartTimeRef = useRef<Date | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Join class first on component mount
+  // Join class first on component mount, but only when socket is connected
   useEffect(() => {
     const handleJoinClass = async () => {
       try {
@@ -48,10 +49,10 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
       }
     };
 
-    if (!hasJoinedClass) {
+    if (!hasJoinedClass && isConnected) {
       handleJoinClass();
     }
-  }, [joinClass, hasJoinedClass]);
+  }, [joinClass, hasJoinedClass, isConnected]);
 
   // Attach local video stream with better error handling
   useEffect(() => {
@@ -60,7 +61,7 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
         try {
           // Ensure the video element is ready
           localVideoRef.current.srcObject = localStreamRef.current;
-          
+
           // Force video to play if paused
           if (localVideoRef.current.paused) {
             try {
@@ -95,7 +96,7 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
       setMeetingDuration(0);
       meetingStartTimeRef.current = null;
     }
-    
+
     return () => {
       if (timer) clearInterval(timer);
     };
@@ -115,7 +116,7 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
     const hours = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    
+
     if (hours > 0) {
       return `${hours}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
     }
@@ -124,7 +125,7 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
 
   const toggleFullscreen = async () => {
     if (!containerRef.current) return;
-    
+
     try {
       if (document.fullscreenElement) {
         await document.exitFullscreen();
@@ -186,8 +187,8 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white p-4">
         <div className="bg-red-900/50 border border-red-500 rounded-lg p-6 max-w-md w-full">
           <h2 className="text-xl font-semibold mb-2 text-red-300">
-            {error.type === 'PERMISSION' ? 'Permission Required' : 
-             error.type === 'CLASS_ERROR' ? 'Class Join Required' : 'Connection Error'}
+            {error.type === 'PERMISSION' ? 'Permission Required' :
+              error.type === 'CLASS_ERROR' ? 'Class Join Required' : 'Connection Error'}
           </h2>
           <p className="text-red-200 mb-4">{error.message}</p>
           <div className="flex gap-2">
@@ -232,14 +233,14 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
             </div>
           )}
         </div>
-        
+
         <div className="flex items-center gap-4">
           {isVideoCallReady && (
             <div className="text-sm text-gray-300">
               Duration: {formatDuration(meetingDuration)}
             </div>
           )}
-          
+
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowParticipants(!showParticipants)}
@@ -247,7 +248,7 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
             >
               Participants ({peers.length + (isVideoCallReady ? 1 : 0)})
             </button>
-            
+
             <button
               onClick={toggleFullscreen}
               className="p-2 hover:bg-gray-700 rounded-md transition-colors"
@@ -267,8 +268,8 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
             <div className="flex flex-col items-center justify-center h-full">
               <div className="text-center">
                 <h2 className="text-2xl font-semibold mb-4">
-                  {isConnecting ? 'Joining Meeting...' : 
-                   !hasJoinedClass ? 'Joining Class...' : 'Ready to Join'}
+                  {isConnecting ? 'Joining Meeting...' :
+                    !hasJoinedClass ? 'Joining Class...' : 'Ready to Join'}
                 </h2>
                 {(isConnecting || !hasJoinedClass) && (
                   <div className="mb-4">
@@ -295,17 +296,17 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
             }}>
               {/* Local Video */}
               <div className="relative bg-gray-800 rounded-lg overflow-hidden">
-                <video 
-                  ref={localVideoRef} 
-                  autoPlay 
-                  muted 
-                  playsInline 
+                <video
+                  ref={localVideoRef}
+                  autoPlay
+                  muted
+                  playsInline
                   className="w-full h-full object-cover"
                   onLoadedMetadata={() => {
                     console.log('📹 Local video metadata loaded');
                     // Ensure video plays
                     if (localVideoRef.current) {
-                      localVideoRef.current.play().catch(e => 
+                      localVideoRef.current.play().catch(e =>
                         console.warn('Video play prevented:', e)
                       );
                     }
@@ -377,7 +378,7 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
                   </div>
                 </div>
               )}
-              
+
               {peers.map((peer) => (
                 <div key={peer.id} className="flex items-center gap-2 p-2 bg-gray-700 rounded">
                   <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-sm">
@@ -407,27 +408,27 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
             <button
               onClick={toggleVideo}
               className={`p-3 rounded-full transition-colors ${
-                isVideoEnabled 
-                  ? 'bg-gray-600 hover:bg-gray-700' 
+                isVideoEnabled
+                  ? 'bg-gray-600 hover:bg-gray-700'
                   : 'bg-red-600 hover:bg-red-700'
               }`}
               title={isVideoEnabled ? 'Turn off camera' : 'Turn on camera'}
             >
               {isVideoEnabled ? '📹' : '📹❌'}
             </button>
-            
+
             <button
               onClick={toggleAudio}
               className={`p-3 rounded-full transition-colors ${
-                isAudioEnabled 
-                  ? 'bg-gray-600 hover:bg-gray-700' 
+                isAudioEnabled
+                  ? 'bg-gray-600 hover:bg-gray-700'
                   : 'bg-red-600 hover:bg-red-700'
               }`}
               title={isAudioEnabled ? 'Mute microphone' : 'Unmute microphone'}
             >
               {isAudioEnabled ? '🎤' : '🎤❌'}
             </button>
-            
+
             <button
               onClick={leaveVideoCall}
               className="px-6 py-3 bg-red-600 hover:bg-red-700 rounded-lg transition-colors font-medium"
@@ -437,7 +438,7 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
           </div>
         </div>
       )}
-      
+
       {/* Connection Status Toast */}
       {connectionState === ConnectionState.RECONNECTING && (
         <div className="fixed top-4 right-4 bg-orange-600 text-white px-4 py-2 rounded-lg shadow-lg">

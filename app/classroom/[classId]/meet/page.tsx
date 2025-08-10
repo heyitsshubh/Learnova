@@ -112,35 +112,44 @@ export default function MeetPage() {
     );
   };
 
-  const handleStartLecture = async (meeting: Meeting) => {
-    const meetingId = meeting._id;
-    const classId = typeof meeting.classId === 'object' ? meeting.classId._id : meeting.classId;
+ const handleStartLecture = async (meeting: Meeting) => {
+  const meetingId = meeting._id;
+  const classId = typeof meeting.classId === 'object' ? meeting.classId._id : meeting.classId;
 
-    setStartingMeeting(meetingId);
+  setStartingMeeting(meetingId);
 
-    try {
-      // Start the meeting via API
-      await startMeeting(meetingId);
+  try {
+    // Start the meeting via API
+    await startMeeting(meetingId);
+
+    // Emit joinClass and wait for confirmation
+    if (socket?.socket) {
+      await new Promise((resolve, reject) => {
+        if (socket.socket) {
+          socket.socket.emit('joinClass', { classId });
+        }
+        socket.socket?.once('class_joined', resolve);
+        setTimeout(() => reject(new Error('class_joined timeout')), 10000);
+      });
 
       // Emit meeting started event via socket
-      if (socket?.socket) {
-        socket.socket.emit('meeting_started', {
-          meetingId,
-          title: meeting.title,
-          meetingLink: `/meet/lecture/${meetingId}`,
-          classId
-        });
-      }
-
-      // Redirect to meeting screen as host
-      router.push(`/classroom/${classId}/meet/lecture/${meetingId}`);
-    } catch (error) {
-      console.error('Error starting meeting:', error);
-      alert('Failed to start the meeting. Please try again.');
-    } finally {
-      setStartingMeeting(null);
+      socket.socket.emit('meeting_started', {
+        meetingId,
+        title: meeting.title,
+        meetingLink: `/meet/lecture/${meetingId}`,
+        classId
+      });
     }
-  };
+
+    // Redirect to meeting screen as host
+    router.push(`/classroom/${classId}/meet/lecture/${meetingId}`);
+  } catch (error) {
+    console.error('Error starting meeting:', error);
+    alert('Failed to start the meeting. Please try again.');
+  } finally {
+    setStartingMeeting(null);
+  }
+};
 
   return (
     <div className="flex p-6 bg-gray-50 min-h-screen">

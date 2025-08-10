@@ -133,26 +133,40 @@ export default function MeetPage() {
   };
 
   // Handler for joining a lecture
-  const handleJoinLecture = async (meeting: Meeting) => {
-    const meetingId = meeting._id;
-    const classId = typeof meeting.classId === 'object' ? meeting.classId._id : meeting.classId;
+ // ...existing code...
+const handleJoinLecture = async (meeting: Meeting) => {
+  const meetingId = meeting._id;
+  const classId = typeof meeting.classId === 'object' ? meeting.classId._id : meeting.classId;
 
-    try {
-      // Call the join meeting API
-      await joinMeeting(meetingId);
+  try {
+    // Call the join meeting API
+    await joinMeeting(meetingId);
 
-      // Emit join event if socket is available
-      if (socket?.socket) {
+    // Emit joinClass first, then join_video_call
+    if (socket?.socket) {
+      await new Promise((resolve, reject) => {
+        if (socket.socket) {
+          socket.socket.emit('joinClass', { classId });
+          socket.socket.once('class_joined', resolve);
+        } else {
+          reject(new Error('Socket is null'));
+        }
+        setTimeout(() => reject(new Error('class_joined timeout')), 10000);
+      });
+
+      if (socket.socket) {
         socket.socket.emit('join_video_call', { classId, meetingId });
       }
-
-      // Redirect to meeting screen as participant
-      router.push(`/classroom/${classId}/meet/lecture/${meetingId}`);
-    } catch (error) {
-      alert('Failed to join the meeting. Please try again.');
-      console.error('Join meeting error:', error);
     }
-  };
+
+    // Redirect to meeting screen as participant
+    router.push(`/classroom/${classId}/meet/lecture/${meetingId}`);
+  } catch (error) {
+    alert('Failed to join the meeting. Please try again.');
+    console.error('Join meeting error:', error);
+  }
+};
+// ...existing code...
 
   return (
     <div className="flex p-6 bg-gray-50 min-h-screen">
