@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useState, useCallback } from "react";
 import * as mediasoupClient from "mediasoup-client";
@@ -107,39 +108,6 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
   };
 
   // Fixed socket promise utility
-  const socketPromise = (event: string, data?: any, timeout = 15000): Promise<any> => {
-    return new Promise((resolve, reject) => {
-      if (!socket) {
-        reject(new Error('Socket not available'));
-        return;
-      }
-
-      const timeoutId = setTimeout(() => {
-        reject(new Error(`Socket ${event} timeout after ${timeout}ms`));
-      }, timeout);
-
-      const handler = (response: any) => {
-        clearTimeout(timeoutId);
-        if (response?.error) {
-          reject(new Error(response.error));
-        } else {
-          resolve(response);
-        }
-      };
-
-      if (data) {
-        socket.emit(event, data);
-      } else {
-        socket.emit(event);
-      }
-      
-      socket.once(`${event}_response`, handler);
-      socket.once('error', (error) => {
-        clearTimeout(timeoutId);
-        reject(error);
-      });
-    });
-  };
 
   const scheduleRetry = useCallback((errorType: MediasoupError['type'], retryFn: () => Promise<void>) => {
     if (!canRetry(errorType) || retryCountRef.current >= DEFAULT_RETRY_CONFIG.maxRetries) {
@@ -214,27 +182,6 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
           });
           
           // Wait for transport_connected event
-          const response = await new Promise<any>((resolve, reject) => {
-            const timeout = setTimeout(() => reject(new Error('Connect timeout')), 10000);
-            
-            const handler = (data: any) => {
-              clearTimeout(timeout);
-              if (data.transportId === sendTransport.id && data.direction === 'send') {
-                if (data.success) {
-                  resolve(data);
-                } else {
-                  reject(new Error(data.error || 'Connection failed'));
-                }
-              }
-            };
-            
-            socket?.on('transport_connected', handler);
-            
-            // Cleanup listener after timeout
-            setTimeout(() => {
-              socket?.off('transport_connected', handler);
-            }, 10000);
-          });
           
           callback();
         } catch (error) {
@@ -542,7 +489,7 @@ export function useMediasoup(classId: string): UseMediasoupReturn {
       // Update peers state
       setPeers(prevPeers => {
         const existingPeerIndex = prevPeers.findIndex(p => p.id === producerSocketId);
-        let updatedPeers = [...prevPeers];
+        const updatedPeers = [...prevPeers];
         
         if (existingPeerIndex >= 0) {
           const existingPeer = updatedPeers[existingPeerIndex];
