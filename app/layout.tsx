@@ -3,6 +3,7 @@ import './globals.css';
 import MainWrapper from './Components/MainWrapper';
 import { Toaster } from 'react-hot-toast';
 import { SocketProvider } from './Components/Contexts/SocketContext';
+import { ThemeProvider } from './Components/Contexts/ThemeContext'; // <-- import ThemeProvider
 
 import { Poppins } from 'next/font/google';
 
@@ -21,32 +22,34 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className={poppins.variable}>
-        <SocketProvider>
-          <Toaster 
-            position="top-right"
-            toastOptions={{
-              duration: 4000,
-              style: {
-                background: '#363636',
-                color: '#fff',
-              },
-              success: {
-                duration: 3000,
+        <ThemeProvider> {/* <-- wrap your app with ThemeProvider */}
+          <SocketProvider>
+            <Toaster 
+              position="top-right"
+              toastOptions={{
+                duration: 4000,
                 style: {
-                  background: '#10B981',
+                  background: '#363636',
+                  color: '#fff',
                 },
-              },
-              error: {
-                duration: 5000,
-                style: {
-                  background: '#EF4444',
+                success: {
+                  duration: 3000,
+                  style: {
+                    background: '#10B981',
+                  },
                 },
-              },
-            }}
-          /> 
-          <SidebarWrapper />
-          <MainWrapper>{children}</MainWrapper>
-        </SocketProvider>
+                error: {
+                  duration: 5000,
+                  style: {
+                    background: '#EF4444',
+                  },
+                },
+              }}
+            /> 
+            <SidebarWrapper />
+            <MainWrapper>{children}</MainWrapper>
+          </SocketProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

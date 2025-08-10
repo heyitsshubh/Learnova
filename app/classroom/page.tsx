@@ -33,7 +33,7 @@ export default function ClassroomPage() {
   const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
   const [joinModalOpen, setJoinModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('All');
+   const [activeTab, setActiveTab] = useState<'Join' | 'Create'>('Create');
   const [classes, setClasses] = useState<ClassData[]>([]);
   const [joinedClasses, setJoinedClasses] = useState<ClassData[]>([]);
   const [loading, setLoading] = useState(false);
@@ -170,11 +170,6 @@ export default function ClassroomPage() {
     displayedClasses = joinedClasses;
   } else if (activeTab === 'Create') {
     displayedClasses = classes;
-  } else if (activeTab === 'All') {
-    const all = [...classes, ...joinedClasses];
-    displayedClasses = all.filter(
-      (cls, idx, arr) => arr.findIndex(c => c._id === cls._id) === idx
-    );
   } else {
     displayedClasses = [];
   }
@@ -262,7 +257,7 @@ export default function ClassroomPage() {
                 activeTab === filter ? 'bg-[rgba(45,156,219,0.5)] text-white' : 'bg-white'
               }`}
               onClick={() => {
-                setActiveTab(filter);
+                setActiveTab(filter as 'Join' | 'Create');
                 if (filter === 'Create') setModalOpen(true);
                 if (filter === 'Join') setJoinModalOpen(true);
               }}

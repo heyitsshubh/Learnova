@@ -172,7 +172,6 @@ const sendMessage = (
       senderId: userId,
      
     };
-
     socket.emit('sendMessage', messageData);
     console.log('Message sent:', messageData);
   } else {

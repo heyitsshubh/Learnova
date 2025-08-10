@@ -259,10 +259,10 @@ const Notifications = () => {
                 </span>
               )}
             </div>
-            <p className="text-sm text-gray-500">{userName} / messages</p>
+            <p className="text-sm text-gray-500">{userName} / notifications</p>
           </div>
           <div className="flex items-center gap-4">
-            <button className="p-2 rounded-full hover:bg-gray-200 transition-colors relative">
+            <button className="p-2 rounded-full hover:bg-gray-200 transition-colors relative cursor-pointer">
               <FaBell className="text-xl text-gray-400" />
               {unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
@@ -270,7 +270,7 @@ const Notifications = () => {
                 </span>
               )}
             </button>
-            <button className="p-2 rounded-full hover:bg-gray-200 transition-colors">
+            <button className="p-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer">
               <FaCog className="text-xl text-gray-400" />
             </button>
             <div className="relative w-66 max-w-md">
@@ -287,7 +287,7 @@ const Notifications = () => {
         </div>
 
         {/* Filter tabs */}
-        <div className="flex gap-2 mb-6 overflow-x-auto">
+        <div className="flex gap-2 mb-6 overflow-x-auto cursor-pointer">
           {[
             { key: 'all', label: 'All', count: notifications.length },
             { key: 'unread', label: 'Unread', count: notifications.filter((n) => !n.isRead).length },

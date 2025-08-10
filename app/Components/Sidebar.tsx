@@ -3,8 +3,10 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { FaHome, FaBook, FaUsers,  FaCog,FaBell } from 'react-icons/fa';
+import {useRouter}  from 'next/navigation';
+
 
 interface MenuItem {
   name: string;
@@ -20,6 +22,9 @@ interface User {
 
 const Sidebar: React.FC = () => {
   const pathname = usePathname();
+  const router = useRouter();
+  const [showLogout, setShowLogout] = useState(false);
+    const logoutBtnRef = useRef<HTMLDivElement | null>(null);
 
   const [user, setUser] = useState<User>({
     name: '',
@@ -41,6 +46,20 @@ const Sidebar: React.FC = () => {
       });
     }
   }, []);
+
+    useEffect(() => {
+    if (!showLogout) return;
+    const handleClick = (e: MouseEvent) => {
+      if (
+        logoutBtnRef.current &&
+        !logoutBtnRef.current.contains(e.target as Node)
+      ) {
+        setShowLogout(false);
+      }
+    };
+    window.addEventListener('mousedown', handleClick);
+    return () => window.removeEventListener('mousedown', handleClick);
+  }, [showLogout]);
 
   const menuItems: MenuItem[] = [
     { name: 'Home', path: '/dashboard', icon: <FaHome /> },
@@ -106,9 +125,8 @@ const Sidebar: React.FC = () => {
           ))}
         </ul>
       </nav>
-
-      <div className="p-4 border-t border-gray-700">
-        <div className="flex items-center space-x-3">
+  <div className="p-4 border-t border-gray-700">
+        <div className="flex items-center space-x-3 relative">
           <div className="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center flex-shrink-0">
             <span className="text-sm font-semibold text-white">
               {user.initials}
@@ -117,8 +135,13 @@ const Sidebar: React.FC = () => {
           <div className="flex-1 min-w-0">
             <p className="font-medium text-white truncate">{user.name}</p>
           </div>
-          <button className="text-gray-400 hover:text-white transition-colors">
-            <svg 
+            <div ref={logoutBtnRef} className="relative"></div>
+          <button
+            className="text-gray-400 hover:text-white transition-colors relative cursor-pointer"
+            onClick={() => setShowLogout((v) => !v)}
+            tabIndex={0}
+          >
+                 <svg 
               className="w-4 h-4" 
               fill="none" 
               stroke="currentColor" 
@@ -131,10 +154,27 @@ const Sidebar: React.FC = () => {
                 d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" 
               />
             </svg>
+            {showLogout && (
+              <div
+                className="absolute top-0 w-32 bg-white text-gray-800 rounded shadow-lg z-50 "
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600 cursor-pointer"
+                  onClick={() => {
+                    localStorage.clear();
+                    router.push('/');
+                  }}
+                >
+                  Log out
+                </button>
+              </div>
+            )}
           </button>
         </div>
       </div>
     </div>
+     
   );
 };
 
