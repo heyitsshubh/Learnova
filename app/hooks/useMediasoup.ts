@@ -124,6 +124,167 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
   const [error, setError] = useState<MediasoupError | null>(null);
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
+   useEffect(() => {
+    if (!socket) return;
+    
+    const handleVideoCallReady = async (data: { rtpCapabilities: any }) => {
+      console.log('📱 Video call ready event received');
+      // This will be handled in the joinVideoCall flow via the promise
+    };
+
+    const handleClassJoined = (data: any) => {
+      console.log('🏫 Class joined successfully:', data);
+      hasJoinedClassRef.current = true;
+    };
+    
+    const handleNewProducer = (data: { producerId: string, kind: 'audio' | 'video', producerSocketId: string, producerName: string }) => {
+      console.log('🆕 New producer available:', data.kind, 'from', data.producerName);
+      if (data.producerSocketId !== socket.id) {
+        consumeRemoteMedia(data.producerId, data.producerSocketId, data.producerName, data.kind);
+      }
+    };
+    
+    const handlePeerDisconnected = (data: { peerId: string }) => {
+      console.log('👋 Peer disconnected:', data.peerId);
+      setPeers(prevPeers => {
+        const updatedPeers = prevPeers.filter(peer => peer.id !== data.peerId);
+        // Clean up any consumers for this peer
+        const disconnectedPeer = prevPeers.find(peer => peer.id === data.peerId);
+        if (disconnectedPeer) {
+          disconnectedPeer.consumers.forEach(consumer => {
+            if (!consumer.closed) {
+              consumer.close();
+            }
+            consumersRef.current.delete(consumer.id);
+          });
+        }
+        return updatedPeers;
+      });
+    };
+
+    const handlePeerLeftVideo = (data: { peerId: string, peerName: string }) => {
+      console.log('📞 Peer left video:', data.peerName);
+      setPeers(prevPeers => {
+        const updatedPeers = prevPeers.filter(peer => peer.id !== data.peerId);
+        // Clean up any consumers for this peer
+        const leftPeer = prevPeers.find(peer => peer.id === data.peerId);
+        if (leftPeer) {
+          leftPeer.consumers.forEach(consumer => {
+            if (!consumer.closed) {
+              consumer.close();
+            }
+            consumersRef.current.delete(consumer.id);
+          });
+        }
+        return updatedPeers;
+      });
+    };
+
+    const handleVideoCallLeft = () => {
+      console.log('📞 Video call left confirmation');
+      setConnectionState(ConnectionState.DISCONNECTED);
+    };
+
+    const handleError = (error: { message: string, code?: string }) => {
+      console.error('🚨 Socket error:', error);
+      // Only handle errors that are relevant to video calls
+      if (error.code === 'VIDEO_CALL_ERROR') {
+        setErrorWithType('NETWORK', error.message || 'Video call error occurred', true, error);
+      } else if (error.code === 'CLASS_ERROR') {
+        setErrorWithType('CLASS_ERROR', error.message || 'Class error occurred', true, error);
+      } else if (error.code === 'TRANSPORT_ERROR') {
+        setErrorWithType('TRANSPORT', error.message || 'Transport error occurred', true, error);
+      } else if (error.code === 'PRODUCER_ERROR') {
+        setErrorWithType('PRODUCER', error.message || 'Producer error occurred', true, error);
+      } else if (error.code === 'CONSUMER_ERROR') {
+        setErrorWithType('CONSUMER', error.message || 'Consumer error occurred', true, error);
+      }
+      // Ignore other socket errors that might not be related to video calls
+    };
+
+    const handlePeerMediaStateChanged = (data: { peerId: string, peerName: string, kind: 'audio' | 'video', enabled: boolean }) => {
+      console.log(`📡 Peer ${data.peerName} ${data.kind} ${data.enabled ? 'enabled' : 'disabled'}`);
+      setPeers(prevPeers => {
+        const peerIndex = prevPeers.findIndex(p => p.id === data.peerId);
+        if (peerIndex >= 0) {
+          const updatedPeers = [...prevPeers];
+          const peer = updatedPeers[peerIndex];
+          
+          if (data.kind === 'video') {
+            peer.isVideoEnabled = data.enabled;
+          } else if (data.kind === 'audio') {
+            peer.isAudioEnabled = data.enabled;
+          }
+          
+          return updatedPeers;
+        }
+        return prevPeers;
+      });
+    };
+
+    const handleUserJoinedVideo = (data: { userId: string, userName: string, socketId: string }) => {
+      console.log('👥 User joined video:', data.userName);
+      // This will be handled when producers are available
+    };
+
+    const handleProducerClosed = (data: { producerId: string, peerId: string, kind: 'audio' | 'video' }) => {
+      console.log(`🚫 Producer closed: ${data.kind} from peer ${data.peerId}`);
+      // Clean up any related consumers
+      const consumersToClose = Array.from(consumersRef.current.entries())
+        .filter(([_, consumer]) => consumer.producerId === data.producerId);
+      
+      consumersToClose.forEach(([consumerId, consumer]) => {
+        if (!consumer.closed) {
+          consumer.close();
+        }
+        consumersRef.current.delete(consumerId);
+      });
+
+      // Update peer state
+      setPeers(prevPeers => {
+        const peerIndex = prevPeers.findIndex(p => p.id === data.peerId);
+        if (peerIndex >= 0) {
+          const updatedPeers = [...prevPeers];
+          const peer = updatedPeers[peerIndex];
+          
+          if (data.kind === 'video') {
+            peer.isVideoEnabled = false;
+          } else if (data.kind === 'audio') {
+            peer.isAudioEnabled = false;
+          }
+          
+          return updatedPeers;
+        }
+        return prevPeers;
+      });
+    };
+
+    // Register all event listeners
+    socket.on('video_call_ready', handleVideoCallReady);
+    socket.on('class_joined', handleClassJoined);
+    socket.on('new_producer_available', handleNewProducer);
+    socket.on('peer_disconnected', handlePeerDisconnected);
+    socket.on('peer_left_video', handlePeerLeftVideo);
+    socket.on('video_call_left', handleVideoCallLeft);
+    socket.on('error', handleError);
+    socket.on('peer_media_state_changed', handlePeerMediaStateChanged);
+    socket.on('user_joined_video', handleUserJoinedVideo);
+    socket.on('producer_closed', handleProducerClosed);
+
+    return () => {
+      // Cleanup all event listeners
+      socket.off('video_call_ready', handleVideoCallReady);
+      socket.off('class_joined', handleClassJoined);
+      socket.off('new_producer_available', handleNewProducer);
+      socket.off('peer_disconnected', handlePeerDisconnected);
+      socket.off('peer_left_video', handlePeerLeftVideo);
+      socket.off('video_call_left', handleVideoCallLeft);
+      socket.off('error', handleError);
+      socket.off('peer_media_state_changed', handlePeerMediaStateChanged);
+      socket.off('user_joined_video', handleUserJoinedVideo);
+      socket.off('producer_closed', handleProducerClosed);
+    };
+  }, [socket]);
   
   // Retry mechanism refs
   const retryCountRef = useRef<number>(0);
@@ -685,24 +846,24 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
       setErrorWithType('NETWORK', 'Socket not connected', true);
       return;
     }
-
+    
     // Check if class has been joined
     if (!hasJoinedClassRef.current) {
       setErrorWithType('CLASS_ERROR', 'Must join class before joining video call', true);
       return;
     }
-
+    
     if (isInitializedRef.current && connectionState !== ConnectionState.FAILED) {
       console.warn('Video call already initialized');
       return;
     }
-
+    
     // Clear any existing retry timeout
     if (retryTimeoutRef.current) {
       clearTimeout(retryTimeoutRef.current);
       retryTimeoutRef.current = null;
     }
-
+    
     setConnectionState(ConnectionState.CONNECTING);
     clearError();
     isInitializedRef.current = true;
@@ -731,7 +892,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
       if (!deviceRef.current?.rtpCapabilities) {
         throw new Error('Device RTP capabilities not available');
       }
-
+      
       socket.emit('set_rtp_capabilities', { 
         rtpCapabilities: deviceRef.current.rtpCapabilities 
       });
@@ -748,7 +909,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
         createSendTransport(transports.sendTransport),
         createReceiveTransport(transports.recvTransport)
       ]);
-
+      
       // Step 6: Start local stream and produce media
       await startLocalStream();
       await produceMedia();
@@ -756,7 +917,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
       setConnectionState(ConnectionState.CONNECTED);
       clearError();
       console.log('✅ Video call setup complete');
-
+      
     } catch (error) {
       console.error('Error during join_video_call flow:', error);
       const errorMessage = (typeof error === 'object' && error !== null && 'message' in error)
@@ -897,168 +1058,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
     }
   }, [socket]);
   
-  // Socket event handlers
-  useEffect(() => {
-    if (!socket) return;
-    
-    const handleVideoCallReady = async (data: { rtpCapabilities: any }) => {
-      console.log('📱 Video call ready event received');
-      // This is handled in joinVideoCall flow
-    };
-
-    const handleClassJoined = (data: any) => {
-      console.log('🏫 Class joined successfully:', data);
-      hasJoinedClassRef.current = true;
-    };
-    
-    const handleNewProducer = (data: { producerId: string, kind: 'audio' | 'video', producerSocketId: string, producerName: string }) => {
-      console.log('🆕 New producer available:', data.kind, 'from', data.producerName);
-      if (data.producerSocketId !== socket.id) {
-        consumeRemoteMedia(data.producerId, data.producerSocketId, data.producerName, data.kind);
-      }
-    };
-    
-    const handlePeerDisconnected = (data: { peerId: string }) => {
-      console.log('👋 Peer disconnected:', data.peerId);
-      setPeers(prevPeers => {
-        const updatedPeers = prevPeers.filter(peer => peer.id !== data.peerId);
-        // Clean up any consumers for this peer
-        const disconnectedPeer = prevPeers.find(peer => peer.id === data.peerId);
-        if (disconnectedPeer) {
-          disconnectedPeer.consumers.forEach(consumer => {
-            if (!consumer.closed) {
-              consumer.close();
-            }
-            consumersRef.current.delete(consumer.id);
-          });
-        }
-        return updatedPeers;
-      });
-    };
-
-    const handlePeerLeftVideo = (data: { peerId: string, peerName: string }) => {
-      console.log('📞 Peer left video:', data.peerName);
-      setPeers(prevPeers => {
-        const updatedPeers = prevPeers.filter(peer => peer.id !== data.peerId);
-        // Clean up any consumers for this peer
-        const leftPeer = prevPeers.find(peer => peer.id === data.peerId);
-        if (leftPeer) {
-          leftPeer.consumers.forEach(consumer => {
-            if (!consumer.closed) {
-              consumer.close();
-            }
-            consumersRef.current.delete(consumer.id);
-          });
-        }
-        return updatedPeers;
-      });
-    };
-
-    const handleVideoCallLeft = () => {
-      console.log('📞 Video call left confirmation');
-      setConnectionState(ConnectionState.DISCONNECTED);
-    };
-
-    const handleError = (error: { message: string, code?: string }) => {
-      console.error('🚨 Socket error:', error);
-      // Only handle errors that are relevant to video calls
-      if (error.code === 'VIDEO_CALL_ERROR') {
-        setErrorWithType('NETWORK', error.message || 'Video call error occurred', true, error);
-      } else if (error.code === 'CLASS_ERROR') {
-        setErrorWithType('CLASS_ERROR', error.message || 'Class error occurred', true, error);
-      } else if (error.code === 'TRANSPORT_ERROR') {
-        setErrorWithType('TRANSPORT', error.message || 'Transport error occurred', true, error);
-      } else if (error.code === 'PRODUCER_ERROR') {
-        setErrorWithType('PRODUCER', error.message || 'Producer error occurred', true, error);
-      } else if (error.code === 'CONSUMER_ERROR') {
-        setErrorWithType('CONSUMER', error.message || 'Consumer error occurred', true, error);
-      }
-      // Ignore other socket errors that might not be related to video calls
-    };
-
-    const handlePeerMediaStateChanged = (data: { peerId: string, peerName: string, kind: 'audio' | 'video', enabled: boolean }) => {
-      console.log(`📡 Peer ${data.peerName} ${data.kind} ${data.enabled ? 'enabled' : 'disabled'}`);
-      setPeers(prevPeers => {
-        const peerIndex = prevPeers.findIndex(p => p.id === data.peerId);
-        if (peerIndex >= 0) {
-          const updatedPeers = [...prevPeers];
-          const peer = updatedPeers[peerIndex];
-          
-          if (data.kind === 'video') {
-            peer.isVideoEnabled = data.enabled;
-          } else if (data.kind === 'audio') {
-            peer.isAudioEnabled = data.enabled;
-          }
-          
-          return updatedPeers;
-        }
-        return prevPeers;
-      });
-    };
-
-    const handleUserJoinedVideo = (data: { userId: string, userName: string, socketId: string }) => {
-      console.log('👥 User joined video:', data.userName);
-      // This will be handled when producers are available
-    };
-
-    const handleProducerClosed = (data: { producerId: string, peerId: string, kind: 'audio' | 'video' }) => {
-      console.log(`🚫 Producer closed: ${data.kind} from peer ${data.peerId}`);
-      // Clean up any related consumers
-      const consumersToClose = Array.from(consumersRef.current.entries())
-        .filter(([_, consumer]) => consumer.producerId === data.producerId);
-      
-      consumersToClose.forEach(([consumerId, consumer]) => {
-        if (!consumer.closed) {
-          consumer.close();
-        }
-        consumersRef.current.delete(consumerId);
-      });
-
-      // Update peer state
-      setPeers(prevPeers => {
-        const peerIndex = prevPeers.findIndex(p => p.id === data.peerId);
-        if (peerIndex >= 0) {
-          const updatedPeers = [...prevPeers];
-          const peer = updatedPeers[peerIndex];
-          
-          if (data.kind === 'video') {
-            peer.isVideoEnabled = false;
-          } else if (data.kind === 'audio') {
-            peer.isAudioEnabled = false;
-          }
-          
-          return updatedPeers;
-        }
-        return prevPeers;
-      });
-    };
-
-    // Register event listeners
-    socket.on('video_call_ready', handleVideoCallReady);
-    socket.on('class_joined', handleClassJoined);
-    socket.on('new_producer_available', handleNewProducer);
-    socket.on('peer_disconnected', handlePeerDisconnected);
-    socket.on('peer_left_video', handlePeerLeftVideo);
-    socket.on('video_call_left', handleVideoCallLeft);
-    socket.on('error', handleError);
-    socket.on('peer_media_state_changed', handlePeerMediaStateChanged);
-    socket.on('user_joined_video', handleUserJoinedVideo);
-    socket.on('producer_closed', handleProducerClosed);
-
-    return () => {
-      socket.off('video_call_ready', handleVideoCallReady);
-      socket.off('class_joined', handleClassJoined);
-      socket.off('new_producer_available', handleNewProducer);
-      socket.off('peer_disconnected', handlePeerDisconnected);
-      socket.off('peer_left_video', handlePeerLeftVideo);
-      socket.off('video_call_left', handleVideoCallLeft);
-      socket.off('error', handleError);
-      socket.off('peer_media_state_changed', handlePeerMediaStateChanged);
-      socket.off('user_joined_video', handleUserJoinedVideo);
-      socket.off('producer_closed', handleProducerClosed);
-    };
-  }, [socket, consumeRemoteMedia]);
-
+  
   // Cleanup on unmount
   useEffect(() => {
     return () => {
