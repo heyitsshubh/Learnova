@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import * as mediasoupClient from "mediasoup-client";
 import { useSocket } from "../Components/Contexts/SocketContext";
 
-// Connection State Enum
+
 export enum ConnectionState {
   IDLE = 'idle',
   INITIALIZING = 'initializing',
@@ -15,7 +15,7 @@ export enum ConnectionState {
   DISCONNECTED = 'disconnected'
 }
 
-// Error Types for better categorization
+
 export interface MediasoupError {
   type: 'DEVICE_INIT' | 'TRANSPORT' | 'PRODUCER' | 'CONSUMER' | 'PERMISSION' | 'NETWORK' | 'CLASS_ERROR';
   message: string;

@@ -46,7 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 },
               }}
             /> 
-            <SidebarWrapper />
+            <SidebarWrapper  />
             <MainWrapper>{children}</MainWrapper>
           </SocketProvider>
         </ThemeProvider>

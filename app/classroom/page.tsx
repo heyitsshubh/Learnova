@@ -199,7 +199,7 @@ export default function ClassroomPage() {
   const content = getEmptyStateContent();
 
   return (
-    <div className="flex flex-col items-center justify-center py-8 px-4 min-h-[400px]">
+    <div className="flex flex-col items-center justify-center py-8 px-4 min-h-[400px] ">
       <div className="flex justify-center items-center">
         <Image
           src={content?.image || ''}
@@ -216,7 +216,7 @@ export default function ClassroomPage() {
 };
 
   return (
-    <AppLayout>
+     <AppLayout>
       <div className="pl-64 pr-6 pt-6">
         <div className="flex justify-between items-center mb-6">
           <div>
@@ -343,6 +343,6 @@ export default function ClassroomPage() {
           onJoin={handleJoinClass}
         />
       </div>
-    </AppLayout>
+     </AppLayout>
   );
 }

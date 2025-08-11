@@ -32,6 +32,7 @@ interface NotificationItem extends Message {
 
 const Notifications = () => {
   const [userName, setUserName] = useState('');
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<'all' | 'unread' | 'messages' | 'announcements' | 'meetings'>('all');
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -165,23 +166,27 @@ const Notifications = () => {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setUserName(localStorage.getItem('userName') || 'User');
+      setCurrentUserId(localStorage.getItem('userId')); // <-- Add this line
     }
   }, []);
+const filteredNotifications = notifications.filter((notification) => {
+  // Only show messages sent by others (not yourself)
+  if (notification.type === 'message' && notification.sender._id === currentUserId) return false;
 
-  const filteredNotifications = notifications.filter((notification) => {
-    const matchesSearch =
-      notification.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      notification.sender.name.toLowerCase().includes(searchTerm.toLowerCase());
+  // For other notification types, show as usual
+  const matchesSearch =
+    notification.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    notification.sender.name.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesFilter =
-      filter === 'all' ||
-      (filter === 'unread' && !notification.isRead) ||
-      (filter === 'messages' && notification.type === 'message') ||
-      (filter === 'announcements' && notification.type === 'announcement') ||
-      (filter === 'meetings' && notification.type === 'meeting');
+  const matchesFilter =
+    filter === 'all' ||
+    (filter === 'unread' && !notification.isRead) ||
+    (filter === 'messages' && notification.type === 'message') ||
+    (filter === 'announcements' && notification.type === 'announcement') ||
+    (filter === 'meetings' && notification.type === 'meeting');
 
-    return matchesSearch && matchesFilter;
-  });
+  return matchesSearch && matchesFilter;
+});
 
   const groupedNotifications = filteredNotifications.reduce((groups, notification) => {
     const date = new Date(notification.timestamp).toLocaleDateString('en-US', {
