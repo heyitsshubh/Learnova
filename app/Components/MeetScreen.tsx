@@ -298,8 +298,7 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
               <div className="relative bg-gray-800 rounded-lg overflow-hidden">
                 <video
                   ref={localVideoRef}
-                  autoPlay
-                  muted
+                  autoPlay      
                   playsInline
                   className="w-full h-full object-cover"
                   onLoadedMetadata={() => {
