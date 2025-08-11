@@ -27,16 +27,21 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
     isConnected // <-- Make sure useMediasoup returns this!
   } = useMediasoup(classId, userId, token); // Pass userId and token
 
-    useEffect(() => {
-    console.log('Current peers:', peers);
-    peers.forEach(peer => {
-      console.log(
-        `Peer: ${peer.name || peer.id}, Tracks:`,
-        peer.stream.getTracks().map(t => `${t.kind}:${t.id}`)
-      );
-    });
-  }, [peers]);
-  
+  useEffect(() => {
+  console.log('Current peers:', peers);
+  peers.forEach(peer => {
+    console.log(
+      `Peer: ${peer.name || peer.id}, Tracks:`,
+      peer.stream.getTracks().map(t => `${t.kind}:${t.id}`)
+    );
+    // Add this to check for video tracks specifically
+    console.log(
+      `Peer: ${peer.name || peer.id}, Video tracks:`,
+      peer.stream.getVideoTracks()
+    );
+  });
+}, [peers]);
+
   const [meetingDuration, setMeetingDuration] = useState(0);
   const [showParticipants, setShowParticipants] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -343,11 +348,12 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
                     autoPlay
                     playsInline
                     className="w-full h-full object-cover"
-                    ref={(el) => {
-                      if (el && peer.stream) {
-                        el.srcObject = peer.stream;
-                      }
-                    }}
+                      ref={(el) => {
+        if (el && peer.stream) {
+          el.srcObject = peer.stream;
+          el.play?.().catch(() => {});
+        }
+      }}
                   />
                   <div className="absolute bottom-2 left-2 bg-black/50 px-2 py-1 rounded text-sm">
                     {peer.name || `User ${peer.id.slice(-4)}`}
