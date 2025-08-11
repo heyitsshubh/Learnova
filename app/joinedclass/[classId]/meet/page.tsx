@@ -57,7 +57,7 @@ export default function MeetPage() {
     // Set lectureStarted state based on meeting status
     const startedMap: { [meetingId: string]: boolean } = {};
     (res.meetings || []).forEach((m: Meeting) => {
-      startedMap[m._id] = m.status === 'live';
+      startedMap[m._id] = m.status === 'active';
     });
     setLectureStarted(startedMap);
 
