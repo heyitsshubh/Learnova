@@ -27,6 +27,16 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
     isConnected // <-- Make sure useMediasoup returns this!
   } = useMediasoup(classId, userId, token); // Pass userId and token
 
+    useEffect(() => {
+    console.log('Current peers:', peers);
+    peers.forEach(peer => {
+      console.log(
+        `Peer: ${peer.name || peer.id}, Tracks:`,
+        peer.stream.getTracks().map(t => `${t.kind}:${t.id}`)
+      );
+    });
+  }, [peers]);
+  
   const [meetingDuration, setMeetingDuration] = useState(0);
   const [showParticipants, setShowParticipants] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
