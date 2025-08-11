@@ -56,22 +56,7 @@ const handleSendMessage = () => {
     return;
   }
   const content = messageInput.trim();
-  setClassMessages((prev) => [
-    ...prev,
-    {
-      _id: Date.now().toString(), 
-      content,
-      sender: {
-        _id: localStorage.getItem('userId') || '',
-        name: userName,
-        email: '',
-        role: userRole as 'teacher' | 'student' | 'system',
-      },
-      classId,
-      timestamp: new Date().toISOString(),
-      type: 'message',
-    },
-  ]);
+
   sendMessage(classId, content);
   setMessageInput('');
 };

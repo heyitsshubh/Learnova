@@ -1,4 +1,3 @@
-
 'use client';
 
 import { usePathname } from 'next/navigation';
@@ -9,7 +8,9 @@ export default function MainWrapper({ children }: { children: React.ReactNode })
   const applyMargin = !noMarginPages.includes(pathname);
 
   return (
-    <main className={`${applyMargin ? 'ml-64  ' : ''} min-h-screen`}>
+    <main
+      className={`${applyMargin ? 'md:ml-64' : ''} min-h-screen`} 
+    >
       {children}
     </main>
   );

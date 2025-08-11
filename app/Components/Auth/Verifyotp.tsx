@@ -5,7 +5,7 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { verifyOtpp, resendOtp } from '../../services/auth';
 import { setResetToken } from '../../utils/token';
-import { toast } from 'react-hot-toast'; // <-- Add this import
+import { toast } from 'react-hot-toast';
 
 interface ApiError {
   response?: {
@@ -65,7 +65,6 @@ const VerifyOtp = () => {
         apiError?.response?.data?.message ||
         apiError?.message ||
         'OTP verification failed';
-      // setError(msg);
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -87,7 +86,6 @@ const VerifyOtp = () => {
         apiError?.response?.data?.message ||
         apiError?.message ||
         'Failed to resend OTP';
-      // setError(msg);
       toast.error(msg);
     } finally {
       setResendLoading(false);
@@ -95,9 +93,9 @@ const VerifyOtp = () => {
   };
 
   return (
-    <div className="fixed inset-0 w-screen h-screen flex">
-      {/* Left Panel */}
-      <div className="w-1/2 h-full relative">
+    <div className="fixed inset-0 w-screen h-screen flex flex-col md:flex-row">
+      {/* Left Panel: Hide on mobile */}
+      <div className="hidden md:block md:w-1/2 h-64 md:h-full relative">
         <Image
           src="/Component.svg"
           alt="Illustration"
@@ -107,7 +105,7 @@ const VerifyOtp = () => {
           style={{ zIndex: 0 }}
         />
         <div className="absolute inset-0 flex flex-col z-10">
-          <div className="text-left m-20">
+          <div className="text-left m-10 md:m-20">
             <h2 className="text-3xl font-bold text-gray-800 mb-4">
               Reset Password
             </h2>
@@ -120,7 +118,7 @@ const VerifyOtp = () => {
       </div>
 
       {/* Right Panel */}
-      <div className="w-1/2 h-full px-8 md:px-24 py-10 md:py-20 bg-white flex flex-col justify-center">
+      <div className="w-full md:w-1/2 h-full px-4 sm:px-8 md:px-24 py-10 md:py-20 bg-white flex flex-col justify-center">
         <h2 className="text-2xl font-semibold mb-10 text-gray-800 text-center">Verify OTP</h2>
         <p className="text-md text-gray-600 text-center mb-6">
           Enter the OTP that has been sent to your email

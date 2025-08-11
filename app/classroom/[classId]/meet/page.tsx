@@ -90,18 +90,18 @@ export default function MeetPage() {
   }, [socket]);
 
   // Compare dates in IST
-  // const isMeetingStarted = (scheduledDate: string) => {
-  //   const now = new Date();
-  //   const nowIST = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
-  //   const meetingIST = parseAsIST(scheduledDate);
+  const isMeetingStarted = (scheduledDate: string) => {
+    const now = new Date();
+    const nowIST = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+    const meetingIST = parseAsIST(scheduledDate);
 
-  //   return (
-  //     nowIST.getFullYear() > meetingIST.getFullYear() ||
-  //     (nowIST.getFullYear() === meetingIST.getFullYear() &&
-  //       (nowIST.getMonth() > meetingIST.getMonth() ||
-  //         (nowIST.getMonth() === meetingIST.getMonth() && nowIST.getDate() >= meetingIST.getDate())))
-  //   );
-  // };
+    return (
+      nowIST.getFullYear() > meetingIST.getFullYear() ||
+      (nowIST.getFullYear() === meetingIST.getFullYear() &&
+        (nowIST.getMonth() > meetingIST.getMonth() ||
+          (nowIST.getMonth() === meetingIST.getMonth() && nowIST.getDate() >= meetingIST.getDate())))
+    );
+  };
 
   const isMeetingCreator = (meeting: Meeting) => {
     return (
@@ -183,10 +183,10 @@ export default function MeetPage() {
         ) : (
           <div className="space-y-6">
             {meetings.map((meeting) => {
-          const started = meeting.status === 'live'; // <-- Use status
-  const isCreator = isMeetingCreator(meeting);
-  const canStart = isCreator && started; // Only creator can start if meeting is live
-  const isStartingThis = startingMeeting === meeting._id;
+              const started = isMeetingStarted(meeting.scheduledDate);
+              const isCreator = isMeetingCreator(meeting);
+              const canStart =  started && isCreator; // Only the creator can start
+              const isStartingThis = startingMeeting === meeting._id;
 
               return (
                 <div key={meeting._id} className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300">

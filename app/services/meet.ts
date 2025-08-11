@@ -52,7 +52,7 @@ export const startMeeting = async (meetingId: string) => {
   try {
     const response = await axios.post(
       `https://project2-zphf.onrender.com/api/meetings/${meetingId}/start`,
-      {},
+      { status: 'live' }, // <-- Make sure to use 'live'
       {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,

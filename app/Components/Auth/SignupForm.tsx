@@ -68,20 +68,17 @@ const SignupForm = () => {
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!form.email || !emailRegex.test(form.email)) {
-      // setError('Please enter a valid email address');
       toast.error('Please enter a valid email address');
       return;
     }
 
     const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{5,}$/;
     if (!passwordRegex.test(form.password)) {
-      // setError('Password must contain at least 1 special character, 1 number, and be at least 5 characters long');
       toast.error('Password must contain at least 1 special character, 1 number, and be at least 5 characters long');
       return;
     }
 
     if (form.password !== form.confirmPassword) {
-      // setError('Passwords do not match');
       toast.error('Passwords do not match');
       return;
     }
@@ -108,7 +105,6 @@ const SignupForm = () => {
         apiError?.response?.data?.message ||
         apiError?.message ||
         'Signup failed';
-      // setError(errorMsg);
       toast.error(errorMsg);
     } finally {
       setLoading(false);
@@ -116,10 +112,10 @@ const SignupForm = () => {
   };
 
   return (
-    <div className="fixed inset-0 w-screen h-screen flex">
+    <div className="fixed inset-0 w-screen h-screen flex flex-col md:flex-row">
       {/* Spinner Overlay */}
       {showSpinner && (
-        <div className="fixed inset-0  bg-opacity-30 flex items-center justify-center z-50 backdrop-blur-sm">
+        <div className="fixed inset-0 bg-opacity-30 flex items-center justify-center z-50 backdrop-blur-sm bg-black/30">
           <div className="flex flex-col items-center">
             <svg className="animate-spin h-12 w-12 text-blue-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -130,7 +126,8 @@ const SignupForm = () => {
         </div>
       )}
 
-      <div className="w-1/2 h-full relative ">
+      {/* Left Panel: Hide on mobile */}
+      <div className="hidden md:block md:w-1/2 h-64 md:h-full relative">
         <Image
           src="/Illustration.svg"
           alt="Illustration"
@@ -140,7 +137,7 @@ const SignupForm = () => {
           style={{ zIndex: 0 }}
         />
         <div className="absolute inset-0 flex flex-col z-10">
-          <div className="text-left m-20">
+          <div className="text-left m-10 md:m-20">
             <h2 className="text-3xl font-bold text-gray-800 mb-4 ">
               Virtual Learning 
             </h2>
@@ -152,11 +149,11 @@ const SignupForm = () => {
       </div>
 
       {/* Right Panel */}
-      <div className="w-1/2 h-full px-8 md:px-24 py-10 md:py-20 bg-white flex flex-col justify-center">
+      <div className="w-full md:w-1/2 h-full px-4 sm:px-8 md:px-24 py-10 md:py-20 bg-white flex flex-col justify-center">
         <h2 className="text-2xl font-bold mb-12 text-gray-800 text-center">Sign up</h2>
 
         <form className="space-y-6 flex flex-col items-center" onSubmit={handleSubmit}>
-          <div className="relative w-full flex items-center justify-center" style={{ width: 400, minWidth: 50 }}>
+          <div className="relative w-[400px] flex items-center justify-center max-w-xs sm:max-w-md md:max-w-full" style={{ minWidth: 50 }}>
             <FaUser className="absolute left-4 text-gray-400 text-lg " />
             <input
               type="text"
@@ -164,12 +161,11 @@ const SignupForm = () => {
               value={form.name}
               onChange={handleChange}
               placeholder="Enter your Fullname"
-              className="pl-12 w-[200px] max-w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              style={{ width: 400, minWidth: 50 }}
+              className="pl-12 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
           </div>
-          <div className="relative w-full flex items-center justify-center" style={{ width: 400, minWidth: 50 }}>
+          <div className="relative w-[400px] flex items-center justify-center max-w-xs sm:max-w-md md:max-w-full" style={{ minWidth: 50 }}>
             <FaEnvelope className="absolute left-4 text-gray-400 text-lg" />
             <input
               type="email"
@@ -177,12 +173,11 @@ const SignupForm = () => {
               value={form.email}
               onChange={handleChange}
               placeholder="Enter your email"
-              className="pl-12 w-[200px] max-w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              style={{ width: 400, minWidth: 50 }}
+              className="pl-12 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
           </div>
-          <div className="relative w-full flex items-center justify-center" style={{ width: 400, minWidth: 50 }}>
+          <div className="relative w-[400px] flex items-center justify-center max-w-xs sm:max-w-md md:max-w-full" style={{ minWidth: 50 }}>
             <FaLock className="absolute left-4 text-gray-400 text-lg" />
             <input
               type={showPassword ? 'text' : 'password'}
@@ -190,8 +185,7 @@ const SignupForm = () => {
               value={form.password}
               onChange={handleChange}
               placeholder="Enter password"
-              className="pl-12 w-[200px] max-w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              style={{ width: 400, minWidth: 50 }}
+              className="pl-12 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
             <button
@@ -202,7 +196,7 @@ const SignupForm = () => {
               {showPassword ? <FaEyeSlash /> : <FaEye />}
             </button>
           </div>
-          <div className="relative w-full flex items-center justify-center" style={{ width: 400, minWidth: 50 }}>
+          <div className="relative w-[400px] flex items-center justify-center max-w-xs sm:max-w-md md:max-w-full" style={{ minWidth: 50 }}>
             <FaLock className="absolute left-4 text-gray-400 text-lg" />
             <input
               type={showConfirmPassword ? 'text' : 'password'}
@@ -210,8 +204,7 @@ const SignupForm = () => {
               value={form.confirmPassword}
               onChange={handleChange}
               placeholder="Confirm password"
-              className="pl-12 w-[200px] max-w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              style={{ width: 400, minWidth: 50 }}
+              className="pl-12 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
             <button
@@ -226,15 +219,17 @@ const SignupForm = () => {
           {error && (
             <div className="text-red-500 text-sm text-center">{error}</div>
           )}
+          <div className="w-[400px] flex justify-end max-w-xs sm:max-w-md md:max-w-full" style={{ minWidth: 50 }}>
 
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition"
-            style={{ width: 400, minWidth: 50, borderRadius: 40 }}
+            className="w-[400px] bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition"
+            style={{ borderRadius: 40 }}
             disabled={loading}
           >
             {loading ? 'Signing up...' : 'Next'}
           </button>
+          </div>
         </form>
 
         <p className="text-sm mt-6 text-gray-500 text-center">
@@ -248,15 +243,14 @@ const SignupForm = () => {
           </a>
         </p>
 
-        <div className="mt-8 flex items-center gap-2 justify-center" style={{ width: 400, minWidth: 50, margin: '0 auto' }}>
+        <div className="mt-8 flex items-center gap-2 justify-center max-w-xs sm:max-w-md md:max-w-full mx-auto">
           <hr className="flex-grow border-t border-gray-300" />
           <span className="text-sm text-gray-500">Or</span>
           <hr className="flex-grow border-t border-gray-300" />
         </div>
 
        <button
-          className="mt-6 flex items-center justify-center gap-3 border border-gray-300 py-2 rounded-md hover:bg-gray-100 transition self-center"
-          style={{ width: 400, minWidth: 50 }}
+          className="mt-6 flex items-center justify-center gap-3 border border-gray-300 py-2 rounded-md hover:bg-gray-100 transition self-center w-[400px] max-w-xs sm:max-w-md md:max-w-full"
           onClick={handleGoogleSignup}
         >
           <Image src="google.svg" alt="Google" width={20} height={20} />

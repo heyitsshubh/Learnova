@@ -5,7 +5,7 @@ import { useRef, useState } from 'react';
 import { verifyOtp, resendOtp } from '../../services/auth';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
-import { setTokens } from '../../utils/token'; // Import the setTokens utility
+import { setTokens } from '../../utils/token';
 
 interface ApiError {
   response?: {
@@ -41,35 +41,34 @@ const Otp = () => {
     }
   };
 
- const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setError(null);
-  setLoading(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
 
-  try {
-    const otpValue = otp.join('');
-    const res = await verifyOtp({ email, otp: otpValue });
-    console.log('OTP verification response:', res);
-    if (res?.accessToken && res?.refreshToken) {
-      setTokens(res.accessToken, res.refreshToken);
+    try {
+      const otpValue = otp.join('');
+      const res = await verifyOtp({ email, otp: otpValue });
+      if (res?.accessToken && res?.refreshToken) {
+        setTokens(res.accessToken, res.refreshToken);
+      }
+      if (res?.userId) {
+        localStorage.setItem('userId', res.userId);
+      }
+      toast.success('OTP verified successfully!');
+      router.push('/dashboard');
+    } catch (err: unknown) {
+      const apiError = err as ApiError;
+      const errorMsg =
+        apiError?.response?.data?.message ||
+        apiError?.message ||
+        'OTP verification failed';
+      setError(errorMsg);
+      toast.error(errorMsg);
+    } finally {
+      setLoading(false);
     }
-     if (res?.userId) {
-        localStorage.setItem('userId', res.userId); // Store userId
-      }  
-    toast.success('OTP verified successfully!'); // Success toast
-    router.push('/dashboard');
-  } catch (err: unknown) {
-    const apiError = err as ApiError;
-    const errorMsg =
-      apiError?.response?.data?.message ||
-      apiError?.message ||
-      'OTP verification failed';
-    setError(errorMsg);
-    toast.error(errorMsg); // Error toast
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handleResendOtp = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -92,9 +91,9 @@ const Otp = () => {
   };
 
   return (
-    <div className="fixed inset-0 w-screen h-screen flex">
-      {/* Left Panel */}
-      <div className="w-1/2 h-full relative">
+    <div className="fixed inset-0 w-screen h-screen flex flex-col md:flex-row">
+      {/* Left Panel: Hide on mobile */}
+      <div className="hidden md:block md:w-1/2 h-64 md:h-full relative">
         <Image
           src="/Illustration.svg"
           alt="Illustration"
@@ -104,7 +103,7 @@ const Otp = () => {
           style={{ zIndex: 0 }}
         />
         <div className="absolute inset-0 flex flex-col z-10">
-          <div className="text-left m-20">
+          <div className="text-left m-10 md:m-20">
             <h2 className="text-3xl font-bold text-gray-800 mb-4">
               Virtual Learning 
             </h2>
@@ -117,7 +116,7 @@ const Otp = () => {
       </div>
 
       {/* Right Panel */}
-      <div className="w-1/2 h-full px-8 md:px-24 py-10 md:py-20 bg-white flex flex-col justify-center">
+      <div className="w-full md:w-1/2 h-full px-4 sm:px-8 md:px-24 py-10 md:py-20 bg-white flex flex-col justify-center">
         <h2 className="text-2xl font-semibold mb-10 text-gray-800 text-center">You&apos;re almost done</h2>
         <p className="text-md text-gray-600 text-center mb-6">
           Enter the OTP that has been sent to your email
