@@ -4,7 +4,7 @@ import { createAssignment } from '../../services/assignment';
 import { toast, Toaster } from 'react-hot-toast';
 import { AxiosError } from 'axios';
 
-export default function CreateAssignmentModal({ onClose, classId }: { onClose: () => void; classId: string }) {
+export default function CreateAssignmentModal({ onClose, classId ,onSuccess}: { onClose: () => void; classId: string , onSuccess: () => void }) {
   const [assignmentName, setAssignmentName] = useState('');
   const [descriptionName, setDescriptionName] = useState('');
   const [deadline, setDeadline] = useState('');
@@ -47,31 +47,27 @@ export default function CreateAssignmentModal({ onClose, classId }: { onClose: (
       formData.append('allowLateSubmission', 'false');
       formData.append('category', 'assignment');
 
-      // Add file if selected
       if (file) {
         formData.append('attachments', file);
         console.log('File added to FormData:', file.name, file.size);
       }
-
-      // Log FormData contents
       console.log('FormData contents:');
       for (const [key, value] of formData.entries()) {
         console.log(key, value);
       }
-
-      // Pass FormData directly to createAssignment
       const response = await createAssignment(formData);
       console.log('Assignment created:', response);
       
-      toast.success('Assignment created successfully!');
-      
-      // Reset form
+      // toast.success('Assignment created successfully!');
+    
       setAssignmentName('');
       setDescriptionName('');
       setDeadline('');
       setFile(null);
-      
-      setTimeout(onClose, 1500);
+        setTimeout(() => {
+        onSuccess(); // <-- call parent handler
+        onClose();
+      }, 1500);
     } catch (error) {
       const axiosError = error as AxiosError;
       const errorData = axiosError.response?.data as { message?: string } | undefined;

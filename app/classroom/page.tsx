@@ -11,6 +11,7 @@ import { toast } from 'react-hot-toast';
 import { Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { motion, AnimatePresence } from 'framer-motion';
 
 import {
   createClass,
@@ -271,7 +272,7 @@ export default function ClassroomPage() {
           <div className="flex-1 lg:pr-6">
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <p className="text-gray-500 text-center">Loading classes...</p>
+                <p className="text-gray-500 text-center"></p>
               </div>
             ) : displayedClasses.length === 0 ? (
               <EmptyState 
@@ -281,38 +282,47 @@ export default function ClassroomPage() {
               />
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {displayedClasses.map((cls) => {
-                  const isCreated = classes.some((c) => c._id === cls._id);
+            <AnimatePresence>
+    {displayedClasses.map((cls, idx) => {
+      const isCreated = classes.some((c) => c._id === cls._id);
 
-                  return (
-                    <ClassCard
-                      key={cls._id}
-                      classData={{
-                        _id: cls._id,
-                        className: cls.className,
-                        subject: cls.subject,
-                        classCode: cls.classCode,
-                        createdByName: cls.createdBy?.name,
-                        tags: ['UHV', 'Universal'],
-                      }}
-                      onDelete={() =>
-                        isCreated
-                          ? handleDeleteClass(cls._id)
-                          : handleLeaveClass(cls._id)
-                      }
-                      onCopyCode={() => handleCopyClassCode(cls.classCode || cls._id)}
-                      deleteLabel={isCreated ? 'Delete' : 'Leave Class'}
-                      showCopyCode={isCreated}
-                      onCardClick={() => {
-                        if (isCreated) {
-                          router.push(`/classroom/${cls._id}`);
-                        } else {
-                          router.push(`/joinedclass/${cls._id}`);
-                        }
-                      }}
-                    />
-                  );
-                })}
+      return (
+        <motion.div
+          key={cls._id}
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 30 }}
+          transition={{ duration: 0.4, delay: idx * 0.08 }}
+        >
+          <ClassCard
+            classData={{
+              _id: cls._id,
+              className: cls.className,
+              subject: cls.subject,
+              classCode: cls.classCode,
+              createdByName: cls.createdBy?.name,
+              tags: ['UHV', 'Universal'],
+            }}
+            onDelete={() =>
+              isCreated
+                ? handleDeleteClass(cls._id)
+                : handleLeaveClass(cls._id)
+            }
+            onCopyCode={() => handleCopyClassCode(cls.classCode || cls._id)}
+            deleteLabel={isCreated ? 'Delete' : 'Leave Class'}
+            showCopyCode={isCreated}
+            onCardClick={() => {
+              if (isCreated) {
+                router.push(`/classroom/${cls._id}`);
+              } else {
+                router.push(`/joinedclass/${cls._id}`);
+              }
+            }}
+          />
+        </motion.div>
+      );
+    })}
+  </AnimatePresence>
               </div>
             )}
           </div>

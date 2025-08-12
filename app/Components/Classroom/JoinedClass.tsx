@@ -24,7 +24,7 @@ interface Assignment {
 export default function JoinedClass({ classData }: { classData: ClassData }) {
   const [userName, setUserName] = useState('');
   const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [loading, setLoading] = useState(false);
+  // const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -38,7 +38,7 @@ export default function JoinedClass({ classData }: { classData: ClassData }) {
     const fetchAssignments = async () => {
       if (!classData._id) return;
       
-      setLoading(true);
+      // setLoading(true);
       try {
         const response = await getAssignments(classData._id);
         const assignmentsData = response.assignments || [];
@@ -46,9 +46,7 @@ export default function JoinedClass({ classData }: { classData: ClassData }) {
       } catch (error) {
         console.error('Failed to fetch assignments:', error);
         setAssignments([]);
-      } finally {
-        setLoading(false);
-      }
+      } 
     };
 
     fetchAssignments();
@@ -112,37 +110,44 @@ export default function JoinedClass({ classData }: { classData: ClassData }) {
         {/* Assignments Section */}
         <div>
           <h2 className="text-lg font-semibold mb-2">Assignments</h2>
-          {loading ? (
-            <div className="text-gray-500">Loading assignments...</div>
-          ) : assignments.length === 0 ? (
-            <div className="text-red-500">No assignments found.</div>
-          ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {assignments.map((assignment) => (
-                <div
-                  key={assignment._id}
-                  className="bg-white p-4 rounded-xl shadow hover:shadow-lg transition flex flex-col cursor-pointer relative"
-                  onClick={() => handleAssignmentClick(assignment._id)}
-                >
-                  {/* Book Icon */}
-                  <div className="absolute top-4 right-4">
-                    <Image
-                      src="/books.svg"
-                      alt="Book"
-                      width={70}
-                      height={70}
-                      className="object-contain"
-                    />
-                  </div>
-                  <h3 className="font-semibold">{assignment.title}</h3>
-                  <p className="text-sm text-gray-500">{assignment.description}</p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Due: {new Date(assignment.dueDate).toLocaleDateString()}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
+{assignments.length === 0 ? (
+  <div className="flex flex-col items-center justify-center ">
+    <Image
+      src="/AssignmentAnalytics.svg"
+      alt="No assignments"
+      width={680}
+      height={350}
+      className="mb-4"
+    />
+    <div className="text-gray-400 text-sm">No assignments found.</div>
+  </div>
+) : (
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    {assignments.map((assignment) => (
+      <div
+        key={assignment._id}
+        className="bg-white p-4 rounded-xl shadow hover:shadow-lg transition flex flex-col cursor-pointer relative"
+        onClick={() => handleAssignmentClick(assignment._id)}
+      >
+        {/* Book Icon */}
+        <div className="absolute top-4 right-4">
+          <Image
+            src="/books.svg"
+            alt="Book"
+            width={70}
+            height={70}
+            className="object-contain"
+          />
+        </div>
+        <h3 className="font-semibold">{assignment.title}</h3>
+        <p className="text-sm text-gray-500">{assignment.description}</p>
+        <p className="text-xs text-gray-400 mt-1">
+          Due: {new Date(assignment.dueDate).toLocaleDateString()}
+        </p>
+      </div>
+    ))}
+  </div>
+)}
         </div>
       </div>
 

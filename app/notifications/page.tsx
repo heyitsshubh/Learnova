@@ -32,7 +32,7 @@ interface NotificationItem extends Message {
 
 const Notifications = () => {
   const [userName, setUserName] = useState('');
-    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<'all' | 'unread' | 'messages' | 'announcements' | 'meetings'>('all');
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);

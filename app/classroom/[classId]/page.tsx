@@ -13,6 +13,8 @@ import { getAssignments } from '../../services/assignment';
 import { deleteAssignment } from '../../services/assignment';
 import { useSocket } from '../../Components/Contexts/SocketContext';
 import ScheduleMeetModal from '../../Components/Classroom/Schedulemeet';
+import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-hot-toast';
 
 interface Assignment {
   _id: string;
@@ -99,7 +101,7 @@ export default function ClassDetailPage() {
   const classid = params.classId;
 
   const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [assignmentsLoading, setAssignmentsLoading] = useState(false);
+  // const [assignmentsLoading, setAssignmentsLoading] = useState(false);
 
   const { notifications } = useSocket(); 
   const handleDeleteAssignment = async (assignmentId: string) => {
@@ -115,7 +117,7 @@ export default function ClassDetailPage() {
 
   useEffect(() => {
     if (classid) {
-      setAssignmentsLoading(true);
+      // setAssignmentsLoading(true);
       getAssignments(classid as string)
         .then((data) => {
           if (Array.isArray(data)) {
@@ -127,7 +129,7 @@ export default function ClassDetailPage() {
           }
         })
         .catch(() => setAssignments([]))
-        .finally(() => setAssignmentsLoading(false));
+        // .finally(() => setAssignmentsLoading(false));
     }
   }, [classid, createAssignmentOpen]);
   useEffect(() => {
@@ -199,34 +201,48 @@ const handleBellClick = () => {
         </div>
         <div className="mb-6">
           <h2 className="text-lg font-semibold mb-2">Assignments</h2>
-          {assignmentsLoading ? (
-            <p className="text-gray-400 text-sm">Loading assignments...</p>
-          ) : assignments.length === 0 ? (
-            <p className="text-gray-400 text-sm">No assignments found.</p>
-          ) : (
-            <div className="grid grid-rows-1 sm:grid-cols-3 gap-4">
-              {assignments.map((assignment: Assignment) => (
-                <MaterialCard
-                  key={assignment._id}
-                  title={assignment.title}
-                  subtitle={assignment.description}
-                  icon={
-                    <Image
-                      src="/books.svg"
-                      alt={assignment.title}
-                      width={70}
-                      height={70}
-                      className="rounded"
-                      
-                    />
-                  }
-                  onClick={() => router.push(`/classroom/${classid}/assignment/${assignment._id}`)}
-             
-                  onDelete={() => handleDeleteAssignment(assignment._id)}
-                />
-              ))}
-            </div>
-          )}
+          {assignments.length === 0 ? (
+            <div className="flex flex-col items-center justify-center">
+              <Image
+                src="/AssignmentAnalytics.svg"
+                alt="No assignments"
+                width={600}
+                height={370}
+                className="mb-4"
+    />
+    <p className="text-gray-400 text-sm">No assignments found.</p>
+  </div>
+) : (
+  <div className="grid grid-rows-1 sm:grid-cols-3 gap-4">
+    <AnimatePresence>
+      {assignments.map((assignment: Assignment, idx) => (
+        <motion.div
+          key={assignment._id}
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 30 }}
+          transition={{ duration: 0.4, delay: idx * 0.08 }}
+        >
+          <MaterialCard
+            title={assignment.title}
+            subtitle={assignment.description}
+            icon={
+              <Image
+                src="/books.svg"
+                alt={assignment.title}
+                width={70}
+                height={70}
+                className="rounded"
+              />
+            }
+            onClick={() => router.push(`/classroom/${classid}/assignment/${assignment._id}`)}
+            onDelete={() => handleDeleteAssignment(assignment._id)}
+          />
+        </motion.div>
+      ))}
+    </AnimatePresence>
+  </div>
+)}
         </div>
       </div>
       <div className="hidden lg:block lg:w-64">
@@ -260,7 +276,8 @@ const handleBellClick = () => {
       {createAssignmentOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center  bg-opacity-40">
           <div className="bg-white rounded-lg shadow-lg p-8">
-            <CreateAssignment onClose={() => setCreateAssignmentOpen(false)} classId={classid as string} />
+            <CreateAssignment onClose={() => setCreateAssignmentOpen(false)} classId={classid as string} 
+               onSuccess={() => toast.success('Assignment created successfully!')} />
           </div>
         </div>
       )}
