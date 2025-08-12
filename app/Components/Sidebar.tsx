@@ -149,30 +149,35 @@ const Sidebar: React.FC = () => {
             <div className="flex-1 min-w-0">
               <p className="font-medium text-white truncate">{user.name}</p>
             </div>
-            <div ref={logoutBtnRef} className="relative"></div>
-            <button
-              className="text-gray-400 hover:text-white transition-colors relative cursor-pointer"
-              onClick={() => setShowLogout((v) => !v)}
-              tabIndex={0}
-            >
-              ⋮
-              {showLogout && (
-                <div
-                  className="absolute top-0 w-32 bg-white text-gray-800 rounded shadow-lg z-50 "
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <button
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600 cursor-pointer"
-                    onClick={() => {
-                      localStorage.clear();
-                      router.push('/');
-                    }}
-                  >
-                    Log out
-                  </button>
-                </div>
-              )}
-            </button>
+            {/* <div ref={logoutBtnRef} className="relative"></div> */}
+           <button
+  className="text-gray-400 hover:text-white transition-colors relative cursor-pointer"
+  onClick={() => setShowLogout((v) => !v)}
+  tabIndex={0}
+>
+  ⋮
+  {showLogout && (
+    <div
+      className="absolute top-0 w-32 bg-white text-gray-800 rounded shadow-lg z-50 "
+      onClick={(e) => e.stopPropagation()}
+    >
+   <button
+  className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600 cursor-pointer"
+  onClick={() => {
+    localStorage.clear();
+    setShowLogout(false);
+    setIsOpen(false);
+    router.push('/');
+    setTimeout(() => {
+      window.location.reload();
+    }, 100); // Give router.push time to run
+  }}
+>
+  Log out
+</button>
+    </div>
+  )}
+</button>
           </div>
         </div>
       </div>

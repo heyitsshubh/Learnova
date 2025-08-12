@@ -22,30 +22,52 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className={poppins.variable}>
-        <ThemeProvider> {/* <-- wrap your app with ThemeProvider */}
+        <ThemeProvider> 
           <SocketProvider>
-            <Toaster 
-              position="top-right"
-              toastOptions={{
-                duration: 4000,
-                style: {
-                  background: '#363636',
-                  color: '#fff',
-                },
-                success: {
-                  duration: 3000,
-                  style: {
-                    background: '#10B981',
-                  },
-                },
-                error: {
-                  duration: 5000,
-                  style: {
-                    background: '#EF4444',
-                  },
-                },
-              }}
-            /> 
+      <Toaster 
+  position="top-right"
+  toastOptions={{
+    duration: 4000,
+    style: {
+      background: 'rgba(13, 64, 89, 1)',
+      color: '#fff',
+      borderRadius: '10px',
+      fontFamily: 'var(--font-poppins), sans-serif',
+      fontSize: '1rem',
+      boxShadow: '0 4px 24px 0 rgba(0,0,0,0.12)',
+      padding: '16px 24px',
+      border: '1px solid #e0e0e0',
+    },
+    success: {
+      duration: 3000,
+      style: {
+        background: 'rgba(13, 64, 89, 1)',
+        color: '#fff',
+        borderRadius: '10px',
+        fontWeight: 600,
+        boxShadow: '0 4px 24px 0 rgba(16,185,129,0.15)',
+      },
+      iconTheme: {
+        primary: '#fff',
+        secondary: '#059669',
+      },
+    },
+    error: {
+      duration: 5000,
+      style: {
+        background: 'rgba(239, 68, 68, 0.7)',
+        color: '#fff',
+        borderRadius: '10px',
+        fontWeight: 600,
+        boxShadow: '0 4px 24px 0 rgba(239,68,68,0.15)',
+      },
+      iconTheme: {
+        primary: '#fff',
+        secondary: '#b91c1c',
+      },
+    },
+  }}
+/> 
             <SidebarWrapper  />
             <MainWrapper>{children}</MainWrapper>
           </SocketProvider>

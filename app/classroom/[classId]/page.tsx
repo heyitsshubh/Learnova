@@ -95,6 +95,7 @@ export default function ClassDetailPage() {
   const [announcementOpen, setAnnouncementOpen] = useState(false);
   const [scheduleMeetOpen, setScheduleMeetOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0); 
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const params = useParams();
   const router = useRouter();
@@ -114,6 +115,27 @@ export default function ClassDetailPage() {
   //     setUserName(localStorage.getItem('userName') || '');
   //   }
   // }, []);
+
+  useEffect(() => {
+  if (typeof window !== 'undefined') {
+    setCurrentUserId(localStorage.getItem('userId'));
+  }
+}, []);
+
+useEffect(() => {
+  const unreadNotifications = notifications.filter((notif) => !notif.isRead).length;
+  setUnreadCount(unreadNotifications);
+}, [notifications]);
+
+useEffect(() => {
+  if (!currentUserId) return;
+  const unreadNotifications = notifications.filter(
+    (notif) =>
+      !notif.isRead &&
+      !(notif.type === 'message' && notif.sender._id === currentUserId)
+  ).length;
+  setUnreadCount(unreadNotifications);
+}, [notifications, currentUserId]);
 
   useEffect(() => {
     if (classid) {

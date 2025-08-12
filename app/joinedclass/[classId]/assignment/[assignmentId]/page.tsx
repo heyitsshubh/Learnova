@@ -9,6 +9,7 @@ import { Plus, X } from 'lucide-react';
 import { getAssignments } from '../../../../services/assignment';
 import RightSidebar2 from '../../../../Components/Classroom/RightSidebar2';
 import SubmitAssignment from '../../../../Components/utils/Submit';
+import { useSocket } from '../../../../Components/Contexts/SocketContext';
 
 interface Attachment {
   _id: string;
@@ -52,31 +53,46 @@ interface Assignment {
 export default function JoinedAssignmentDetailPage({ params }: { params: Promise<{ classId: string; assignmentId: string }> }) {
   const { classId, assignmentId } = use(params);
   const router = useRouter();
-  
+
   const [userName, setUserName] = useState('');
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
 
+  // Notification logic with socket context
+  const { notifications } = useSocket();
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setUserName(localStorage.getItem('userName') || '');
+      setCurrentUserId(localStorage.getItem('userId'));
     }
   }, []);
 
   useEffect(() => {
+    if (!currentUserId) return;
+    const count = notifications.filter(
+      (n) =>
+        !n.isRead &&
+        !(n.type === 'message' && n.sender._id === currentUserId)
+    ).length;
+    setUnreadCount(count);
+  }, [notifications, currentUserId]);
+
+  useEffect(() => {
     const fetchAssignment = async () => {
       if (!classId || !assignmentId) return;
-      
+
       setLoading(true);
       try {
         const response = await getAssignments(classId);
         const assignments = response.assignments || [];
         const foundAssignment = assignments.find((assignment: Assignment) => assignment._id === assignmentId);
-        
+
         if (foundAssignment) {
-          console.log('Assignment attachments:', foundAssignment.attachments); // Debug log
           setAssignment(foundAssignment);
         } else {
           console.error('Assignment not found');
@@ -92,43 +108,32 @@ export default function JoinedAssignmentDetailPage({ params }: { params: Promise
   }, [classId, assignmentId]);
 
   const handlePreviewAttachment = (attachment: Attachment) => {
-    console.log('Preview attachment:', attachment);
     setPreviewAttachment(attachment);
   };
 
-const getFileUrl = (attachment: Attachment) => {
-  const baseUrl = 'https://project2-zphf.onrender.com';
-  
-  console.log('Getting file URL for:', attachment); 
-  if (attachment.path) {
-    const cleanPath = attachment.path.startsWith('/') ? attachment.path.slice(1) : attachment.path;
-    const correctUrl = `${baseUrl}/${cleanPath}`;
-    console.log('Using path field:', correctUrl);
-    return correctUrl;
-  }
-  
-  if (attachment.url) {
-    if (attachment.url.startsWith('http')) {
-      console.log('Using full URL:', attachment.url);
-      return attachment.url;
-    } else {
-      const cleanUrl = attachment.url.startsWith('/') ? attachment.url.slice(1) : attachment.url;
-      const fullUrl = `${baseUrl}/${cleanUrl}`;
-      console.log('Using baseUrl + url:', fullUrl);
-      return fullUrl;
-    }
-  }
-  
-  if (attachment.filename) {
-    const fallbackUrl = `${baseUrl}/uploads/assignments/${attachment.filename}`;
-    console.log('Using filename fallback:', fallbackUrl);
-    return fallbackUrl;
-  }
+  const getFileUrl = (attachment: Attachment) => {
+    const baseUrl = 'https://project2-zphf.onrender.com';
 
-  const defaultUrl = `${baseUrl}/uploads/assignments/default.png`;
-  console.log('Using default fallback:', defaultUrl);
-  return defaultUrl;
-};
+    if (attachment.path) {
+      const cleanPath = attachment.path.startsWith('/') ? attachment.path.slice(1) : attachment.path;
+      return `${baseUrl}/${cleanPath}`;
+    }
+
+    if (attachment.url) {
+      if (attachment.url.startsWith('http')) {
+        return attachment.url;
+      } else {
+        const cleanUrl = attachment.url.startsWith('/') ? attachment.url.slice(1) : attachment.url;
+        return `${baseUrl}/${cleanUrl}`;
+      }
+    }
+
+    if (attachment.filename) {
+      return `${baseUrl}/uploads/assignments/${attachment.filename}`;
+    }
+
+    return `${baseUrl}/uploads/assignments/default.png`;
+  };
 
   if (loading) {
     return (
@@ -165,11 +170,16 @@ const getFileUrl = (attachment: Attachment) => {
             </div>
           </div>
           <div className="flex items-center gap-4">
-               <button
-              className="p-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer"
+            <button
+              className="p-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer relative"
               onClick={() => router.push('/notifications')}
             >
               <FaBell className="text-xl text-gray-400" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  {unreadCount}
+                </span>
+              )}
             </button>
             <button
               className="p-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer"
@@ -188,9 +198,7 @@ const getFileUrl = (attachment: Attachment) => {
             className="object-cover"
             priority
           />
-          <div className="absolute inset-0 bg-opacity-30 flex items-center justify-center">
-            {/* <h2 className="text-white text-2xl font-bold">{assignment.title}</h2> */}
-          </div>
+          <div className="absolute inset-0 bg-opacity-30 flex items-center justify-center"></div>
         </div>
         <div className="bg-white rounded-xl shadow-md p-6 mb-6">
           <div className="flex items-center gap-4 mb-4">
@@ -208,11 +216,7 @@ const getFileUrl = (attachment: Attachment) => {
                 <span className="text-gray-500">
                   Due: {new Date(assignment.dueDate).toLocaleDateString()}
                 </span>
-                {/* <span className="text-gray-500">Max Marks: {assignment.maxMarks}</span> */}
               </div>
-              {/* <p className="text-xs text-gray-400 mt-1">
-                Created by: {assignment.createdBy.name}
-              </p> */}
             </div>
             <div className="text-right">
               {assignment.hasSubmitted ? (
@@ -234,7 +238,7 @@ const getFileUrl = (attachment: Attachment) => {
           <div className="border-t pt-4">
             <h3 className="font-semibold mb-2">Description</h3>
             <p className="text-gray-700 mb-4">{assignment.description}</p>
-            
+
             {assignment.instructions && (
               <>
                 <h3 className="font-semibold mb-2">Instructions</h3>
@@ -250,7 +254,7 @@ const getFileUrl = (attachment: Attachment) => {
                     const isImage = attachment.mimetype?.startsWith('image/');
                     const isPDF = attachment.mimetype === 'application/pdf';
                     const fileUrl = getFileUrl(attachment);
-                    
+
                     return (
                       <div key={attachment._id || index} className="p-4 bg-gray-50 rounded shadow-sm">
                         <div className="flex items-center gap-2 mb-2">
@@ -274,12 +278,6 @@ const getFileUrl = (attachment: Attachment) => {
                               height={300}
                               className="max-w-full h-48 object-cover rounded border cursor-pointer"
                               onClick={() => handlePreviewAttachment(attachment)}
-                              onError={() => {
-                                console.error('Image failed to load:', fileUrl);
-                              }}
-                              onLoad={() => {
-                                console.log('Image loaded successfully:', fileUrl);
-                              }}
                             />
                           </div>
                         )}
@@ -305,10 +303,10 @@ const getFileUrl = (attachment: Attachment) => {
         </button>
       )}
       {submitModalOpen && (
-        <SubmitAssignment 
+        <SubmitAssignment
           assignmentId={assignmentId}
           classId={classId}
-          onClose={() => setSubmitModalOpen(false)} 
+          onClose={() => setSubmitModalOpen(false)}
         />
       )}
       {previewAttachment && (
@@ -325,7 +323,7 @@ const getFileUrl = (attachment: Attachment) => {
                 <X className="w-6 h-6" />
               </button>
             </div>
-            
+
             <div className="h-full overflow-auto">
               {previewAttachment.mimetype?.startsWith('image/') ? (
                 <div className="flex justify-center items-center h-full">
@@ -335,12 +333,6 @@ const getFileUrl = (attachment: Attachment) => {
                     width={800}
                     height={600}
                     className="max-w-full max-h-full object-contain"
-                    onError={() => {
-                      console.error('Modal image load error:', getFileUrl(previewAttachment));
-                    }}
-                    onLoad={() => {
-                      console.log('Modal image loaded successfully:', getFileUrl(previewAttachment));
-                    }}
                   />
                 </div>
               ) : previewAttachment.mimetype === 'application/pdf' ? (
@@ -367,8 +359,8 @@ const getFileUrl = (attachment: Attachment) => {
                   </a>
                 </div>
               )}
-            </div>     
-            <div className="mt-4 flex justify-center">
+            </div>
+                      <div className="mt-4 flex justify-center">
               <a
                 href={getFileUrl(previewAttachment)}
                 download={previewAttachment.originalName || previewAttachment.filename}

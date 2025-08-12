@@ -249,7 +249,11 @@ const filteredNotifications = notifications.filter((notification) => {
     );
   };
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+ const unreadCount = notifications.filter(
+  (n) =>
+    !n.isRead &&
+    !(n.type === 'message' && n.sender._id === currentUserId)
+).length;
 
   return (
     <AppLayout>
@@ -293,13 +297,40 @@ const filteredNotifications = notifications.filter((notification) => {
 
         {/* Filter tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto cursor-pointer">
-          {[
-            { key: 'all', label: 'All', count: notifications.length },
-            { key: 'unread', label: 'Unread', count: notifications.filter((n) => !n.isRead).length },
-            { key: 'messages', label: 'Messages', count: notifications.filter((n) => n.type === 'message').length },
-            { key: 'announcements', label: 'Announcements', count: notifications.filter((n) => n.type === 'announcement').length },
-            { key: 'meetings', label: 'Meetings', count: notifications.filter((n) => n.type === 'meeting').length },
-          ].map((tab) => (
+     {[
+  { key: 'all', label: 'All',   count: notifications.filter(
+      (n) =>
+        !n.isRead &&
+        !(n.type === 'message' && n.sender._id === currentUserId)
+    ).length, },
+  {
+    key: 'unread',
+    label: 'Unread',
+    count: notifications.filter(
+      (n) =>
+        !n.isRead &&
+        !(n.type === 'message' && n.sender._id === currentUserId)
+    ).length,
+  },
+  {
+    key: 'messages',
+    label: 'Messages',
+    count: notifications.filter(
+      (n) => n.type === 'message' && n.sender._id !== currentUserId
+    ).length,
+  },
+  {
+    key: 'announcements',
+    label: 'Announcements',
+    count: notifications.filter((n) => n.type === 'announcement').length,
+  },
+  {
+    key: 'meetings',
+    label: 'Meetings',
+    count: notifications.filter((n) => n.type === 'meeting').length,
+  },
+].map((tab) => (
+ 
             <button
               key={tab.key}
               onClick={() => setFilter(tab.key as any)}

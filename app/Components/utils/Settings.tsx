@@ -112,7 +112,7 @@ export default function SettingsPage() {
             className={`${themeClasses.card} rounded-xl flex items-center justify-between p-6 cursor-pointer hover:bg-gray-50 dark:hover:bg-[#23232a]/80 transition`}
             onClick={() => setShowPasswordModal(true)}
           >
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 ">
               <div className="bg-gray-100 dark:bg-[#23232a] rounded-full p-3">
                 <FaLock className="text-2xl text-gray-500" />
               </div>
@@ -121,9 +121,7 @@ export default function SettingsPage() {
                 <div className={`${themeClasses.subtext} text-base`}>Change your password.</div>
               </div>
             </div>
-            <button className="text-blue-600 font-medium hover:underline text-base" tabIndex={-1}>
-              Change
-            </button>
+         
           </div>
 
           {/* Appearance */}
@@ -187,7 +185,7 @@ export default function SettingsPage() {
             </div>
             <button
               onClick={handleLogout}
-              className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+              className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-medium transition-colors cursor-pointer"
             >
               Sign Out
             </button>
@@ -228,7 +226,7 @@ export default function SettingsPage() {
               />
             </div>
             <button
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition-colors"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition-colors cursor-pointer"
               onClick={handleChangePassword}
               disabled={loading || !oldPass || !newPass}
             >

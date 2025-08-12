@@ -4,14 +4,14 @@ import { use } from 'react';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import RightSidebar2 from '../../../../Components/Classroom/RightSidebar2';
-import { Plus } from 'lucide-react';
+import { Plus, ArrowLeft } from 'lucide-react';
 import { FaBell, FaCog } from 'react-icons/fa';
 import Sidebarmenu from '../../../../Components/Classroom/Sidebarmenu';
 import Announcement from '../../../../Components/Classroom/Announcement';
 import { getAssignments } from '../../../../services/assignment';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft } from 'lucide-react';
+import { useSocket } from '../../../../Components/Contexts/SocketContext';
 
 interface Attachment {
   _id: string;
@@ -63,7 +63,6 @@ function MaterialCard({
         <h3 className="font-semibold">{title}</h3>
         <p className="text-sm text-gray-500">{subtitle}</p>
         {dueDate && <p className="text-xs text-gray-400 mt-1">Due: {new Date(dueDate).toLocaleDateString()}</p>}
-        
         {hasAttachments ? (
           <div className="mt-2">
             {attachments.map((attachment, index) => (
@@ -82,37 +81,41 @@ function MaterialCard({
 
 export default function AssignmentListPage({ params }: { params: Promise<{ classId: string }> }) {
   const { classId } = use(params);
-  // const [userName, setUserName] = useState('');
   const [sidebarMenuOpen, setSidebarMenuOpen] = useState(false);
   const [announcementOpen, setAnnouncementOpen] = useState(false);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
- const router = useRouter(); 
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // useEffect(() => {
-  //   if (typeof window !== 'undefined') {
-  //     setUserName(localStorage.getItem('userName') || '');
-  //   }
-  // }, []);
+  const router = useRouter();
+  const { notifications } = useSocket();
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setCurrentUserId(localStorage.getItem('userId'));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    const count = notifications.filter(
+      (n) =>
+        !n.isRead &&
+        !(n.type === 'message' && n.sender._id === currentUserId)
+    ).length;
+    setUnreadCount(count);
+  }, [notifications, currentUserId]);
 
   useEffect(() => {
     if (classId) {
       setLoading(true);
       getAssignments(classId)
         .then(data => {
-          console.log('Assignments data:', data); 
           const assignmentsArr = Array.isArray(data) ? data : data.assignments || [];
-          assignmentsArr.forEach((assignment: Assignment, index: number) => {
-            console.log(`Assignment ${index + 1}: ${assignment.title}`);
-            console.log('Attachments:', assignment.attachments);
-          });
-          
           setAssignments(assignmentsArr);
         })
-        .catch(error => {
-          console.error('Error fetching assignments:', error);
-          setAssignments([]);
-        })
+        .catch(() => setAssignments([]))
         .finally(() => setLoading(false));
     }
   }, [classId]);
@@ -121,40 +124,43 @@ export default function AssignmentListPage({ params }: { params: Promise<{ class
     <div className="flex p-6 gap-6">
       <div className="flex-1">
         <div className="mb-6 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-    <button
-      className="p-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer"
-      onClick={() => router.back()}
-      aria-label="Go back"
-      type="button"
-    >
-      <ArrowLeft className="w-5 h-5 text-gray-700" />
-    </button>
-          <div>
-            <h1 className="text-xl font-semibold text-gray-800">Classroom</h1>
-            <p className="text-sm text-gray-500">
-              {/* {userName ? `${userName} / ` : 'Classroom'} */}
-            </p>
-          </div>
-          </div>
-           <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <button
               className="p-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer"
-                 style={{ cursor: 'pointer' }}
+              onClick={() => router.back()}
+              aria-label="Go back"
+              type="button"
+            >
+              <ArrowLeft className="w-5 h-5 text-gray-700" />
+            </button>
+            <div>
+              <h1 className="text-xl font-semibold text-gray-800">Classroom</h1>
+              <p className="text-sm text-gray-500"></p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <button
+              className="p-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer relative"
+              style={{ cursor: 'pointer' }}
               onClick={() => router.push('/notifications')}
             >
               <FaBell className="text-xl text-gray-400" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  {unreadCount}
+                </span>
+              )}
             </button>
             <button
               className="p-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer"
-                 style={{ cursor: 'pointer' }}
+              style={{ cursor: 'pointer' }}
               onClick={() => router.push('/Settings')}
             >
               <FaCog className="text-xl text-gray-400" />
             </button>
           </div>
         </div>
-       <div className="relative h-48 rounded-2xl overflow-hidden shadow mb-6">
+        <div className="relative h-48 rounded-2xl overflow-hidden shadow mb-6">
           <Image
             src="/Banner.svg"
             alt="UHV Banner"
@@ -169,36 +175,45 @@ export default function AssignmentListPage({ params }: { params: Promise<{ class
         {loading ? (
           <p className="text-gray-400 text-sm">Loading assignments...</p>
         ) : assignments.length === 0 ? (
-          <div className="text-red-500">No assignments found.</div>
+          <div className="flex flex-col items-center justify-center py-8">
+            <Image
+              src="/AssignmentAnalytics.svg"
+              alt="No assignments"
+              width={300}
+              height={200}
+              className="mb-4"
+            />
+            <div className="text-gray-400 text-sm">No assignments found.</div>
+          </div>
         ) : (
           <div className="grid grid-rows-1 sm:grid-cols-2 gap-4">
-          <AnimatePresence>
-    {assignments.map((assignment: Assignment, idx: number) => (
-      <motion.div
-        key={assignment._id}
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 30 }}
-        transition={{ duration: 0.4, delay: idx * 0.08 }}
-      >
-        <MaterialCard
-          title={assignment.title}
-          subtitle={assignment.description}
-          icon={
-            <Image
-              src="/books.svg"
-              alt={assignment.title}
-              width={70}
-              height={70}
-              className="rounded"
-            />
-          }
-          dueDate={assignment.dueDate}
-          attachments={assignment.attachments}
-        />
-      </motion.div>
-    ))}
-  </AnimatePresence>
+            <AnimatePresence>
+              {assignments.map((assignment: Assignment, idx: number) => (
+                <motion.div
+                  key={assignment._id}
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 30 }}
+                  transition={{ duration: 0.4, delay: idx * 0.08 }}
+                >
+                  <MaterialCard
+                    title={assignment.title}
+                    subtitle={assignment.description}
+                    icon={
+                      <Image
+                        src="/books.svg"
+                        alt={assignment.title}
+                        width={70}
+                        height={70}
+                        className="rounded"
+                      />
+                    }
+                    dueDate={assignment.dueDate}
+                    attachments={assignment.attachments}
+                  />
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </div>
         )}
       </div>
@@ -214,22 +229,27 @@ export default function AssignmentListPage({ params }: { params: Promise<{ class
       </button>
 
       {sidebarMenuOpen && (
-        <Sidebarmenu
-          open={sidebarMenuOpen}
-          onClose={() => setSidebarMenuOpen(false)}
-          onAnnouncement={() => {
-            setSidebarMenuOpen(false);
-            setAnnouncementOpen(true);
-          }}
-        />
+        <>
+          <div className="fixed inset-0 bg-black/30 z-40"></div>
+          <div className="fixed inset-0 flex items-center justify-center z-50">
+            <Sidebarmenu
+              open={sidebarMenuOpen}
+              onClose={() => setSidebarMenuOpen(false)}
+              onAnnouncement={() => {
+                setSidebarMenuOpen(false);
+                setAnnouncementOpen(true);
+              }}
+            />
+          </div>
+        </>
       )}
       {announcementOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-opacity-40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
           <div className="bg-white rounded-lg shadow-lg p-8">
             <Announcement onClose={() => setAnnouncementOpen(false)} classId={classId} />
           </div>
         </div>
       )}
-    </div>
+          </div>
   );
 }

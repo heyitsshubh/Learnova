@@ -68,35 +68,33 @@ export default function ClassroomPage() {
     fetchClasses();
   }, [userId]);
 
-  const handleJoinClass = async (classCode: string) => {
-    try {
-      setLoading(true);
-      const result = await joinClassByCode(classCode);
-      console.log('Join class result:', result);
-      if (result?.class) {
-        const classObj: ClassData = {
-          ...result.class,
-          _id: result.class._id || result.class.classCode || Math.random().toString(),
-        };
-        setJoinedClasses((prev) => {
-          if (prev.some((cls) => cls._id === classObj._id)) {
-            toast.error('You have already joined the class!');
-            return prev;
-          }
-          return [classObj, ...prev];
-        });
-        setJoinModalOpen(false);
-        toast.success('Class joined successfully!');
-      } else {
-        toast.error('Class not found!');
-      }
-    } catch (error) {
-      toast.error('Failed to join class!');
-      console.error('Join class error:', error);
-    } finally {
-      setLoading(false);
+const handleJoinClass = async (classCode: string) => {
+  // Check if already joined before making API call
+  if (joinedClasses.some((cls) => cls.classCode === classCode || cls._id === classCode)) {
+    toast.error('You have already joined the class!');
+    return;
+  }
+  try {
+    setLoading(true);
+    const result = await joinClassByCode(classCode);
+    if (result?.class) {
+      const classObj: ClassData = {
+        ...result.class,
+        _id: result.class._id || result.class.classCode || Math.random().toString(),
+      };
+      setJoinedClasses((prev) => [classObj, ...prev]);
+      setJoinModalOpen(false);
+      toast.success('Class joined successfully!');
+    } else {
+      toast.error('Class not found!');
     }
-  };
+  } catch (error) {
+    toast.error('Failed to join class!');
+    console.error('Join class error:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleDeleteClass = async (classId: string) => {
     setLoading(true);
@@ -254,8 +252,8 @@ export default function ClassroomPage() {
           {filters.map((filter) => (
             <button
               key={filter}
-              className={`px-3 py-1 rounded-full text-m border border-gray-300 ${
-                activeTab === filter ? 'bg-[rgba(45,156,219,0.5)] text-white' : 'bg-white'
+              className={`px-3 py-1 rounded-full text-m border border-gray-300 cursor-pointer ${
+                activeTab === filter ? 'bg-[rgba(45,156,219,0.5)] text-white cursor-pointer' : 'bg-white'
               }`}
               onClick={() => {
                 setActiveTab(filter as 'Join' | 'Create');
@@ -336,16 +334,24 @@ export default function ClassroomPage() {
         <button
           className="fixed bottom-6 right-6 text-white p-4 rounded-full shadow-lg"
           style={{ backgroundColor: 'rgba(73, 73, 73, 1)', cursor: 'pointer' }}
-          onClick={() => setModalOpen(true)}
+          onClick={() => setModalOpen(true) }
         >
           <Plus />
         </button>
+     {modalOpen && (
+  
+    <div className="fixed inset-0 bg-black/30 z-40"></div>
+     )}
 
         <CreateClassModal
           isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
           onCreate={handleCreateClass}
         />
+         {joinModalOpen && (
+  
+    <div className="fixed inset-0 bg-black/30 z-40"></div>
+     )}
 
         <JoinClassModal
           isOpen={joinModalOpen}
