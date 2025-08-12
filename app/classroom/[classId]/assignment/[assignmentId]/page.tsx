@@ -10,6 +10,8 @@ import Sidebarmenu from '../../../../Components/Classroom/Sidebarmenu';
 import Announcement from '../../../../Components/Classroom/Announcement';
 import { getAssignments } from '../../../../services/assignment';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft } from 'lucide-react';
 
 interface Attachment {
   _id: string;
@@ -119,11 +121,21 @@ export default function AssignmentListPage({ params }: { params: Promise<{ class
     <div className="flex p-6 gap-6">
       <div className="flex-1">
         <div className="mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+    <button
+      className="p-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer"
+      onClick={() => router.back()}
+      aria-label="Go back"
+      type="button"
+    >
+      <ArrowLeft className="w-5 h-5 text-gray-700" />
+    </button>
           <div>
             <h1 className="text-xl font-semibold text-gray-800">Classroom</h1>
             <p className="text-sm text-gray-500">
               {/* {userName ? `${userName} / ` : 'Classroom'} */}
             </p>
+          </div>
           </div>
            <div className="flex items-center gap-4">
             <button
@@ -160,24 +172,33 @@ export default function AssignmentListPage({ params }: { params: Promise<{ class
           <div className="text-red-500">No assignments found.</div>
         ) : (
           <div className="grid grid-rows-1 sm:grid-cols-2 gap-4">
-            {assignments.map((assignment: Assignment) => (
-              <MaterialCard
-                key={assignment._id}
-                title={assignment.title}
-                subtitle={assignment.description}
-                icon={
-                  <Image
-                    src="/books.svg"
-                    alt={assignment.title}
-                    width={70}
-                    height={70}
-                    className="rounded"
-                  />
-                }
-                dueDate={assignment.dueDate}
-                attachments={assignment.attachments}
-              />
-            ))}
+          <AnimatePresence>
+    {assignments.map((assignment: Assignment, idx: number) => (
+      <motion.div
+        key={assignment._id}
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 30 }}
+        transition={{ duration: 0.4, delay: idx * 0.08 }}
+      >
+        <MaterialCard
+          title={assignment.title}
+          subtitle={assignment.description}
+          icon={
+            <Image
+              src="/books.svg"
+              alt={assignment.title}
+              width={70}
+              height={70}
+              className="rounded"
+            />
+          }
+          dueDate={assignment.dueDate}
+          attachments={assignment.attachments}
+        />
+      </motion.div>
+    ))}
+  </AnimatePresence>
           </div>
         )}
       </div>
