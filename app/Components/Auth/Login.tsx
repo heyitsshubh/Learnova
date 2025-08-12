@@ -193,7 +193,7 @@ const Login = () => {
           <div className="w-[400px] flex justify-end max-w-xs sm:max-w-md md:max-w-full" style={{ minWidth: 50 }}  >
           <button
             type="submit"
-            className="w-[400px] bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition"
+            className="w-[400px] bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition cursor-pointer"
             style={{ borderRadius: 40 }}
             disabled={loading}
           >

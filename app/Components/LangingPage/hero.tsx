@@ -3,6 +3,7 @@ import { FiArrowRight } from "react-icons/fi";
 import { FaBook } from "react-icons/fa";
 import Image from "next/image";
 import Link from "next/link";
+import { motion } from "framer-motion";
 
 export default function LandingPage() {
   return (
@@ -65,41 +66,65 @@ export default function LandingPage() {
 <main className="flex flex-col-reverse md:flex-row items-center justify-center w-full px-4 md:px-12 py-16 bg-[#fafafa] flex-1">
         {/* Left Side */}
         <div className="max-w-lg mb-30">
-          <h1 className="text-4xl font-extrabold text-gray-900 leading-snug">
-            Empower Learning.
-            <br /> Anytime, Anywhere.
-          </h1>
-          <p className="mt-4 text-gray-600">
-            Join a seamless, interactive digital classroom   <br /> 
-            experience designed
-            for the future of education.  <br />  Connect,{" "}
-            {/* <a href="#" className="text-blue-500 underline"> */}
-              collaborate, and learn with cutting-edge tools.
-            {/* </a> */}
-          </p>
+      <motion.h1
+    className="text-4xl font-extrabold text-gray-900 leading-snug"
+    initial={{ opacity: 0, y: 30 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.7, delay: 0.1 }}
+  >
+    Empower Learning.
+    <br /> Anytime, Anywhere.
+  </motion.h1>
+  <motion.p
+    className="mt-4 text-gray-600"
+    initial={{ opacity: 0, y: 30 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.7, delay: 0.4 }}
+  >
+    Join a seamless, interactive digital classroom <br />
+    experience designed for the future of education. <br /> Connect, collaborate, and learn with cutting-edge tools.
+  </motion.p>
           <div className="mt-6 flex gap-4">
               <Link href="/signup">
-             <button className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded-md shadow hover:bg-gray-800 cursor-pointer">
-              <FaBook className="w-5 h-5" />
-              Start learning
-            </button>
-            </Link>
-            <button className="border border-black px-4 py-2 rounded-md hover:bg-gray-100">
-              Know more
-            </button>
+             <motion.button
+      className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded-md shadow hover:bg-gray-800 hover:scale-105 transition duration-200 cursor-pointer"
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.5, delay: 0.7 }}
+      whileHover={{ scale: 1.07 }}
+    >
+      <FaBook className="w-5 h-5" />
+      Start learning
+    </motion.button>
+  </Link>
+  <motion.button
+    className="border border-black px-4 py-2 rounded-md hover:bg-gray-100 hover:scale-105 transition duration-200"
+    initial={{ opacity: 0, scale: 0.9 }}
+    animate={{ opacity: 1, scale: 1 }}
+    transition={{ duration: 0.5, delay: 0.8 }}
+    whileHover={{ scale: 1.07 }}
+  >
+    Know more
+  </motion.button>
           </div>
         </div>
 
         {/* Right Side */}
       <div className="flex justify-center items-center mb-10 md:mb-0">
-  <Image
-    src="/landing.svg"
-    alt="Hero Illustration"
-    width={500}
-    height={500}
-    className="w-full h-auto"
-    priority
-  />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.85, y: 40 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+          >
+            <Image
+              src="/landing.svg"
+              alt="Hero Illustration"
+              width={500}
+              height={500}
+              className="w-full h-auto"
+              priority
+            />
+          </motion.div>
 </div>
       </main>
     </div>

@@ -223,11 +223,11 @@ const SignupForm = () => {
 
           <button
             type="submit"
-            className="w-[400px] bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition"
+            className="w-[400px] bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition cursor-pointer"
             style={{ borderRadius: 40 }}
             disabled={loading}
           >
-            {loading ? 'Signing up...' : 'Next'}
+            {loading ? 'Signing up...' : 'Sign up'}
           </button>
           </div>
         </form>
