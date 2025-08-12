@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { getAccessToken } from '../utils/token';
+
 export interface Message {
   _id: string;
   content: string;
@@ -27,13 +29,29 @@ interface ApiResponse {
   }[];
 }
 
+const redirectToLogin = () => {
+  if (typeof window !== 'undefined') {
+    window.location.href = '/login';
+  }
+};
+
+const getTokenOrRedirect = () => {
+  const token = getAccessToken();
+  if (!token) {
+    redirectToLogin();
+    throw new Error('No access token found.');
+  }
+  return token;
+};
+
 export const fetchMessages = async (classId: string): Promise<Message[]> => {
   try {
+    const token = getTokenOrRedirect();
     const response = await axios.get<ApiResponse>(
       `https://project2-zphf.onrender.com/api/class/${classId}/messages`,
       {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`, // Include token if required
+          Authorization: `Bearer ${token}`,
         },
       }
     );

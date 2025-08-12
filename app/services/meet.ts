@@ -1,5 +1,5 @@
 import axios from 'axios';
-
+import { getAccessToken } from '../utils/token';
 
 export interface ScheduleMeetPayload {
   title: string;
@@ -11,14 +11,30 @@ export interface ScheduleMeetPayload {
   maxParticipants?: number;
 }
 
+const redirectToLogin = () => {
+  if (typeof window !== 'undefined') {
+    window.location.href = '/login';
+  }
+};
+
+const getTokenOrRedirect = () => {
+  const token = getAccessToken();
+  if (!token) {
+    redirectToLogin();
+    throw new Error('No access token found.');
+  }
+  return token;
+};
+
 export const scheduleMeet = async (data: ScheduleMeetPayload) => {
+  const token = getTokenOrRedirect();
   try {
     const response = await axios.post(
       'https://project2-zphf.onrender.com/api/meetings/schedule',
       data,
       {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+          Authorization: `Bearer ${token}`,
         },
       }
     );
@@ -30,12 +46,13 @@ export const scheduleMeet = async (data: ScheduleMeetPayload) => {
 };
 
 export const fetchMeetingsByClass = async (classId: string) => {
+  const token = getTokenOrRedirect();
   try {
     const response = await axios.get(
       `https://project2-zphf.onrender.com/api/meetings/class/${classId}`,
       {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+          Authorization: `Bearer ${token}`,
         },
       }
     );
@@ -46,16 +63,15 @@ export const fetchMeetingsByClass = async (classId: string) => {
   }
 };
 
-
-
 export const startMeeting = async (meetingId: string) => {
+  const token = getTokenOrRedirect();
   try {
     const response = await axios.post(
       `https://project2-zphf.onrender.com/api/meetings/${meetingId}/start`,
-      { status: 'active' }, // <-- Make sure to use 'live'
+      { status: 'active' },
       {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+          Authorization: `Bearer ${token}`,
         },
       }
     );
@@ -66,16 +82,15 @@ export const startMeeting = async (meetingId: string) => {
   }
 };
 
-
-
 export const joinMeeting = async (meetingId: string) => {
+  const token = getTokenOrRedirect();
   try {
     const response = await axios.post(
       `https://project2-zphf.onrender.com/api/meetings/${meetingId}/join`,
       {},
       {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+          Authorization: `Bearer ${token}`,
         },
       }
     );

@@ -1,4 +1,5 @@
 import { io, Socket } from 'socket.io-client';
+import { getAccessToken } from '../utils/token';
 
 class SocketService {
   private socket: Socket | null = null;
@@ -11,7 +12,15 @@ class SocketService {
     return SocketService.instance;
   }
 
-  connect(token: string): Socket {
+  connect(): Socket {
+    const token = getAccessToken();
+    if (!token) {
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
+      throw new Error('No access token found.');
+    }
+
     if (!this.socket) {
       try {
         this.socket = io('https://project2-zphf.onrender.com', {
