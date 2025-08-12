@@ -113,39 +113,46 @@ const Sidebar: React.FC = () => {
         </div>
 
         {/* Menu */}
-        <nav className="flex-1 px-4 py-4">
-          <ul className="space-y-7">
-            {menuItems.map((item) => (
-              <li key={item.name}>
-                <Link
-                  href={item.path}
-                  onClick={() => setIsOpen(false)} // close on mobile click
-                  className={`flex items-center justify-between px-3 py-2 rounded-lg transition-colors duration-200 ${
-                    isActivePath(item.path)
-                      ? 'bg-[#BB86FC33] text-white'
-                      : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <span className="text-lg">{item.icon}</span>
-                    <span className="font-medium">{item.name}</span>
-                  </div>
-                  {item.badge && (
-                    <span
-                      className={`text-xs px-2 py-1 rounded-full font-semibold ${
-                        item.badge === 'New'
-                          ? 'bg-green-500 text-white'
-                          : 'bg-red-500 text-white'
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
+  
+<nav className="flex-1 px-4 py-4">
+  <ul className="space-y-7">
+    {menuItems.map((item) => (
+      <li key={item.name}>
+        <Link
+          href={item.path}
+          onClick={() => setIsOpen(false)} // close on mobile click
+          className={`flex items-center justify-between px-3 py-2 rounded-lg transition-all duration-200 group ${
+            isActivePath(item.path)
+              ? 'bg-[#BB86FC33] text-white'
+              : 'text-gray-300 hover:bg-[#6C47B933] hover:text-white hover:scale-[1.08] shadow-sm'
+          }`}
+          style={{
+            boxShadow: isActivePath(item.path)
+              ? '0 2px 8px 0 #BB86FC33'
+              : undefined,
+          }}
+        >
+          <div className="flex items-center space-x-3">
+            <span className="text-lg group-hover:scale-120 transition-transform duration-200">{item.icon}</span>
+            <span className="font-medium">{item.name}</span>
+          </div>
+          {item.badge && (
+            <span
+              className={`text-xs px-2 py-1 rounded-full font-semibold ${
+                item.badge === 'New'
+                  ? 'bg-green-500 text-white'
+                  : 'bg-red-500 text-white'
+              }`}
+            >
+              {item.badge}
+            </span>
+          )}
+        </Link>
+      </li>
+    ))}
+  </ul>
+</nav>
+
 
         {/* User Info */}
         <div className="p-4 border-t border-gray-700">

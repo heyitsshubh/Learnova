@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { useEffect, useState,  } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Plus, MoreVertical } from 'lucide-react';
 import { FaBell, FaCog } from 'react-icons/fa';
@@ -105,41 +105,49 @@ export default function ClassDetailPage() {
   // const [assignmentsLoading, setAssignmentsLoading] = useState(false);
 
   const { notifications } = useSocket(); 
+
+
+
+  // Play sound when a new notification arrives
+useEffect(() => {
+  if (notifications && notifications.length > 0) {
+    const lastNotification = notifications[notifications.length - 1];
+    if (!lastNotification.isRead) {
+      // Use a new Audio object for each play to avoid browser restrictions
+      const audio = new window.Audio('/notification.mp3');
+      audio.play().catch(() => {});
+    }
+  }
+}, [notifications]);
+
   const handleDeleteAssignment = async (assignmentId: string) => {
     await deleteAssignment(assignmentId);
     setAssignments((prev) => prev.filter((a) => a._id !== assignmentId));
   };
 
-  // useEffect(() => {
-  //   if (typeof window !== 'undefined') {
-  //     setUserName(localStorage.getItem('userName') || '');
-  //   }
-  // }, []);
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setCurrentUserId(localStorage.getItem('userId'));
+    }
+  }, []);
 
   useEffect(() => {
-  if (typeof window !== 'undefined') {
-    setCurrentUserId(localStorage.getItem('userId'));
-  }
-}, []);
+    const unreadNotifications = notifications.filter((notif) => !notif.isRead).length;
+    setUnreadCount(unreadNotifications);
+  }, [notifications]);
 
-useEffect(() => {
-  const unreadNotifications = notifications.filter((notif) => !notif.isRead).length;
-  setUnreadCount(unreadNotifications);
-}, [notifications]);
-
-useEffect(() => {
-  if (!currentUserId) return;
-  const unreadNotifications = notifications.filter(
-    (notif) =>
-      !notif.isRead &&
-      !(notif.type === 'message' && notif.sender._id === currentUserId)
-  ).length;
-  setUnreadCount(unreadNotifications);
-}, [notifications, currentUserId]);
+  useEffect(() => {
+    if (!currentUserId) return;
+    const unreadNotifications = notifications.filter(
+      (notif) =>
+        !notif.isRead &&
+        !(notif.type === 'message' && notif.sender._id === currentUserId)
+    ).length;
+    setUnreadCount(unreadNotifications);
+  }, [notifications, currentUserId]);
 
   useEffect(() => {
     if (classid) {
-      // setAssignmentsLoading(true);
       getAssignments(classid as string)
         .then((data) => {
           if (Array.isArray(data)) {
@@ -150,24 +158,18 @@ useEffect(() => {
             setAssignments([]);
           }
         })
-        .catch(() => setAssignments([]))
-        // .finally(() => setAssignmentsLoading(false));
+        .catch(() => setAssignments([]));
     }
   }, [classid, createAssignmentOpen]);
-  useEffect(() => {
-    const unreadNotifications = notifications.filter((notif) => !notif.isRead).length;
-    setUnreadCount(unreadNotifications);
-  }, [notifications]);
 
-const handleBellClick = () => {
-  setUnreadCount(0);
-  router.push('/notifications');
-};
-
-
+  const handleBellClick = () => {
+    setUnreadCount(0);
+    router.push('/notifications');
+  };
 
   return (
     <div className="flex p-6 gap-6">
+      {/* Notification sound element */}
       <div className="flex-1">
         <div className="mb-6 flex items-center justify-between">
           <div>
@@ -182,17 +184,14 @@ const handleBellClick = () => {
               className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-600 text-white rounded-lg shadow transition"
               style={{ cursor: 'pointer' }}
               onClick={() => {
-                // Navigate to the meet page for this class
-                // If you want to pass classId as a param, use `/meet?classId=${classid}`
-                // If not, just `/meet`
-                  router.push(`/classroom/${classid}/meet`);
+                router.push(`/classroom/${classid}/meet`);
               }}
             >
               <span>Scheduled Meets</span>
             </button>
             <button
               className="p-2 rounded-full hover:bg-gray-200 transition-colors relative"
-                style={{ cursor: 'pointer' }}
+              style={{ cursor: 'pointer' }}
               onClick={handleBellClick}
             >
               <FaBell className="text-xl text-gray-400" />
@@ -231,40 +230,40 @@ const handleBellClick = () => {
                 width={600}
                 height={370}
                 className="mb-4"
-    />
-    <p className="text-gray-400 text-sm">No assignments found.</p>
-  </div>
-) : (
-  <div className="grid grid-rows-1 sm:grid-cols-3 gap-4">
-    <AnimatePresence>
-      {assignments.map((assignment: Assignment, idx) => (
-        <motion.div
-          key={assignment._id}
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 30 }}
-          transition={{ duration: 0.4, delay: idx * 0.08 }}
-        >
-          <MaterialCard
-            title={assignment.title}
-            subtitle={assignment.description}
-            icon={
-              <Image
-                src="/books.svg"
-                alt={assignment.title}
-                width={70}
-                height={70}
-                className="rounded"
               />
-            }
-            onClick={() => router.push(`/classroom/${classid}/assignment/${assignment._id}`)}
-            onDelete={() => handleDeleteAssignment(assignment._id)}
-          />
-        </motion.div>
-      ))}
-    </AnimatePresence>
-  </div>
-)}
+              <p className="text-gray-400 text-sm">No assignments found.</p>
+            </div>
+          ) : (
+            <div className="grid grid-rows-1 sm:grid-cols-3 gap-4">
+              <AnimatePresence>
+                {assignments.map((assignment: Assignment, idx) => (
+                  <motion.div
+                    key={assignment._id}
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 30 }}
+                    transition={{ duration: 0.4, delay: idx * 0.08 }}
+                  >
+                    <MaterialCard
+                      title={assignment.title}
+                      subtitle={assignment.description}
+                      icon={
+                        <Image
+                          src="/books.svg"
+                          alt={assignment.title}
+                          width={70}
+                          height={70}
+                          className="rounded"
+                        />
+                      }
+                      onClick={() => router.push(`/classroom/${classid}/assignment/${assignment._id}`)}
+                      onDelete={() => handleDeleteAssignment(assignment._id)}
+                    />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
         </div>
       </div>
       <div className="hidden lg:block lg:w-64">
@@ -289,10 +288,10 @@ const handleBellClick = () => {
             setSidebarMenuOpen(false);
             setAnnouncementOpen(true);
           }}
-           onScheduleMeet={() => {
-    setSidebarMenuOpen(false);
-    setScheduleMeetOpen(true);
-  }}
+          onScheduleMeet={() => {
+            setSidebarMenuOpen(false);
+            setScheduleMeetOpen(true);
+          }}
         />
       )}
       {createAssignmentOpen && (
@@ -311,20 +310,19 @@ const handleBellClick = () => {
         </div>
       )}
       {scheduleMeetOpen && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-opacity-40">
-    <div className="bg-white rounded-lg shadow-lg p-8">
-      <ScheduleMeetModal
-        open={scheduleMeetOpen}
-        onClose={() => setScheduleMeetOpen(false)}
-        classId={classid as string}
-        onScheduled={() => {
-          // handle scheduled meet data here (e.g., send to backend)
-          setScheduleMeetOpen(false);
-        }}
-      />
-    </div>
-  </div>
-)}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-lg p-8">
+            <ScheduleMeetModal
+              open={scheduleMeetOpen}
+              onClose={() => setScheduleMeetOpen(false)}
+              classId={classid as string}
+              onScheduled={() => {
+                setScheduleMeetOpen(false);
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

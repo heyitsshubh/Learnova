@@ -32,6 +32,17 @@ export default function JoinedClass({ classData }: { classData: ClassData }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
+  // Play notification sound when a new notification arrives
+  useEffect(() => {
+    if (notifications && notifications.length > 0) {
+      const lastNotification = notifications[notifications.length - 1];
+      if (!lastNotification.isRead) {
+        const audio = new window.Audio('/notification.mp3');
+        audio.play().catch(() => {});
+      }
+    }
+  }, [notifications]);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setUserName(localStorage.getItem('userName') || '');

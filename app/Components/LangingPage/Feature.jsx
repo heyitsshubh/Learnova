@@ -1,4 +1,8 @@
+'use client';
+
+import { useEffect, useState } from "react";
 import { Video, ClipboardList, Cloud, MessageCircle, BarChart2, Smartphone } from "lucide-react";
+import { Fade } from "react-awesome-reveal";
 
 const features = [
   {
@@ -40,6 +44,12 @@ const features = [
 ];
 
 export default function Features() {
+  const [animationKey, setAnimationKey] = useState(Date.now());
+
+  useEffect(() => {
+    setAnimationKey(Date.now());
+  }, []);
+
   return (
     <section id="Feature" className="py-16 px-6 md:px-20 bg-[#ADF0CC1A]">
       {/* Section Heading */}
@@ -51,23 +61,38 @@ export default function Features() {
         </p>
       </div>
 
-      {/* Features Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 justify-center">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 justify-center" key={animationKey}>
         {features.map((feature, index) => (
-          <div
+          <Fade
             key={index}
-            className="bg-gradient-to-b from-[#faf7f5] to-white shadow-sm hover:shadow-lg transition rounded-xl border border-[#E5E7EB] flex flex-col px-6 py-5"
-            style={{
-              width: 300,
-              height: 220,
-              boxShadow: "0px 2px 8px 0px #E5E9F2",
-              background: "linear-gradient(180deg, #FAF7F5 0%, #FFFFFF 100%)",
-            }}
+            direction="up"
+            triggerOnce={false}
+            delay={index * 80}
+            cascade={false}
           >
-            <div className="mb-3">{feature.icon}</div>
-            <h3 className="text-lg font-semibold text-black">{feature.title}</h3>
-            <p className="text-sm text-gray-700 mt-2">{feature.description}</p>
-          </div>
+            <div
+              className="bg-gradient-to-b from-[#faf7f5] to-white shadow-sm hover:shadow-lg transition rounded-xl border border-[#E5E7EB] flex flex-col px-6 py-5"
+              style={{
+                width: 300,
+                height: 220,
+                boxShadow: "0px 2px 8px 0px #E5E9F2",
+                background: "linear-gradient(180deg, #FAF7F5 0%, #FFFFFF 100%)",
+                transition: "transform 0.3s cubic-bezier(.4,2,.6,1), box-shadow 0.3s",
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = "scale(1.05)";
+                e.currentTarget.style.boxShadow = "0px 8px 24px 0px #E5E9F2";
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = "scale(1)";
+                e.currentTarget.style.boxShadow = "0px 2px 8px 0px #E5E9F2";
+              }}
+            >
+              <div className="mb-3">{feature.icon}</div>
+              <h3 className="text-lg font-semibold text-black">{feature.title}</h3>
+              <p className="text-sm text-gray-700 mt-2">{feature.description}</p>
+            </div>
+          </Fade>
         ))}
       </div>
     </section>

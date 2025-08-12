@@ -9,41 +9,40 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen flex flex-col font-sans  w-full"
         style={{ background: "rgba(245, 241, 241, 1)" }}>
-      {/* Navbar */}
       <header className="flex justify-between items-center px-8 py-4 bg-white shadow-sm w-full">
         <div className="flex items-center gap-2">
           <Image
-            src="/logooo.svg"
-            alt="learnOva logo"
-            width={40}
-            height={40}
-            className="h-6 w-6"
-            priority
-          />
+      src="/logooo.svg"
+      alt="learnOva logo"
+      width={64} 
+      height={64} 
+      className="h-12 w-12" 
+      priority
+    />
                 <span className="font-bold" style={{ fontSize: 24 }}>learnOva</span>
         </div>
      <nav className="hidden md:flex gap-8 text-gray-700 font-medium">
   <Link
     href="/"
-    className="transition-colors duration-200 hover:text-black hover:underline underline-offset-4"
+    className="transition-colors text-[1.25rem] duration-200 hover:text-black hover:underline underline-offset-4"
   >
     Home
   </Link>
   <Link
     href="/#Feature"
-    className="transition-colors duration-200 hover:text-black hover:underline underline-offset-4"
+    className="transition-colors text-[1.25rem] duration-200 hover:text-black hover:underline underline-offset-4"
   >
     Features
   </Link>
   <Link
     href="/#FAQs"
-    className="transition-colors duration-200 hover:text-black hover:underline underline-offset-4"
+    className="transition-colors text-[1.25rem] duration-200 hover:text-black hover:underline underline-offset-4"
   >
     FAQs
   </Link>
   <Link
     href="/#Contact Us"
-    className="transition-colors duration-200 hover:text-black hover:underline underline-offset-4"
+    className="transition-colors text-[1.25rem] duration-200 hover:text-black hover:underline underline-offset-4"
   >
     Contact Us
   </Link>
