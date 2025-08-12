@@ -41,7 +41,7 @@ const features = [
 
 export default function Features() {
   return (
-    <section className="py-16 px-6 md:px-20 bg-[#ADF0CC1A]">
+    <section id="Feature" className="py-16 px-6 md:px-20 bg-[#ADF0CC1A]">
       {/* Section Heading */}
       <div className="text-center mb-12">
         <h2 className="text-2xl font-bold">Why learnOva?</h2>

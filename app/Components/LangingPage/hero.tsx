@@ -21,20 +21,40 @@ export default function LandingPage() {
           />
                 <span className="font-bold" style={{ fontSize: 24 }}>learnOva</span>
         </div>
-        <nav className="hidden md:flex gap-8 text-gray-700 font-medium">
-               <Link href="/">Home</Link>
-          <Link href="/#Feature">Features</Link>
-          <Link href="/faq">FAQs</Link>
-          <Link href="/contact">Contact Us</Link>
-        </nav>
+     <nav className="hidden md:flex gap-8 text-gray-700 font-medium">
+  <Link
+    href="/"
+    className="transition-colors duration-200 hover:text-black hover:underline underline-offset-4"
+  >
+    Home
+  </Link>
+  <Link
+    href="/#Feature"
+    className="transition-colors duration-200 hover:text-black hover:underline underline-offset-4"
+  >
+    Features
+  </Link>
+  <Link
+    href="/#FAQs"
+    className="transition-colors duration-200 hover:text-black hover:underline underline-offset-4"
+  >
+    FAQs
+  </Link>
+  <Link
+    href="/#Contact Us"
+    className="transition-colors duration-200 hover:text-black hover:underline underline-offset-4"
+  >
+    Contact Us
+  </Link>
+</nav>
       <div className="hidden md:flex items-center gap-4">
           <Link href="/login">
-            <button className="border border-black rounded-full px-4 py-2 hover:bg-black hover:text-white transition">
+            <button className="border border-black rounded-full px-4 py-2 hover:bg-black hover:text-white transition cursor-pointer">
               Log in
             </button>
           </Link>
           <Link href="/signup">
-            <button className="flex items-center gap-2 border border-black rounded-full px-4 py-2 bg-black text-white hover:bg-white hover:text-black transition">
+            <button className="flex items-center gap-2 border border-black rounded-full px-4 py-2 bg-black text-white hover:bg-white hover:text-black transition cursor-pointer">
               Sign up <FiArrowRight />
             </button>
           </Link>
@@ -58,10 +78,12 @@ export default function LandingPage() {
             {/* </a> */}
           </p>
           <div className="mt-6 flex gap-4">
-             <button className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded-md shadow hover:bg-gray-800">
+              <Link href="/signup">
+             <button className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded-md shadow hover:bg-gray-800 cursor-pointer">
               <FaBook className="w-5 h-5" />
               Start learning
             </button>
+            </Link>
             <button className="border border-black px-4 py-2 rounded-md hover:bg-gray-100">
               Know more
             </button>

@@ -42,7 +42,7 @@ export default function FAQ() {
   };
 
   return (
-    <section className="py-16 px-2 md:px-0 bg-gray-50 min-h-screen flex items-center justify-center w-full">
+    <section id= "FAQs" className="py-16 px-2 md:px-0 bg-gray-50 min-h-screen flex items-center justify-center w-full">
       <div className="w-full max-w-[1440px]">
         <div className="grid md:grid-cols-3 gap-0 w-full">
           {/* Left side heading */}

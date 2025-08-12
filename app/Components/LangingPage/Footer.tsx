@@ -2,7 +2,7 @@ import { Facebook, Twitter, Instagram, Youtube } from "lucide-react";
 
 export default function Footer() {
   return (
-    <footer className="bg-gray-900 text-gray-300 py-12 px-6 md:px-20">
+    <footer id="Contact Us" className="bg-gray-900 text-gray-300 py-12 px-6 md:px-20">
       <div className="grid md:grid-cols-4 gap-8">
         {/* Column 1: Logo & Social */}
         <div>

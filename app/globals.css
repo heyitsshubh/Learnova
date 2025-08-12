@@ -249,3 +249,7 @@ body {
 body {
   font-family: var(--font-poppins);
 }
+
+html {
+  scroll-behavior: smooth;
+}
