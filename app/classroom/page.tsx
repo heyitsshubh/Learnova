@@ -269,8 +269,15 @@ const handleJoinClass = async (classCode: string) => {
         <div className="flex flex-col lg:flex-row">
           <div className="flex-1 lg:pr-6">
             {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <p className="text-gray-500 text-center"></p>
+              <div className="flex flex-col items-center justify-center py-12">
+                <Image
+                  src="/class.svg"
+                  alt="Loading classes"
+                  width={712}
+                  height={470}
+                  className=" animate-bounce"
+                />
+                <p className="text-gray-400 text-center mt-2">Loading your classes...</p>
               </div>
             ) : displayedClasses.length === 0 ? (
               <EmptyState 

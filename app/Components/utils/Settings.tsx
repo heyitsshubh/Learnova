@@ -89,7 +89,7 @@ export default function SettingsPage() {
 
         {/* Profile Card */}
         <div className={`${themeClasses.card} rounded-xl shadow-sm mb-6 flex items-center p-6 gap-6`}>
-          <div className="relative w-20 h-20 rounded-full overflow-hidden border-4 border-blue-500 shadow-lg flex-shrink-0">
+          <div className="relative w-20 h-20 rounded-full overflow-hidden border-4 border-blue-400 shadow-lg flex-shrink-0">
             <Image
               src="/profilee.svg"
               alt="Profile"

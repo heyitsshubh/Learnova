@@ -160,7 +160,7 @@ const VerifyOtp = () => {
           Didn&apos;t receive the code?{' '}
           <a
             href="#"
-            className="text-blue-600 hover:underline"
+            className="text-blue-600 hover:underline cursor-pointer"
             onClick={handleResendOtp}
             style={{
               cursor: resendLoading ? 'not-allowed' : 'pointer',

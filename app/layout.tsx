@@ -27,7 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <Toaster 
   position="top-right"
   toastOptions={{
-    duration: 4000,
+    duration: 3000,
     style: {
       background: 'rgba(13, 64, 89, 1)',
       color: '#fff',
@@ -53,7 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       },
     },
     error: {
-      duration: 5000,
+      duration: 3000,
       style: {
         background: 'rgba(239, 68, 68, 0.7)',
         color: '#fff',

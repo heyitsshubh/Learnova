@@ -5,7 +5,8 @@ import { FaLock } from 'react-icons/fa';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { resetPassword } from '../../services/auth';
-import { getResetToken, removeResetToken, removeTokens } from '../../utils/token'; // Import token utilities
+import { getResetToken, removeResetToken, removeTokens } from '../../utils/token';
+import { FaEye, FaEyeSlash } from 'react-icons/fa'; // <-- Add this import
 
 interface ApiError {
   response?: {
@@ -25,6 +26,10 @@ const Resetpassword = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Add state for password visibility
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
@@ -38,9 +43,7 @@ const Resetpassword = () => {
       return;
     }
 
-    // Get resetToken using the utility function
     const resetToken = getResetToken();
-    console.log('Reset token:', resetToken);
     if (!resetToken) {
       setError('Reset token is missing. Please restart the reset process.');
       return;
@@ -48,13 +51,9 @@ const Resetpassword = () => {
 
     setLoading(true);
     try {
-      // Use newPassword as required by your API schema
       await resetPassword({ newPassword: form.password }, resetToken);
-
-      // Remove tokens using utility functions
       removeResetToken();
       removeTokens();
-
       router.push('/login');
     } catch (err: unknown) {
       const apiError = err as ApiError;
@@ -96,10 +95,11 @@ const Resetpassword = () => {
         <h2 className="text-2xl font-bold mb-10 text-gray-800 text-center">Reset Password</h2>
 
         <form className="space-y-6 flex flex-col items-center" onSubmit={handleSubmit}>
+          {/* Password Field */}
           <div className="relative w-full flex items-center justify-center" style={{ width: 400, minWidth: 50 }}>
             <FaLock className="absolute left-4 text-gray-400 text-lg" />
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               name="password"
               value={form.password}
               onChange={handleChange}
@@ -108,11 +108,21 @@ const Resetpassword = () => {
               style={{ width: 400, minWidth: 50 }}
               required
             />
+            <button
+              type="button"
+              className="absolute right-4 text-gray-400 hover:text-gray-600"
+              tabIndex={-1}
+              onClick={() => setShowPassword((prev) => !prev)}
+              style={{ background: 'none', border: 'none', outline: 'none' }}
+            >
+              {showPassword ? <FaEyeSlash /> : <FaEye />}
+            </button>
           </div>
+          {/* Confirm Password Field */}
           <div className="relative w-full flex items-center justify-center" style={{ width: 400, minWidth: 50 }}>
             <FaLock className="absolute left-4 text-gray-400 text-lg" />
             <input
-              type="password"
+              type={showConfirmPassword ? "text" : "password"}
               name="confirmPassword"
               value={form.confirmPassword}
               onChange={handleChange}
@@ -121,13 +131,22 @@ const Resetpassword = () => {
               style={{ width: 400, minWidth: 50 }}
               required
             />
+            <button
+              type="button"
+              className="absolute right-4 text-gray-400 hover:text-gray-600"
+              tabIndex={-1}
+              onClick={() => setShowConfirmPassword((prev) => !prev)}
+              style={{ background: 'none', border: 'none', outline: 'none' }}
+            >
+              {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+            </button>
           </div>
           {error && (
             <div className="text-red-500 text-sm text-center">{error}</div>
           )}
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition"
+            className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition cursor-pointer"
             style={{ width: 400, minWidth: 50, borderRadius: 40 }}
             disabled={loading}
           >

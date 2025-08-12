@@ -168,9 +168,7 @@ const Sidebar: React.FC = () => {
     setShowLogout(false);
     setIsOpen(false);
     router.push('/');
-    setTimeout(() => {
-      window.location.reload();
-    }, 100); // Give router.push time to run
+
   }}
 >
   Log out

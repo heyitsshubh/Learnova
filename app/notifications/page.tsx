@@ -6,7 +6,7 @@ import AppLayout from '../Components/AppLayout';
 import { FaSearch, FaBell, FaCog, FaUser, FaCalendar } from 'react-icons/fa';
 import { X, Users, BookOpen } from 'lucide-react';
 import { fetchMessages } from '../services/message';
-import { fetchMeetingsByClass } from '../services/meet'; // <-- Import meetings API
+import { fetchMeetingsByClass } from '../services/meet';
 import Image from 'next/image';
 import { useSocket } from '../Components/Contexts/SocketContext';
 
@@ -383,12 +383,12 @@ const filteredNotifications = notifications.filter((notification) => {
                            {item.type === 'meeting' ? item.className : item.sender.name}
                           </p>
                           {item.type === 'announcement' && (
-                            <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
+                            <span className="text-xs bg-[rgba(45,156,219,0.5)] text-white px-2 py-1 rounded-full">
                               Announcement
                             </span>
                           )}
                           {item.type === 'meeting' && (
-                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                            <span className="text-xs bg-[rgba(45,156,219,0.5)] text-white px-2 py-1 rounded-full">
                               Meeting
                             </span>
                           )}
