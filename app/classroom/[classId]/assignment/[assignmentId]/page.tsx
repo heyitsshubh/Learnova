@@ -172,8 +172,10 @@ export default function AssignmentListPage({ params }: { params: Promise<{ class
             <h2 className="text-white text-2xl font-bold"></h2>
           </div>
         </div>
+            <h2 className="text-lg font-semibold mb-2">Assignments</h2>
         {loading ? (
           <p className="text-gray-400 text-sm">Loading assignments...</p>
+          
         ) : assignments.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8">
             <Image

@@ -1,5 +1,5 @@
 'use client';
-import AppLayout from '../Components/AppLayout';
+
 import ProtectedRoute from '../Components/ProtectedRoute';
 import Link from 'next/link';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, PieChart, Pie } from 'recharts';
@@ -32,7 +32,7 @@ const donutData = [
 export default function DashboardPage() {
   return (
     <ProtectedRoute>
-      <AppLayout>
+    
         <div className="min-h-screen p-6 ">
           <div className="max-w-[1200px] mx-auto">
             {/* Header */}
@@ -138,7 +138,7 @@ export default function DashboardPage() {
             <div className="h-12" />
           </div>
         </div>
-      </AppLayout>
+    
     </ProtectedRoute>
   );
 }

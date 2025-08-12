@@ -2,7 +2,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import AppLayout from '../Components/AppLayout';
 import { FaSearch, FaBell, FaCog, FaUser, FaCalendar } from 'react-icons/fa';
 import { X, Users, BookOpen } from 'lucide-react';
 import { fetchMessages } from '../services/message';
@@ -166,27 +165,28 @@ const Notifications = () => {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setUserName(localStorage.getItem('userName') || 'User');
-      setCurrentUserId(localStorage.getItem('userId')); // <-- Add this line
+      setCurrentUserId(localStorage.getItem('userId'));
     }
   }, []);
-const filteredNotifications = notifications.filter((notification) => {
-  // Only show messages sent by others (not yourself)
-  if (notification.type === 'message' && notification.sender._id === currentUserId) return false;
 
-  // For other notification types, show as usual
-  const matchesSearch =
-    notification.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    notification.sender.name.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredNotifications = notifications.filter((notification) => {
+    // Only show messages sent by others (not yourself)
+    if (notification.type === 'message' && notification.sender._id === currentUserId) return false;
 
-  const matchesFilter =
-    filter === 'all' ||
-    (filter === 'unread' && !notification.isRead) ||
-    (filter === 'messages' && notification.type === 'message') ||
-    (filter === 'announcements' && notification.type === 'announcement') ||
-    (filter === 'meetings' && notification.type === 'meeting');
+    // For other notification types, show as usual
+    const matchesSearch =
+      notification.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      notification.sender.name.toLowerCase().includes(searchTerm.toLowerCase());
 
-  return matchesSearch && matchesFilter;
-});
+    const matchesFilter =
+      filter === 'all' ||
+      (filter === 'unread' && !notification.isRead) ||
+      (filter === 'messages' && notification.type === 'message') ||
+      (filter === 'announcements' && notification.type === 'announcement') ||
+      (filter === 'meetings' && notification.type === 'meeting');
+
+    return matchesSearch && matchesFilter;
+  });
 
   const groupedNotifications = filteredNotifications.reduce((groups, notification) => {
     const date = new Date(notification.timestamp).toLocaleDateString('en-US', {
@@ -249,16 +249,17 @@ const filteredNotifications = notifications.filter((notification) => {
     );
   };
 
- const unreadCount = notifications.filter(
-  (n) =>
-    !n.isRead &&
-    !(n.type === 'message' && n.sender._id === currentUserId)
-).length;
+  const unreadCount = notifications.filter(
+    (n) =>
+      !n.isRead &&
+      !(n.type === 'message' && n.sender._id === currentUserId)
+  ).length;
 
   return (
-    <AppLayout>
-      <div className="pl-4 pr-6 pt-6 ">
-        <div className="flex justify-between items-center mb-6">
+    <div className="min-h-screen p-2 md:p-6">
+      <div className="px-2 md:pl-4 md:pr-6 md:pt-6">
+        {/* Header */}
+        <div className="flex flex-col gap-3 md:flex-row md:justify-between md:items-center mb-6">
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-semibold">Notifications</h1>
@@ -270,19 +271,21 @@ const filteredNotifications = notifications.filter((notification) => {
             </div>
             <p className="text-sm text-gray-500">{userName} / notifications</p>
           </div>
-          <div className="flex items-center gap-4">
-            <button className="p-2 rounded-full hover:bg-gray-200 transition-colors relative cursor-pointer">
-              <FaBell className="text-xl text-gray-400" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
-            </button>
-            <button className="p-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer">
-              <FaCog className="text-xl text-gray-400" />
-            </button>
-            <div className="relative w-66 max-w-md">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+            <div className="flex items-center gap-2">
+              <button className="p-2 rounded-full hover:bg-gray-200 transition-colors relative cursor-pointer">
+                <FaBell className="text-xl text-gray-400" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+              <button className="p-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer">
+                <FaCog className="text-xl text-gray-400" />
+              </button>
+            </div>
+            <div className="relative w-full max-w-xs">
               <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg" />
               <input
                 type="text"
@@ -297,40 +300,39 @@ const filteredNotifications = notifications.filter((notification) => {
 
         {/* Filter tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto cursor-pointer">
-     {[
-  { key: 'all', label: 'All',   count: notifications.filter(
-      (n) =>
-        !n.isRead &&
-        !(n.type === 'message' && n.sender._id === currentUserId)
-    ).length, },
-  {
-    key: 'unread',
-    label: 'Unread',
-    count: notifications.filter(
-      (n) =>
-        !n.isRead &&
-        !(n.type === 'message' && n.sender._id === currentUserId)
-    ).length,
-  },
-  {
-    key: 'messages',
-    label: 'Messages',
-    count: notifications.filter(
-      (n) => n.type === 'message' && n.sender._id !== currentUserId
-    ).length,
-  },
-  {
-    key: 'announcements',
-    label: 'Announcements',
-    count: notifications.filter((n) => n.type === 'announcement').length,
-  },
-  {
-    key: 'meetings',
-    label: 'Meetings',
-    count: notifications.filter((n) => n.type === 'meeting').length,
-  },
-].map((tab) => (
- 
+          {[
+            { key: 'all', label: 'All', count: notifications.filter(
+                (n) =>
+                  !n.isRead &&
+                  !(n.type === 'message' && n.sender._id === currentUserId)
+              ).length, },
+            {
+              key: 'unread',
+              label: 'Unread',
+              count: notifications.filter(
+                (n) =>
+                  !n.isRead &&
+                  !(n.type === 'message' && n.sender._id === currentUserId)
+              ).length,
+            },
+            {
+              key: 'messages',
+              label: 'Messages',
+              count: notifications.filter(
+                (n) => n.type === 'message' && n.sender._id !== currentUserId
+              ).length,
+            },
+            {
+              key: 'announcements',
+              label: 'Announcements',
+              count: notifications.filter((n) => n.type === 'announcement').length,
+            },
+            {
+              key: 'meetings',
+              label: 'Meetings',
+              count: notifications.filter((n) => n.type === 'meeting').length,
+            },
+          ].map((tab) => (
             <button
               key={tab.key}
               onClick={() => setFilter(tab.key as any)}
@@ -345,6 +347,7 @@ const filteredNotifications = notifications.filter((notification) => {
           ))}
         </div>
 
+        {/* Notifications List */}
         {Object.keys(groupedNotifications).length === 0 ? (
           <div className="text-center py-12">
             <FaBell className="mx-auto text-4xl text-gray-300 mb-4" />
@@ -369,18 +372,18 @@ const filteredNotifications = notifications.filter((notification) => {
                     <div
                       key={item._id}
                       onClick={() => handleNotificationClick(item._id)}
-                      className={`flex items-start gap-3 border rounded-lg p-4 bg-white shadow-sm cursor-pointer transition-all hover:shadow-md ${
+                      className={`flex  sm:flex-row items-start gap-3 border rounded-lg p-4 bg-white shadow-sm cursor-pointer transition-all hover:shadow-md ${
                         !item.isRead ? 'border-blue-200 bg-blue-50' : 'border-gray-200'
-                      } ${item.type === 'announcement' ? '' : ''} ${item.type === 'meeting' ? '' : ''}`}
+                      }`}
                     >
-                      <div className={`w-18 h-18 flex items-center justify-center rounded-lg overflow-hidden bg-white`}>
+                      <div className="w-14 h-14 flex items-center justify-center rounded-lg overflow-hidden bg-white flex-shrink-0">
                         {getNotificationIcon(item.type || 'general', item.sender.role)}
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex  sm:flex-row sm:items-center gap-1 mb-1">
                           <p className="font-semibold text-sm text-gray-800 truncate">
-                           {item.type === 'meeting' ? item.className : item.sender.name}
+                            {item.type === 'meeting' ? item.className : item.sender.name}
                           </p>
                           {item.type === 'announcement' && (
                             <span className="text-xs bg-[rgba(45,156,219,0.5)] text-white px-2 py-1 rounded-full">
@@ -392,31 +395,29 @@ const filteredNotifications = notifications.filter((notification) => {
                               Meeting
                             </span>
                           )}
-                          <span className="text-xs text-gray-500"></span>
                         </div>
 
                         <p className="text-gray-600 text-sm mb-2 line-clamp-2">{item.content}</p>
                         {/* Show meeting details */}
                         {item.type === 'meeting' && (
                           <div className="text-xs text-gray-500 mb-1">
-    
                             {/* <div>Date: {new Date(item.timestamp).toLocaleString()}</div>
                             <div>Duration: {item.duration} min</div> */}
                           </div>
                         )}
 
                         <div className="flex items-center justify-between">
- <p className="text-xs text-gray-400">
-  {new Date(item.timestamp).toLocaleString('en-IN', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true,
-    timeZone: 'Asia/Kolkata', // Force IST
-  })}
-</p>
+                          <p className="text-xs text-gray-400">
+                            {new Date(item.timestamp).toLocaleString('en-IN', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              hour12: true,
+                              timeZone: 'Asia/Kolkata',
+                            })}
+                          </p>
                         </div>
                       </div>
 
@@ -436,7 +437,7 @@ const filteredNotifications = notifications.filter((notification) => {
             ))
         )}
       </div>
-    </AppLayout>
+    </div>
   );
 };
 

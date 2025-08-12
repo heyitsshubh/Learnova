@@ -71,10 +71,19 @@ const Sidebar: React.FC = () => {
     <>
       {/* Mobile Header */}
       <div className="md:hidden flex items-center justify-between bg-[#333333] text-white px-4 py-3">
-        <div className="flex items-center space-x-2">
-          <Image src="/logooo.svg" alt="learnOva Logo" width={28} height={28} />
-          <span className="text-lg font-bold">learnOva</span>
-        </div>
+          <div className="flex items-center space-x-3">
+            <div className="relative w-10 h-10 flex-shrink-0 bg-white rounded-full p-1 flex items-center justify-center">
+              <Image
+                src="/logooo.svg"
+                alt="learnOva Logo"
+                width={24}
+                height={24}
+                className="object-contain"
+                style={{ filter: 'brightness(0) saturate(100%)' }}
+              />
+            </div>
+            <h1 className="text-xl font-bold text-white">learnOva</h1>
+          </div>
         <button onClick={() => setIsOpen(!isOpen)}>
           <FaBars size={20} />
         </button>
