@@ -9,10 +9,10 @@ const assignmentStatusData = [
 
 export default function AssignmentStatusBarChart() {
   return (
-    <div className="bg-white rounded-lg shadow p-4 flex flex-col h-full">
+    <div className=" rounded-lg shadow p-4 w-[500px] h-[300px]">
       <h3 className="text-base font-semibold text-gray-700 mb-4">Assignments Status</h3>
       <div className="flex-1 flex items-center">
-        <ResponsiveContainer width="100%" height={140}>
+        <ResponsiveContainer width="100%" height={210}>
           <BarChart
             data={assignmentStatusData}
             layout="vertical"

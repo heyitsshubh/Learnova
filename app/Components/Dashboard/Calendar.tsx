@@ -35,7 +35,7 @@ export default function Calendar() {
     date.getFullYear() === selected.getFullYear();
 
   return (
-    <div className="bg-white rounded-xl p-4 shadow flex flex-col gap-2">
+    <div className="bg-white rounded-xl p-4 shadow flex flex-col gap-2 ml-[-90px] w-[330px] h-[235px]">
       <div className="flex items-center justify-between mb-2">
         <button
           onClick={handlePrevWeek}

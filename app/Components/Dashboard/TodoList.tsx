@@ -21,7 +21,7 @@ export default function TodoList() {
   };
 
   return (
-    <div className="bg-white rounded-xl p-4 shadow max-h-screen">
+    <div className="bg-white rounded-xl p-4 shadow h-76 overflow-y-auto w-[350px]">
       <h3 className="text-base font-medium text-gray-700 mb-2">To-Do List</h3>
       <form onSubmit={handleAdd}>
         <input
