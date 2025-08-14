@@ -216,9 +216,8 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
     console.log('🔍 Initial transport state:', {
       id: sendTransport.id,
       connectionState: sendTransport.connectionState,
-      iceConnectionState: sendTransport.iceConnectionState,
-      iceGatheringState: sendTransport.iceGatheringState,
-      dtlsState: sendTransport.dtlsState
+      iceConnectionState: sendTransport.connectionState,
+      iceGatheringState: sendTransport.iceGatheringState
     });
 
     sendTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
@@ -226,8 +225,8 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
         console.log('🔗 Send transport connect event fired!');
         console.log('🔍 Connect event - transport state:', {
           connectionState: sendTransport.connectionState,
-          dtlsState: sendTransport.dtlsState,
-          iceConnectionState: sendTransport.iceConnectionState
+          iceGatheringState: sendTransport.iceGatheringState,
+          iceConnectionState: sendTransport.connectionState
         });
         
         socket?.emit('connect_transport', {
@@ -267,7 +266,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
       }
     });
 
-    sendTransport.on('iceconnectionstatechange', (state) => {
+    sendTransport.on('connectionstatechange', (state) => {
       console.log('🧊 Send transport ICE connection state:', state);
     });
 
@@ -275,12 +274,6 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
       console.log('🧊 Send transport ICE gathering state:', state);
     });
 
-    sendTransport.on('dtlsstatechange', (state) => {
-      console.log('🔒 Send transport DTLS state:', state);
-      if (state === 'connected') {
-        console.log('🔒 DTLS is connected - transport should be ready!');
-      }
-    });
     
     sendTransport.on('produce', async ({ kind, rtpParameters }, callback, errback) => {
       try {
@@ -314,8 +307,8 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
     setTimeout(() => {
       console.log('🔍 After 2 seconds - transport state:', {
         connectionState: sendTransport.connectionState,
-        dtlsState: sendTransport.dtlsState,
-        iceConnectionState: sendTransport.iceConnectionState,
+        iceGatheringState: sendTransport.iceGatheringState,
+        iceConnectionState: sendTransport.connectionState,
         readyState: transportReadyRef.current.send
       });
     }, 2000);
@@ -454,8 +447,6 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
   // 🔥 DEBUG: Show current transport state
   console.log('🔍 Current transport state before producing:', {
     connectionState: sendTransportRef.current.connectionState,
-    dtlsState: sendTransportRef.current.dtlsState,
-    iceConnectionState: sendTransportRef.current.iceConnectionState,
     readyFlag: transportReadyRef.current.send
   });
 
@@ -467,30 +458,27 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
     const checkInterval = 100;
     let waited = 0;
     
-    while (!transportReadyRef.current.send && waited < maxWait) {
-      if (waited % 1000 === 0) { // Log every second
-        console.log(`⏳ Still waiting... ${waited/1000}s elapsed. Transport state:`, {
-          connectionState: sendTransportRef.current.connectionState,
-          dtlsState: sendTransportRef.current.dtlsState,
-          iceConnectionState: sendTransportRef.current.iceConnectionState,
-          readyFlag: transportReadyRef.current.send
-        });
+      while (!transportReadyRef.current.send && waited < maxWait) {
+        if (waited % 1000 === 0) { // Log every second
+          console.log(`⏳ Still waiting... ${waited/1000}s elapsed. Transport state:`, {
+            connectionState: sendTransportRef.current.connectionState,
+            iceConnectionState: sendTransportRef.current.connectionState,
+            readyFlag: transportReadyRef.current.send
+          });
+        }
+        await new Promise(resolve => setTimeout(resolve, checkInterval));
+        waited += checkInterval;
       }
-      await new Promise(resolve => setTimeout(resolve, checkInterval));
-      waited += checkInterval;
+  
+      if (!transportReadyRef.current.send) {
+        console.error('❌ Send transport did not become ready in time. Final state:', {
+          connectionState: sendTransportRef.current.connectionState
+        });
+        throw new Error('Send transport did not become ready in time');
+      }
     }
-    
-    if (!transportReadyRef.current.send) {
-      console.error('❌ Send transport did not become ready in time. Final state:', {
-        connectionState: sendTransportRef.current.connectionState,
-        dtlsState: sendTransportRef.current.dtlsState,
-        iceConnectionState: sendTransportRef.current.iceConnectionState
-      });
-      throw new Error('Send transport did not become ready in time');
-    }
-  }
-
-  console.log('🚀 Send transport is ready, starting production...');
+  
+    console.log('🚀 Send transport is ready, starting production...');
     try {
       // Produce video track
       if (videoTrack && !producersRef.current.has('video')) {
@@ -518,7 +506,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
         
         console.log('✅ Video producer created - ID:', videoProducer.id);
       }
-
+  
       // Produce audio track
       if (audioTrack && !producersRef.current.has('audio')) {
         console.log('🎤 Producing audio...');
@@ -541,7 +529,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
         
         console.log('✅ Audio producer created - ID:', audioProducer.id);
       }
-
+  
       console.log('✅ Media production completed successfully');
     } catch (error) {
       console.error('Error producing media:', error);
@@ -549,6 +537,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
       throw error;
     }
   }, []);
+
 
   // Consumer creation - simplified but functional
   const consumeRemoteMedia = useCallback(async (
