@@ -251,14 +251,13 @@ const createSendTransport = useCallback(async (transportParams: any) => {
       }
     });
 
-    sendTransport.on('dtlsstatechange', (state) => {
-      console.log('🔒 Send transport DTLS state:', state);
-    });
+    // sendTransport.on('dtlsstatechange', (state) => {
+    //   console.log('🔒 Send transport DTLS state:', state);
+    // });
 
-    sendTransport.on('iceconnectionstatechange', (state) => {
-      console.log('🧊 Send transport ICE connection state:', state);
-    });
-    
+    // NOTE: mediasoup-client Transport does not support 'iceconnectionstatechange' event.
+    // If you need ICE state info, use 'connectionstatechange' or 'icegatheringstatechange' if needed.
+
     sendTransport.on('produce', async ({ kind, rtpParameters }, callback, errback) => {
       try {
         console.log(`🎬 Transport produce event - creating ${kind} producer on server...`);
@@ -418,8 +417,8 @@ const createSendTransport = useCallback(async (transportParams: any) => {
 
   console.log('🔍 Transport state before producing:', {
     connectionState: sendTransportRef.current.connectionState,
-    dtlsState: sendTransportRef.current.dtlsState,
-    iceConnectionState: sendTransportRef.current.iceConnectionState
+    dtlsState: sendTransportRef.current.iceGatheringState,
+    iceConnectionState: sendTransportRef.current.connectionState
   });
 
   // 🔥 DON'T WAIT - Just start producing! MediaSoup will trigger connect event automatically
