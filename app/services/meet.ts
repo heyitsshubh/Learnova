@@ -30,7 +30,7 @@ export const scheduleMeet = async (data: ScheduleMeetPayload) => {
   const token = getTokenOrRedirect();
   try {
     const response = await axios.post(
-      'https://project2-zphf.onrender.com/api/meetings/schedule',
+      'https://api.heyitsshubh.me/api/meetings/schedule',
       data,
       {
         headers: {
@@ -49,7 +49,7 @@ export const fetchMeetingsByClass = async (classId: string) => {
   const token = getTokenOrRedirect();
   try {
     const response = await axios.get(
-      `https://project2-zphf.onrender.com/api/meetings/class/${classId}`,
+      `https://api.heyitsshubh.me/api/meetings/class/${classId}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -67,7 +67,7 @@ export const startMeeting = async (meetingId: string) => {
   const token = getTokenOrRedirect();
   try {
     const response = await axios.post(
-      `https://project2-zphf.onrender.com/api/meetings/${meetingId}/start`,
+      `https://api.heyitsshubh.me/api/meetings/${meetingId}/start`,
       { status: 'active' },
       {
         headers: {
@@ -86,7 +86,7 @@ export const joinMeeting = async (meetingId: string) => {
   const token = getTokenOrRedirect();
   try {
     const response = await axios.post(
-      `https://project2-zphf.onrender.com/api/meetings/${meetingId}/join`,
+      `https://api.heyitsshubh.me/api/meetings/${meetingId}/join`,
       {},
       {
         headers: {

@@ -48,7 +48,7 @@ export const fetchMessages = async (classId: string): Promise<Message[]> => {
   try {
     const token = getTokenOrRedirect();
     const response = await axios.get<ApiResponse>(
-      `https://project2-zphf.onrender.com/api/class/${classId}/messages`,
+      `https://api.heyitsshubh.me/api/class/${classId}/messages`,
       {
         headers: {
           Authorization: `Bearer ${token}`,

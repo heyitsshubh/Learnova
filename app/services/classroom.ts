@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { getAccessToken } from '../utils/token';
 
-const API_URL = 'https://project2-zphf.onrender.com/api/class/';
+const API_URL = 'https://api.heyitsshubh.me/api/class/';
 
 const redirectToLogin = () => {
   if (typeof window !== 'undefined') {
@@ -35,7 +35,7 @@ export const createClass = async (formData: {
 export const joinClassByCode = async (classCode: string) => {
   const token = getTokenOrRedirect();
   const res = await axios.post(
-    'https://project2-zphf.onrender.com/api/class/join-by-code',
+    'hhttps://api.heyitsshubh.me/api/class/join-by-code',
     { classCode },
     {
       headers: {
@@ -49,7 +49,7 @@ export const joinClassByCode = async (classCode: string) => {
 export const getJoinedClasses = async (userId: string) => {
   const token = getTokenOrRedirect();
   const res = await axios.get(
-    `https://project2-zphf.onrender.com/api/class/all?userId=${userId}&filter=joined`,
+    `https://api.heyitsshubh.me/api/class/all?userId=${userId}&filter=joined`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
   return res.data;
@@ -58,7 +58,7 @@ export const getJoinedClasses = async (userId: string) => {
 export const getCreatedClasses = async (userId: string) => {
   const token = getTokenOrRedirect();
   const res = await axios.get(
-    `https://project2-zphf.onrender.com/api/class/all?userId=${userId}&filter=created`,
+    `https://api.heyitsshubh.me/api/class/all?userId=${userId}&filter=created`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
   return res.data;
@@ -67,7 +67,7 @@ export const getCreatedClasses = async (userId: string) => {
 export const deleteClass = async (classId: string) => {
   const token = getTokenOrRedirect();
   const res = await axios.delete(
-    `https://project2-zphf.onrender.com/api/class/${classId}`,
+    `https://api.heyitsshubh.me/api/class/${classId}`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
   return res.data;
@@ -77,7 +77,7 @@ export const getClassmates = async (classId: string) => {
   if (!classId) throw new Error('classId is required');
   const token = getTokenOrRedirect();
   const res = await axios.get(
-    `https://project2-zphf.onrender.com/api/class/classmates/${classId}`,
+    `https://api.heyitsshubh.me/api/class/classmates/${classId}`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
   return Array.isArray(res.data) ? res.data : res.data.classmates;
@@ -86,7 +86,7 @@ export const getClassmates = async (classId: string) => {
 export const leaveClass = async (classId: string) => {
   const token = getTokenOrRedirect();
   const res = await axios.post(
-    'https://project2-zphf.onrender.com/api/class/leave',
+    'https://api.heyitsshubh.me/api/class/leave',
     { classId },
     { headers: { Authorization: `Bearer ${token}` } }
   );

@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { getAccessToken } from '../utils/token';
 
-const API_URL = 'https://project2-zphf.onrender.com/api/assign';
+const API_URL = 'https://api.heyitsshubh.me/api/assign';
 
 const redirectToLogin = () => {
   if (typeof window !== 'undefined') {

@@ -23,7 +23,7 @@ class SocketService {
 
     if (!this.socket) {
       try {
-        this.socket = io('https://project2-zphf.onrender.com', {
+        this.socket = io('https://api.heyitsshubh.me', {
           auth: { token },
           autoConnect: true,
           timeout: 20000,

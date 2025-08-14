@@ -21,7 +21,7 @@ export const refreshAccessToken = async () => {
     throw new Error('No refresh token found');
   }
   try {
-    const res = await axios.post('https://project2-zphf.onrender.com/api/auth/refresh', {
+    const res = await axios.post('https://api.heyitsshubh.me/api/auth/refresh', {
       refreshToken,
     });
     const { accessToken } = res.data;

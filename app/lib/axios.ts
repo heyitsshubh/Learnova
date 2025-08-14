@@ -2,7 +2,7 @@ import axios from 'axios';
 import { getAccessToken } from '../utils/token';
 
 const instance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'https://project2-zphf.onrender.com/api/auth',
+  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.heyitsshubh.me/api/auth',
   headers: {
     'Content-Type': 'application/json',
   },
