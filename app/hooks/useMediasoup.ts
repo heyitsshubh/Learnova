@@ -122,6 +122,9 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
   const isInitializedRef = useRef(false);
   const pendingConsumersRef = useRef<Set<string>>(new Set());
   
+  // 🔥 CRITICAL: Add transport ready tracking back
+  const transportReadyRef = useRef({ send: false, recv: false });
+  
   // Computed states
   const isVideoCallReady = connectionState === ConnectionState.CONNECTED;
   const isConnecting = [ConnectionState.INITIALIZING, ConnectionState.CONNECTING, ConnectionState.RECONNECTING].includes(connectionState);
@@ -189,7 +192,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
     }
   }, []);
 
-  // 🔥 FIXED: Simplified transport creation without complex ICE server handling
+  // 🔥 FIXED: Transport creation with proper connection handling
   const createSendTransport = useCallback(async (transportParams: any) => {
     try {
       if (!deviceRef.current) throw new Error('Device not initialized');
@@ -233,6 +236,18 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
           errback(error as Error);
         }
       });
+
+      // 🔥 CRITICAL: Add DTLS state change handler to track when transport is ready
+      sendTransport.on('dtlsstatechange', (dtlsState) => {
+        console.log('📡 Send transport DTLS state:', dtlsState);
+        if (dtlsState === 'connected') {
+          transportReadyRef.current.send = true;
+          console.log('✅ Send transport is now ready for producing');
+        } else if (dtlsState === 'failed') {
+          transportReadyRef.current.send = false;
+          setErrorWithType('TRANSPORT', 'Send transport DTLS failed', true);
+        }
+      });
       
       sendTransport.on('produce', async ({ kind, rtpParameters }, callback, errback) => {
         try {
@@ -262,6 +277,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
       sendTransport.on('connectionstatechange', (state) => {
         console.log('📡 Send transport connection state:', state);
         if (state === 'failed' || state === 'disconnected') {
+          transportReadyRef.current.send = false;
           setErrorWithType('TRANSPORT', 'Send transport connection failed', true);
         }
       });
@@ -320,9 +336,22 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
         }
       });
 
+      // 🔥 CRITICAL: Add DTLS state change handler
+      recvTransport.on('dtlsstatechange', (dtlsState) => {
+        console.log('📡 Receive transport DTLS state:', dtlsState);
+        if (dtlsState === 'connected') {
+          transportReadyRef.current.recv = true;
+          console.log('✅ Receive transport is now ready for consuming');
+        } else if (dtlsState === 'failed') {
+          transportReadyRef.current.recv = false;
+          setErrorWithType('TRANSPORT', 'Receive transport DTLS failed', true);
+        }
+      });
+
       recvTransport.on('connectionstatechange', (state) => {
         console.log('📡 Receive transport connection state:', state);
         if (state === 'failed' || state === 'disconnected') {
+          transportReadyRef.current.recv = false;
           setErrorWithType('TRANSPORT', 'Receive transport connection failed', true);
         }
       });
@@ -377,6 +406,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
     }
   }, []);
 
+  // 🔥 FIXED: Proper wait for transport ready state
   const produceMedia = useCallback(async () => {
     if (!sendTransportRef.current || !localStreamRef.current) {
       console.warn('Cannot produce media - missing transport or stream');
@@ -392,6 +422,26 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
       videoId: videoTrack?.id,
       audioId: audioTrack?.id
     });
+
+    // 🔥 FIXED: Wait for transport to be ready with timeout
+    if (!transportReadyRef.current.send) {
+      console.log('⏳ Waiting for send transport to be ready...');
+      
+      const maxWait = 10000; // 10 seconds
+      const checkInterval = 100; // 100ms
+      let waited = 0;
+      
+      while (!transportReadyRef.current.send && waited < maxWait) {
+        await new Promise(resolve => setTimeout(resolve, checkInterval));
+        waited += checkInterval;
+      }
+      
+      if (!transportReadyRef.current.send) {
+        throw new Error('Send transport did not become ready in time');
+      }
+    }
+
+    console.log('🚀 Send transport is ready, starting production...');
 
     try {
       // Produce video track
@@ -444,14 +494,15 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
         console.log('✅ Audio producer created - ID:', audioProducer.id);
       }
 
-      console.log('✅ Media production completed');
+      console.log('✅ Media production completed successfully');
     } catch (error) {
       console.error('Error producing media:', error);
       setErrorWithType('PRODUCER', 'Failed to produce media', true, error);
+      throw error;
     }
   }, []);
 
-  // 🔥 COMPLETELY FIXED: Consumer creation with proper stream handling
+  // Consumer creation - simplified but functional
   const consumeRemoteMedia = useCallback(async (
     producerId: string, 
     producerSocketId: string, 
@@ -462,6 +513,24 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
       if (!recvTransportRef.current || !deviceRef.current) {
         console.warn('Cannot consume - missing transport or device');
         return;
+      }
+
+      // Wait for receive transport to be ready
+      if (!transportReadyRef.current.recv) {
+        console.log('⏳ Waiting for receive transport to be ready...');
+        const maxWait = 5000;
+        const checkInterval = 100;
+        let waited = 0;
+        
+        while (!transportReadyRef.current.recv && waited < maxWait) {
+          await new Promise(resolve => setTimeout(resolve, checkInterval));
+          waited += checkInterval;
+        }
+        
+        if (!transportReadyRef.current.recv) {
+          console.warn('Receive transport not ready, skipping consumption');
+          return;
+        }
       }
 
       // Prevent duplicate consumption
@@ -508,7 +577,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
         
         consumersRef.current.set(consumer.id, consumer);
 
-        // 🔥 CRITICAL: Ensure consumer is not paused and track is properly handled
+        // Ensure consumer is not paused
         if (consumer.paused) {
           console.log(`▶️ Resuming consumer: ${kind}`);
           consumer.resume();
@@ -524,7 +593,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
           trackReadyState: consumer.track?.readyState
         });
 
-        // 🔥 CRITICAL FIX: Update peers state with proper stream handling
+        // Update peers state with proper stream handling
         setPeers(prevPeers => {
           const existingPeerIndex = prevPeers.findIndex(p => p.id === producerSocketId);
           const updatedPeers = [...prevPeers];
@@ -535,7 +604,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
             existingPeer.consumers = new Map(existingPeer.consumers);
             existingPeer.consumers.set(consumer.id, consumer);
             
-            // 🔥 CRITICAL: Create completely new stream and add track
+            // Create completely new stream and add track
             const newStream = new MediaStream();
             
             // First add all existing tracks
@@ -560,13 +629,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
             
             updatedPeers[existingPeerIndex] = existingPeer;
             
-            console.log(`[UPDATE] Updated peer ${producerName} with ${kind} track:`, {
-              streamId: newStream.id,
-              tracksCount: newStream.getTracks().length,
-              videoTracks: newStream.getVideoTracks().length,
-              audioTracks: newStream.getAudioTracks().length,
-              tracks: newStream.getTracks().map(t => `${t.kind}:${t.id}:${t.readyState}`)
-            });
+            console.log(`[UPDATE] Updated peer ${producerName} with ${kind} track`);
           } else {
             // Create new peer
             const newStream = new MediaStream();
@@ -585,13 +648,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
             
             updatedPeers.push(newPeer);
             
-            console.log(`[NEW] Created peer ${producerName} with ${kind} track:`, {
-              streamId: newStream.id,
-              tracksCount: newStream.getTracks().length,
-              videoTracks: newStream.getVideoTracks().length,
-              audioTracks: newStream.getAudioTracks().length,
-              tracks: newStream.getTracks().map(t => `${t.kind}:${t.id}:${t.readyState}`)
-            });
+            console.log(`[NEW] Created peer ${producerName} with ${kind} track`);
           }
           
           return updatedPeers;
@@ -674,6 +731,9 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
     setConnectionState(ConnectionState.CONNECTING);
     clearError();
     isInitializedRef.current = true;
+    
+    // Reset transport ready state
+    transportReadyRef.current = { send: false, recv: false };
     
     console.log('🎥 Starting video call setup for class:', classId);
     
@@ -798,6 +858,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
     setIsAudioEnabled(true);
     isInitializedRef.current = false;
     pendingConsumersRef.current.clear();
+    transportReadyRef.current = { send: false, recv: false };
     clearError();
 
     hasJoinedClassRef.current = false;
@@ -860,7 +921,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
     }
   }, []);
 
-  // 🔥 FIXED: Socket event handlers with proper stream management
+  // Socket event handlers with proper stream management
   useEffect(() => {
     if (!socket) return;
     
@@ -1030,6 +1091,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
       isInitializedRef.current = false;
       hasJoinedClassRef.current = false;
       setHasJoinedClass(false);
+      transportReadyRef.current = { send: false, recv: false };
       clearError();
       joinVideoCall();
     }
