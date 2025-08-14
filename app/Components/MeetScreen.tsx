@@ -23,84 +23,90 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
     clearError,
     isVideoEnabled,
     isAudioEnabled,
-    joinClass, // Add this to the hook
-    isConnected, // <-- Make sure useMediasoup returns this!
+    joinClass,
+    isConnected,
     hasJoinedClass
-  } = useMediasoup(classId, userId, token); // Pass userId and token
-
-  useEffect(() => {
-  console.log('Current peers:', peers);
-  peers.forEach(peer => {
-    console.log(
-      `Peer: ${peer.name || peer.id}, Tracks:`,
-      peer.stream.getTracks().map(t => `${t.kind}:${t.id}`)
-    );
-    // Add this to check for video tracks specifically
-    console.log(
-      `Peer: ${peer.name || peer.id}, Video tracks:`,
-      peer.stream.getVideoTracks()
-    );
-  });
-}, [peers]);
+  } = useMediasoup(classId, userId, token);
 
   const [meetingDuration, setMeetingDuration] = useState(0);
   const [showParticipants, setShowParticipants] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-
   const meetingStartTimeRef = useRef<Date | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // 🔥 FIXED: Track remote video refs for better debugging
+  const remoteVideoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
 
-  // Join class first on component mount, but only when socket is connected
-  // useEffect(() => {
-  //   const handleJoinClass = async () => {
-  //     try {
-  //       console.log('🏫 Joining class first...');
-  //       await joinClass();
-  //       setHasJoinedClass(true);
-  //       console.log('✅ Class joined successfully');
-  //     } catch (error) {
-  //       console.error('Failed to join class:', error);
-  //     }
-  //   };
-
-  //   if (!hasJoinedClass && isConnected) {
-  //     handleJoinClass();
-  //   }
-  // }, [joinClass, hasJoinedClass, isConnected]);
+  // Join class automatically when socket connects
   useEffect(() => {
-  if (isConnected) {
-    joinClass();
-  }
-}, [joinClass, isConnected]);
+    if (isConnected && !hasJoinedClass) {
+      console.log('🔌 Socket connected, joining class...');
+      joinClass().catch(error => {
+        console.error('Failed to join class on connect:', error);
+      });
+    }
+  }, [joinClass, isConnected, hasJoinedClass]);
 
-  // Attach local video stream with better error handling
+  // 🔥 CRITICAL FIX: Better local video attachment
   useEffect(() => {
     const attachLocalVideo = async () => {
       if (localVideoRef.current && localStreamRef.current) {
         try {
-          // Ensure the video element is ready
-          localVideoRef.current.srcObject = localStreamRef.current;
+          console.log('📹 Attaching local video stream...', {
+            streamId: localStreamRef.current.id,
+            tracks: localStreamRef.current.getTracks().map(t => `${t.kind}:${t.id}:${t.readyState}`)
+          });
 
-          // Force video to play if paused
-          if (localVideoRef.current.paused) {
-            try {
-              await localVideoRef.current.play();
-              console.log('📹 Local video started playing');
-            } catch (playError) {
-              console.warn('Video autoplay prevented:', playError);
-              // This is often blocked by browsers, but the video will still show
+          // 🔥 FIX: Always set srcObject first
+          localVideoRef.current.srcObject = localStreamRef.current;
+          
+          // 🔥 FIX: Add metadata loaded handler
+          const handleMetadataLoaded = () => {
+            console.log('📹 Local video metadata loaded');
+            if (localVideoRef.current && localVideoRef.current.paused) {
+              localVideoRef.current.play().catch(e => {
+                console.warn('Local video autoplay prevented (this is usually fine):', e);
+              });
             }
+          };
+
+          localVideoRef.current.addEventListener('loadedmetadata', handleMetadataLoaded, { once: true });
+          
+          // 🔥 FIX: Force load if metadata is already available
+          if (localVideoRef.current.readyState >= 1) {
+            handleMetadataLoaded();
           }
+
+          console.log('✅ Local video attached successfully');
         } catch (error) {
-          console.error('Error attaching local video:', error);
+          console.error('❌ Error attaching local video:', error);
         }
       }
     };
 
-    attachLocalVideo();
+    if (isVideoCallReady && localStreamRef.current) {
+      attachLocalVideo();
+    }
   }, [localStreamRef.current, isVideoCallReady]);
+
+  // 🔥 CRITICAL FIX: Comprehensive peer video handling
+  useEffect(() => {
+    console.log('🔄 Peers updated:', peers.length);
+    peers.forEach((peer, index) => {
+      console.log(`Peer ${index + 1}:`, {
+        id: peer.id,
+        name: peer.name,
+        streamId: peer.stream.id,
+        videoTracks: peer.stream.getVideoTracks().length,
+        audioTracks: peer.stream.getAudioTracks().length,
+        isVideoEnabled: peer.isVideoEnabled,
+        isAudioEnabled: peer.isAudioEnabled,
+        tracks: peer.stream.getTracks().map(t => `${t.kind}:${t.id}:${t.readyState}:${t.enabled}`)
+      });
+    });
+  }, [peers]);
 
   // Track meeting duration
   useEffect(() => {
@@ -199,7 +205,87 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
       console.warn('Must join class before joining video call');
       return;
     }
+    console.log('🎯 Joining video call...');
     joinVideoCall();
+  };
+
+  // 🔥 FIXED: Remote video component with better error handling
+  const RemoteVideo: React.FC<{ peer: any; index: number }> = ({ peer, index }) => {
+    const videoRef = useRef<HTMLVideoElement>(null);
+
+    useEffect(() => {
+      if (videoRef.current && peer.stream) {
+        const videoElement = videoRef.current;
+        
+        console.log(`🎥 Attaching stream for peer ${peer.name}:`, {
+          streamId: peer.stream.id,
+          tracks: peer.stream.getTracks().map(t => `${t.kind}:${t.id}:${t.readyState}:${t.enabled}`)
+        });
+
+        // 🔥 CRITICAL: Set srcObject
+        videoElement.srcObject = peer.stream;
+        
+        // Store ref for debugging
+        remoteVideoRefs.current.set(peer.id, videoElement);
+
+        const handleLoadedMetadata = () => {
+          console.log(`📹 Remote video metadata loaded for ${peer.name}`);
+          if (videoElement.paused) {
+            videoElement.play().catch(e => {
+              console.warn(`Remote video autoplay prevented for ${peer.name}:`, e);
+            });
+          }
+        };
+
+        const handleCanPlay = () => {
+          console.log(`▶️ Remote video can play for ${peer.name}`);
+        };
+
+        const handleError = (e: Event) => {
+          console.error(`❌ Remote video error for ${peer.name}:`, e);
+        };
+
+        videoElement.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true });
+        videoElement.addEventListener('canplay', handleCanPlay, { once: true });
+        videoElement.addEventListener('error', handleError);
+
+        // 🔥 FIX: Force load if metadata is already available
+        if (videoElement.readyState >= 1) {
+          handleLoadedMetadata();
+        }
+
+        return () => {
+          videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
+          videoElement.removeEventListener('canplay', handleCanPlay);
+          videoElement.removeEventListener('error', handleError);
+          remoteVideoRefs.current.delete(peer.id);
+        };
+      }
+    }, [peer.stream, peer.name, peer.id]);
+
+    return (
+      <div key={peer.id} className="relative bg-gray-800 rounded-lg overflow-hidden">
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted={false}
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute bottom-2 left-2 bg-black/50 px-2 py-1 rounded text-sm">
+          {peer.name || `User ${peer.id.slice(-4)}`}
+          {!peer.isVideoEnabled && " (Video Off)"}
+          {!peer.isAudioEnabled && " (Muted)"}
+        </div>
+        {!peer.isVideoEnabled && (
+          <div className="absolute inset-0 bg-gray-700 flex items-center justify-center">
+            <div className="w-16 h-16 bg-gray-600 rounded-full flex items-center justify-center text-2xl">
+              👤
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
 
   // Error display
@@ -319,21 +405,10 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
               <div className="relative bg-gray-800 rounded-lg overflow-hidden">
                 <video
                   ref={localVideoRef}
-                  autoPlay      
+                  autoPlay
                   playsInline
+                  muted // Local video should be muted to prevent feedback
                   className="w-full h-full object-cover"
-                  onLoadedMetadata={() => {
-                    console.log('📹 Local video metadata loaded');
-                    // Ensure video plays
-                    if (localVideoRef.current) {
-                      localVideoRef.current.play().catch(e =>
-                        console.warn('Video play prevented:', e)
-                      );
-                    }
-                  }}
-                  onError={(e) => {
-                    console.error('Local video error:', e);
-                  }}
                 />
                 <div className="absolute bottom-2 left-2 bg-black/50 px-2 py-1 rounded text-sm">
                   You {!isVideoEnabled && "(Video Off)"} {!isAudioEnabled && "(Muted)"}
@@ -348,66 +423,9 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
               </div>
 
               {/* Remote Videos */}
-        {peers.map((peer) => (
-  <div key={peer.id} className="relative bg-gray-800 rounded-lg overflow-hidden">
-    <video
-      autoPlay
-      playsInline
-      muted={false} // Don't mute remote videos
-      className="w-full h-full object-cover"
-      ref={(el) => {
-        if (el && peer.stream) {
-          console.log(`🎥 Setting stream for peer ${peer.name}:`, peer.stream);
-          
-          // 🔥 FIX: Ensure stream has tracks before setting
-          const videoTracks = peer.stream.getVideoTracks();
-          const audioTracks = peer.stream.getAudioTracks();
-          
-          console.log(`Peer ${peer.name} tracks:`, {
-            video: videoTracks.length,
-            audio: audioTracks.length,
-            videoEnabled: videoTracks[0]?.enabled,
-            audioEnabled: audioTracks[0]?.enabled
-          });
-          
-          if (videoTracks.length > 0 || audioTracks.length > 0) {
-            el.srcObject = peer.stream;
-            
-            // 🔥 FIX: Handle video load and play properly
-            el.onloadedmetadata = () => {
-              console.log(`Video metadata loaded for ${peer.name}`);
-              el.play().catch(e => {
-                console.warn('Remote video autoplay prevented:', e);
-                // Show play button for user interaction if needed
-              });
-            };
-            
-            el.onerror = (e) => {
-              console.error(`Video error for ${peer.name}:`, e);
-            };
-          } else {
-            console.warn(`No tracks available for peer ${peer.name}`);
-          }
-        }
-      }}
-      onError={(e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
-        console.error(`Video element error for ${peer.name}:`, e);
-      }}
-    />
-              <div className="absolute bottom-2 left-2 bg-black/50 px-2 py-1 rounded text-sm">
-      {peer.name || `User ${peer.id.slice(-4)}`}
-      {!peer.isVideoEnabled && " (Video Off)"}
-      {!peer.isAudioEnabled && " (Muted)"}
-    </div>
-    {!peer.isVideoEnabled && (
-      <div className="absolute inset-0 bg-gray-700 flex items-center justify-center">
-        <div className="w-16 h-16 bg-gray-600 rounded-full flex items-center justify-center text-2xl">
-          👤
-        </div>
-      </div>
-    )}
-  </div>
-))}
+              {peers.map((peer, index) => (
+                <RemoteVideo key={peer.id} peer={peer} index={index} />
+              ))}
             </div>
           )}
         </div>
@@ -500,6 +518,22 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
             <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
             Reconnecting...
           </div>
+        </div>
+      )}
+
+      {/* 🔥 DEBUG: Add debug info in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="fixed top-20 right-4 bg-black/80 text-white p-2 rounded text-xs max-w-sm">
+          <div>Connection: {connectionState}</div>
+          <div>Class Joined: {hasJoinedClass ? 'Yes' : 'No'}</div>
+          <div>Peers: {peers.length}</div>
+          <div>Local Stream: {localStreamRef.current ? 'Active' : 'None'}</div>
+          <div>Video Ready: {isVideoCallReady ? 'Yes' : 'No'}</div>
+          {localStreamRef.current && (
+            <div>
+              Local Tracks: V:{localStreamRef.current.getVideoTracks().length} A:{localStreamRef.current.getAudioTracks().length}
+            </div>
+          )}
         </div>
       )}
     </div>
