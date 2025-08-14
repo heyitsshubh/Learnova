@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axiosInstance from '../lib/axios';
 import { getAccessToken } from '../utils/token';
 
 const API_URL = 'https://api.heyitsshubh.me/api/class/';
@@ -23,72 +23,58 @@ export const createClass = async (formData: {
   subject: string;
   privacy: 'public' | 'private';
 }) => {
-  const token = getTokenOrRedirect();
-  const response = await axios.post(API_URL, formData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  getTokenOrRedirect(); // Just to check and redirect if needed
+  const response = await axiosInstance.post(API_URL, formData);
   return response.data;
 };
 
 export const joinClassByCode = async (classCode: string) => {
-  const token = getTokenOrRedirect();
-  const res = await axios.post(
-    'hhttps://api.heyitsshubh.me/api/class/join-by-code',
-    { classCode },
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
+  getTokenOrRedirect();
+  const res = await axiosInstance.post(
+    'https://api.heyitsshubh.me/api/class/join-by-code',
+    { classCode }
   );
   return res.data;
 };
 
 export const getJoinedClasses = async (userId: string) => {
-  const token = getTokenOrRedirect();
-  const res = await axios.get(
-    `https://api.heyitsshubh.me/api/class/all?userId=${userId}&filter=joined`,
-    { headers: { Authorization: `Bearer ${token}` } }
+  getTokenOrRedirect();
+  const res = await axiosInstance.get(
+    `https://api.heyitsshubh.me/api/class/all?userId=${userId}&filter=joined`
   );
   return res.data;
 };
 
 export const getCreatedClasses = async (userId: string) => {
-  const token = getTokenOrRedirect();
-  const res = await axios.get(
-    `https://api.heyitsshubh.me/api/class/all?userId=${userId}&filter=created`,
-    { headers: { Authorization: `Bearer ${token}` } }
+  getTokenOrRedirect();
+  const res = await axiosInstance.get(
+    `https://api.heyitsshubh.me/api/class/all?userId=${userId}&filter=created`
   );
   return res.data;
 };
 
 export const deleteClass = async (classId: string) => {
-  const token = getTokenOrRedirect();
-  const res = await axios.delete(
-    `https://api.heyitsshubh.me/api/class/${classId}`,
-    { headers: { Authorization: `Bearer ${token}` } }
+  getTokenOrRedirect();
+  const res = await axiosInstance.delete(
+    `https://api.heyitsshubh.me/api/class/${classId}`
   );
   return res.data;
 };
 
 export const getClassmates = async (classId: string) => {
   if (!classId) throw new Error('classId is required');
-  const token = getTokenOrRedirect();
-  const res = await axios.get(
-    `https://api.heyitsshubh.me/api/class/classmates/${classId}`,
-    { headers: { Authorization: `Bearer ${token}` } }
+  getTokenOrRedirect();
+  const res = await axiosInstance.get(
+    `https://api.heyitsshubh.me/api/class/classmates/${classId}`
   );
   return Array.isArray(res.data) ? res.data : res.data.classmates;
 };
 
 export const leaveClass = async (classId: string) => {
-  const token = getTokenOrRedirect();
-  const res = await axios.post(
+  getTokenOrRedirect();
+  const res = await axiosInstance.post(
     'https://api.heyitsshubh.me/api/class/leave',
-    { classId },
-    { headers: { Authorization: `Bearer ${token}` } }
+    { classId }
   );
   return res.data;
 };

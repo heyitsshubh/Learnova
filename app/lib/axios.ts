@@ -1,22 +1,44 @@
 import axios from 'axios';
-import { getAccessToken } from '../utils/token';
+import { getAccessToken, refreshAccessToken, removeTokens } from '../utils/token';
 
-const instance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.heyitsshubh.me/api/auth',
-  headers: {
-    'Content-Type': 'application/json',
-  },
+const axiosInstance = axios.create({
+  baseURL: 'https://api.heyitsshubh.me/api',
+  headers: { 'Content-Type': 'application/json' },
 });
 
-// Add Authorization token to headers if exists
-instance.interceptors.request.use((config) => {
+// Attach access token to every request
+axiosInstance.interceptors.request.use(config => {
   const token = getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
-}, (error) => {
-  return Promise.reject(error);
 });
 
-export default instance;
+// Handle 401 errors and refresh token automatically
+axiosInstance.interceptors.response.use(
+  response => response,
+  async error => {
+    const originalRequest = error.config;
+    if (
+      error.response &&
+      error.response.status === 401 &&
+      !originalRequest._retry
+    ) {
+      originalRequest._retry = true;
+      try {
+        const newToken = await refreshAccessToken();
+        axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+        originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+        return axiosInstance(originalRequest);
+      } catch (refreshError) {
+        removeTokens();
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default axiosInstance;

@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axiosInstance from '../lib/axios';
 import { getAccessToken } from '../utils/token';
 
 export interface ScheduleMeetPayload {
@@ -27,16 +27,11 @@ const getTokenOrRedirect = () => {
 };
 
 export const scheduleMeet = async (data: ScheduleMeetPayload) => {
-  const token = getTokenOrRedirect();
+  getTokenOrRedirect();
   try {
-    const response = await axios.post(
+    const response = await axiosInstance.post(
       'https://api.heyitsshubh.me/api/meetings/schedule',
-      data,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      data
     );
     return response.data;
   } catch (error) {
@@ -46,15 +41,10 @@ export const scheduleMeet = async (data: ScheduleMeetPayload) => {
 };
 
 export const fetchMeetingsByClass = async (classId: string) => {
-  const token = getTokenOrRedirect();
+  getTokenOrRedirect();
   try {
-    const response = await axios.get(
-      `https://api.heyitsshubh.me/api/meetings/class/${classId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+    const response = await axiosInstance.get(
+      `https://api.heyitsshubh.me/api/meetings/class/${classId}`
     );
     return response.data;
   } catch (error) {
@@ -64,16 +54,11 @@ export const fetchMeetingsByClass = async (classId: string) => {
 };
 
 export const startMeeting = async (meetingId: string) => {
-  const token = getTokenOrRedirect();
+  getTokenOrRedirect();
   try {
-    const response = await axios.post(
+    const response = await axiosInstance.post(
       `https://api.heyitsshubh.me/api/meetings/${meetingId}/start`,
-      { status: 'active' },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      { status: 'active' }
     );
     return response.data;
   } catch (error) {
@@ -83,16 +68,11 @@ export const startMeeting = async (meetingId: string) => {
 };
 
 export const joinMeeting = async (meetingId: string) => {
-  const token = getTokenOrRedirect();
+  getTokenOrRedirect();
   try {
-    const response = await axios.post(
+    const response = await axiosInstance.post(
       `https://api.heyitsshubh.me/api/meetings/${meetingId}/join`,
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      {}
     );
     return response.data;
   } catch (error) {

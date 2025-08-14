@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axiosInstance from '../lib/axios';
 import { getAccessToken } from '../utils/token';
 
 const API_URL = 'https://api.heyitsshubh.me/api/assign';
@@ -19,19 +19,18 @@ const getTokenOrRedirect = () => {
 };
 
 export const createAssignment = async (formData: FormData) => {
-  const token = getTokenOrRedirect();
+  getTokenOrRedirect();
 
   console.log("Sending assignment FormData:");
   for (const [key, value] of formData.entries()) {
     console.log(key, value);
   }
 
-  const res = await axios.post(
+  const res = await axiosInstance.post(
     API_URL,
     formData,
     {
       headers: {
-        Authorization: `Bearer ${token}`,
         'Content-Type': 'multipart/form-data',
       },
     }
@@ -40,45 +39,34 @@ export const createAssignment = async (formData: FormData) => {
 };
 
 export const getAssignments = async (classId: string) => {
-  const token = getTokenOrRedirect();
-  const res = await axios.get(
-    `${API_URL}/class/${classId}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
+  getTokenOrRedirect();
+  const res = await axiosInstance.get(
+    `${API_URL}/class/${classId}`
   );
   return res.data;
 };
 
 export const deleteAssignment = async (assignmentId: string) => {
-  const token = getTokenOrRedirect();
-  const res = await axios.delete(
-    `${API_URL}/${assignmentId}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
+  getTokenOrRedirect();
+  const res = await axiosInstance.delete(
+    `${API_URL}/${assignmentId}`
   );
   return res.data;
 };
 
 export const submitAssignment = async (assignmentId: string, submissionData: FormData) => {
-  const token = getTokenOrRedirect();
+  getTokenOrRedirect();
 
   console.log("Submitting assignment with data:");
   for (const [key, value] of submissionData.entries()) {
     console.log(key, value);
   }
 
-  const res = await axios.post(
+  const res = await axiosInstance.post(
     `${API_URL}/${assignmentId}/submit`,
     submissionData,
     {
       headers: {
-        Authorization: `Bearer ${token}`,
         'Content-Type': 'multipart/form-data',
       },
     }

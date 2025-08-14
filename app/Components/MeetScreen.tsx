@@ -24,7 +24,8 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
     isVideoEnabled,
     isAudioEnabled,
     joinClass, // Add this to the hook
-    isConnected // <-- Make sure useMediasoup returns this!
+    isConnected, // <-- Make sure useMediasoup returns this!
+    hasJoinedClass
   } = useMediasoup(classId, userId, token); // Pass userId and token
 
   useEffect(() => {
@@ -45,29 +46,34 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
   const [meetingDuration, setMeetingDuration] = useState(0);
   const [showParticipants, setShowParticipants] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [hasJoinedClass, setHasJoinedClass] = useState(false);
+
 
   const meetingStartTimeRef = useRef<Date | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Join class first on component mount, but only when socket is connected
-  useEffect(() => {
-    const handleJoinClass = async () => {
-      try {
-        console.log('🏫 Joining class first...');
-        await joinClass();
-        setHasJoinedClass(true);
-        console.log('✅ Class joined successfully');
-      } catch (error) {
-        console.error('Failed to join class:', error);
-      }
-    };
+  // useEffect(() => {
+  //   const handleJoinClass = async () => {
+  //     try {
+  //       console.log('🏫 Joining class first...');
+  //       await joinClass();
+  //       setHasJoinedClass(true);
+  //       console.log('✅ Class joined successfully');
+  //     } catch (error) {
+  //       console.error('Failed to join class:', error);
+  //     }
+  //   };
 
-    if (!hasJoinedClass && isConnected) {
-      handleJoinClass();
-    }
-  }, [joinClass, hasJoinedClass, isConnected]);
+  //   if (!hasJoinedClass && isConnected) {
+  //     handleJoinClass();
+  //   }
+  // }, [joinClass, hasJoinedClass, isConnected]);
+  useEffect(() => {
+  if (isConnected) {
+    joinClass();
+  }
+}, [joinClass, isConnected]);
 
   // Attach local video stream with better error handling
   useEffect(() => {

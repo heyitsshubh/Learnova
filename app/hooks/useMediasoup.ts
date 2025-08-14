@@ -49,7 +49,8 @@ export interface UseMediasoupReturn {
   clearError: () => void;
   isVideoEnabled: boolean;
   isAudioEnabled: boolean;
-    isConnected: boolean;
+  isConnected: boolean;
+  hasJoinedClass: boolean;
 }
 
 // Retry configuration
@@ -125,6 +126,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
   const [error, setError] = useState<MediasoupError | null>(null);
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
+  const [hasJoinedClass, setHasJoinedClass] = useState(false);
   
   // Retry mechanism refs
   const retryCountRef = useRef<number>(0);
@@ -202,6 +204,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
     });
     cleanupFunctionsRef.current = [];
   };
+  
 
   // Join class function
   const joinClass = useCallback(async (): Promise<void> => {
@@ -495,6 +498,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
         
         addCleanupFunction(cleanupVideoProducer);
         console.log('✅ Video producer created successfully');
+        console.log(`[produceMedia] Producer created: kind=video, id=${videoProducer.id}`);
       }
 
       // Produce audio track
@@ -623,7 +627,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
             
             updatedPeers.push(newPeer);
           }
-          
+            console.log('[setPeers] Updated peers:', updatedPeers);
           return updatedPeers;
         });
 
@@ -861,6 +865,9 @@ socket.emit('get_existing_producers', { classId });
     isInitializedRef.current = false;
     pendingConsumersRef.current.clear();
     clearError();
+
+   hasJoinedClassRef.current = false;
+  setHasJoinedClass(false);
     
     console.log('✅ Video call cleanup completed');
   }, [socket]);
@@ -932,10 +939,12 @@ socket.emit('get_existing_producers', { classId });
       // This will be handled in the joinVideoCall flow via the promise
     };
 
-    const handleClassJoined = (data: any) => {
-      console.log('🏫 Class joined successfully:', data);
-      hasJoinedClassRef.current = true;
-    };
+   
+  const handleClassJoined = (data: any) => {
+    console.log('🏫 Class joined successfully:', data);
+    hasJoinedClassRef.current = true;
+    setHasJoinedClass(true); // <-- Add this line here
+  };
     
     const handleNewProducer = (data: { producerId: string, kind: 'audio' | 'video', producerSocketId: string, producerName: string }) => {
       console.log('🆕 New producer available:', data.kind, 'from', data.producerName);
@@ -1110,6 +1119,8 @@ socket.emit('get_existing_producers', { classId });
       isRetryingRef.current = false;
       isInitializedRef.current = false;
       hasJoinedClassRef.current = false; // Reset class join status on retry
+      hasJoinedClassRef.current = false;
+      setHasJoinedClass(false);
       clearError();
       joinVideoCall();
     }
@@ -1132,6 +1143,7 @@ socket.emit('get_existing_producers', { classId });
     clearError,
     isVideoEnabled,
     isAudioEnabled,
-    isConnected
+    isConnected,
+    hasJoinedClass
   };
 }

@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axiosInstance from '../lib/axios';
 import { getAccessToken } from '../utils/token';
 
 export interface Message {
@@ -46,14 +46,9 @@ const getTokenOrRedirect = () => {
 
 export const fetchMessages = async (classId: string): Promise<Message[]> => {
   try {
-    const token = getTokenOrRedirect();
-    const response = await axios.get<ApiResponse>(
-      `https://api.heyitsshubh.me/api/class/${classId}/messages`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+    getTokenOrRedirect();
+    const response = await axiosInstance.get<ApiResponse>(
+      `https://api.heyitsshubh.me/api/class/${classId}/messages`
     );
 
     if (response.status === 200) {
@@ -77,4 +72,4 @@ export const fetchMessages = async (classId: string): Promise<Message[]> => {
     console.error('Error fetching messages:', error);
     return [];
   }
-};
+}
