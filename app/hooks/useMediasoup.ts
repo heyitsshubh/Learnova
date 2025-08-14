@@ -263,6 +263,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
       return false;
     }
   }, [scheduleRetry]);
+  
 
   const createSendTransport = useCallback(async (transportParams: any) => {
     try {
@@ -280,8 +281,9 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
       if (sendTransportRef.current && !sendTransportRef.current.closed) {
         return sendTransportRef.current;
       }
-      
-      const sendTransport = deviceRef.current.createSendTransport(transportParams);
+   const sendTransport = deviceRef.current.createSendTransport(transportParams);
+  
+// mediasoup-client will use iceServers if present
       
       sendTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
         try {
@@ -555,7 +557,10 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
       
       try {
         // Send consume request
-        socket?.emit('start_consuming', { producerId });
+     socket?.emit('start_consuming', {
+  producerId,
+  consumerRtpCapabilities: deviceRef.current?.rtpCapabilities
+});
 
         // Wait for consumer_created event
         const consumerData = await createEventPromise(
@@ -740,18 +745,24 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
         rtpCapabilities: deviceRef.current.rtpCapabilities 
       });
       
-      const transports = await createEventPromise(
-        socket,
-        'transports_created',
-        'transport_create_error',
-        20000
-      ) as { sendTransport: any; recvTransport: any };
+  const transports = await createEventPromise(
+  socket,
+  'transports_created',
+  'transport_create_error',
+  20000
+) as { sendTransport: any; recvTransport: any; iceServers?: any[] };
+
+// Pass iceServers to transport creation
+await Promise.all([
+  createSendTransport({ ...transports.sendTransport, iceServers: transports.iceServers }),
+  createReceiveTransport({ ...transports.recvTransport, iceServers: transports.iceServers })
+]);
       
       // Step 5: Create transports
-      await Promise.all([
-        createSendTransport(transports.sendTransport),
-        createReceiveTransport(transports.recvTransport)
-      ]);
+      // await Promise.all([
+      //   createSendTransport(transports.sendTransport),
+      //   createReceiveTransport(transports.recvTransport)
+      // ]);
       
       // Step 6: Start local stream and produce media
       await startLocalStream();

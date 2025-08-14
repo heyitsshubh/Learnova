@@ -27,7 +27,7 @@ interface Attachment {
 interface Assignment {
   _id: string;
   title: string;
-  description: string;
+  // description: string;
   dueDate: string;
   maxMarks: number;
   instructions: string;
@@ -42,14 +42,14 @@ interface Assignment {
 }
 
 function MaterialCard({
-  title,
-  subtitle,
+  // title,
+  // subtitle,
   icon,
   dueDate,
   attachments,
 }: {
-  title: string;
-  subtitle: string;
+  // title: string;
+  // subtitle: string;
   icon: React.ReactNode;
   dueDate?: string;
   attachments?: Attachment[];
@@ -60,8 +60,8 @@ function MaterialCard({
     <div className="cursor-pointer bg-white p-4 rounded-xl shadow hover:shadow-lg transition flex items-center gap-4">
       <div className="text-3xl text-purple-600 flex-shrink-0">{icon}</div>
       <div className="text-left flex-1">
-        <h3 className="font-semibold">{title}</h3>
-        <p className="text-sm text-gray-500">{subtitle}</p>
+        {/* <h3 className="font-semibold">{title}</h3>
+        <p className="text-sm text-gray-500">{subtitle}</p> */}
         {dueDate && <p className="text-xs text-gray-400 mt-1">Due: {new Date(dueDate).toLocaleDateString()}</p>}
         {hasAttachments ? (
           <div className="mt-2">
@@ -199,8 +199,8 @@ export default function AssignmentListPage({ params }: { params: Promise<{ class
                   transition={{ duration: 0.4, delay: idx * 0.08 }}
                 >
                   <MaterialCard
-                    title={assignment.title}
-                    subtitle={assignment.description}
+                    // title={assignment.title}
+                    // subtitle={assignment.description}
                     icon={
                       <Image
                         src="/books.svg"
