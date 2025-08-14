@@ -348,33 +348,66 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
               </div>
 
               {/* Remote Videos */}
-              {peers.map((peer) => (
-                <div key={peer.id} className="relative bg-gray-800 rounded-lg overflow-hidden">
-                  <video
-                    autoPlay
-                    playsInline
-                    className="w-full h-full object-cover"
-                      ref={(el) => {
+        {peers.map((peer) => (
+  <div key={peer.id} className="relative bg-gray-800 rounded-lg overflow-hidden">
+    <video
+      autoPlay
+      playsInline
+      muted={false} // Don't mute remote videos
+      className="w-full h-full object-cover"
+      ref={(el) => {
         if (el && peer.stream) {
-          el.srcObject = peer.stream;
-          el.play?.().catch(() => {});
+          console.log(`🎥 Setting stream for peer ${peer.name}:`, peer.stream);
+          
+          // 🔥 FIX: Ensure stream has tracks before setting
+          const videoTracks = peer.stream.getVideoTracks();
+          const audioTracks = peer.stream.getAudioTracks();
+          
+          console.log(`Peer ${peer.name} tracks:`, {
+            video: videoTracks.length,
+            audio: audioTracks.length,
+            videoEnabled: videoTracks[0]?.enabled,
+            audioEnabled: audioTracks[0]?.enabled
+          });
+          
+          if (videoTracks.length > 0 || audioTracks.length > 0) {
+            el.srcObject = peer.stream;
+            
+            // 🔥 FIX: Handle video load and play properly
+            el.onloadedmetadata = () => {
+              console.log(`Video metadata loaded for ${peer.name}`);
+              el.play().catch(e => {
+                console.warn('Remote video autoplay prevented:', e);
+                // Show play button for user interaction if needed
+              });
+            };
+            
+            el.onerror = (e) => {
+              console.error(`Video error for ${peer.name}:`, e);
+            };
+          } else {
+            console.warn(`No tracks available for peer ${peer.name}`);
+          }
         }
       }}
-                  />
-                  <div className="absolute bottom-2 left-2 bg-black/50 px-2 py-1 rounded text-sm">
-                    {peer.name || `User ${peer.id.slice(-4)}`}
-                    {!peer.isVideoEnabled && " (Video Off)"}
-                    {!peer.isAudioEnabled && " (Muted)"}
-                  </div>
-                  {!peer.isVideoEnabled && (
-                    <div className="absolute inset-0 bg-gray-700 flex items-center justify-center">
-                      <div className="w-16 h-16 bg-gray-600 rounded-full flex items-center justify-center text-2xl">
-                        👤
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
+      onError={(e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
+        console.error(`Video element error for ${peer.name}:`, e);
+      }}
+    />
+              <div className="absolute bottom-2 left-2 bg-black/50 px-2 py-1 rounded text-sm">
+      {peer.name || `User ${peer.id.slice(-4)}`}
+      {!peer.isVideoEnabled && " (Video Off)"}
+      {!peer.isAudioEnabled && " (Muted)"}
+    </div>
+    {!peer.isVideoEnabled && (
+      <div className="absolute inset-0 bg-gray-700 flex items-center justify-center">
+        <div className="w-16 h-16 bg-gray-600 rounded-full flex items-center justify-center text-2xl">
+          👤
+        </div>
+      </div>
+    )}
+  </div>
+))}
             </div>
           )}
         </div>
