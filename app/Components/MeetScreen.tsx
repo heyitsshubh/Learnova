@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useRef, useState } from "react";
 import { useMediasoup, ConnectionState } from "../hooks/useMediasoup";
 
@@ -103,7 +104,7 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
         audioTracks: peer.stream.getAudioTracks().length,
         isVideoEnabled: peer.isVideoEnabled,
         isAudioEnabled: peer.isAudioEnabled,
-        tracks: peer.stream.getTracks().map(t => `${t.kind}:${t.id}:${t.readyState}:${t.enabled}`)
+        tracks: peer.stream.getTracks().map((t: MediaStreamTrack) => `${t.kind}:${t.id}:${t.readyState}:${t.enabled}`)
       });
     });
   }, [peers]);
@@ -210,7 +211,7 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
   };
 
   // 🔥 FIXED: Remote video component with better error handling
-  const RemoteVideo: React.FC<{ peer: any; index: number }> = ({ peer, index }) => {
+  const RemoteVideo: React.FC<{ peer: any }> = ({ peer }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
 
     useEffect(() => {
@@ -219,7 +220,7 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
         
         console.log(`🎥 Attaching stream for peer ${peer.name}:`, {
           streamId: peer.stream.id,
-          tracks: peer.stream.getTracks().map(t => `${t.kind}:${t.id}:${t.readyState}:${t.enabled}`)
+          tracks: peer.stream.getTracks().map((t: MediaStreamTrack) => `${t.kind}:${t.id}:${t.readyState}:${t.enabled}`)
         });
 
         // 🔥 CRITICAL: Set srcObject
@@ -423,8 +424,8 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
               </div>
 
               {/* Remote Videos */}
-              {peers.map((peer, index) => (
-                <RemoteVideo key={peer.id} peer={peer} index={index} />
+              {peers.map((peer) => (
+                <RemoteVideo key={peer.id} peer={peer} />
               ))}
             </div>
           )}

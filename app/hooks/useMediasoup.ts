@@ -237,15 +237,19 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
         }
       });
 
-      // 🔥 CRITICAL: Add DTLS state change handler to track when transport is ready
-      sendTransport.on('dtlsstatechange', (dtlsState) => {
-        console.log('📡 Send transport DTLS state:', dtlsState);
-        if (dtlsState === 'connected') {
+      // 🔥 CRITICAL: Track DTLS state using connectionstatechange event
+      sendTransport.on('connectionstatechange', (state) => {
+        console.log('📡 Send transport connection state:', state);
+        if (state === 'connected') {
           transportReadyRef.current.send = true;
           console.log('✅ Send transport is now ready for producing');
-        } else if (dtlsState === 'failed') {
+        } else if (state === 'failed') {
           transportReadyRef.current.send = false;
           setErrorWithType('TRANSPORT', 'Send transport DTLS failed', true);
+        }
+        if (state === 'failed' || state === 'disconnected') {
+          transportReadyRef.current.send = false;
+          setErrorWithType('TRANSPORT', 'Send transport connection failed', true);
         }
       });
       
@@ -332,25 +336,21 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
           callback();
         } catch (error) {
           console.error('Error connecting receive transport:', error);
-          errback(error as Error);
-        }
-      });
-
-      // 🔥 CRITICAL: Add DTLS state change handler
-      recvTransport.on('dtlsstatechange', (dtlsState) => {
-        console.log('📡 Receive transport DTLS state:', dtlsState);
-        if (dtlsState === 'connected') {
+      // 🔥 CRITICAL: Track DTLS state using connectionstatechange event
+      recvTransport.on('connectionstatechange', (state) => {
+        console.log('📡 Receive transport connection state:', state);
+        if (state === 'connected') {
           transportReadyRef.current.recv = true;
           console.log('✅ Receive transport is now ready for consuming');
-        } else if (dtlsState === 'failed') {
+        } else if (state === 'failed') {
           transportReadyRef.current.recv = false;
           setErrorWithType('TRANSPORT', 'Receive transport DTLS failed', true);
         }
-      });
-
-      recvTransport.on('connectionstatechange', (state) => {
-        console.log('📡 Receive transport connection state:', state);
         if (state === 'failed' || state === 'disconnected') {
+          transportReadyRef.current.recv = false;
+          setErrorWithType('TRANSPORT', 'Receive transport connection failed', true);
+        }
+      });
           transportReadyRef.current.recv = false;
           setErrorWithType('TRANSPORT', 'Receive transport connection failed', true);
         }
