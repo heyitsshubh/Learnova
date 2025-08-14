@@ -191,7 +191,92 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
       return false;
     }
   }, []);
+ // 🔥 FIXED: Proper wait for transport ready state
+  const produceMedia = useCallback(async () => {
+  if (!sendTransportRef.current || !localStreamRef.current) {
+    console.warn('Cannot produce media - missing transport or stream');
+    return;
+  }
 
+  const videoTrack = localStreamRef.current.getVideoTracks()[0];
+  const audioTrack = localStreamRef.current.getAudioTracks()[0];
+
+  console.log('🎬 Starting media production with tracks:', {
+    video: !!videoTrack,
+    audio: !!audioTrack,
+    videoId: videoTrack?.id,
+    audioId: audioTrack?.id
+  });
+
+  console.log('🔍 Transport state before producing:', {
+    connectionState: sendTransportRef.current.connectionState,
+    dtlsState: sendTransportRef.current.dtlsState,
+    iceConnectionState: sendTransportRef.current.iceConnectionState
+  });
+
+  // 🔥 DON'T WAIT - Just start producing! MediaSoup will trigger connect event automatically
+  try {
+    // Produce video track
+    if (videoTrack && !producersRef.current.has('video')) {
+      console.log('📹 Producing video... (this will trigger transport connection)');
+      const videoProducer = await sendTransportRef.current.produce({ 
+        track: videoTrack,
+        encodings: [
+          { maxBitrate: 500000, scalabilityMode: 'S1T3' },
+          { maxBitrate: 1000000, scalabilityMode: 'S1T3' },
+          { maxBitrate: 2000000, scalabilityMode: 'S1T3' }
+        ]
+      });
+      
+      producersRef.current.set('video', videoProducer);
+      
+      videoProducer.on('transportclose', () => {
+        console.log('Video producer transport closed');
+        producersRef.current.delete('video');
+      });
+      
+      videoProducer.on('trackended', () => {
+        console.log('Video producer track ended');
+        producersRef.current.delete('video');
+      });
+      
+      console.log('✅ Video producer created - ID:', videoProducer.id);
+    }
+
+    // Produce audio track
+    if (audioTrack && !producersRef.current.has('audio')) {
+      console.log('🎤 Producing audio... (this will also use the connected transport)');
+      const audioProducer = await sendTransportRef.current.produce({ 
+        track: audioTrack,
+        encodings: [{ maxBitrate: 128000 }]
+      });
+      
+      producersRef.current.set('audio', audioProducer);
+      
+      audioProducer.on('transportclose', () => {
+        console.log('Audio producer transport closed');
+        producersRef.current.delete('audio');
+      });
+      
+      audioProducer.on('trackended', () => {
+        console.log('Audio producer track ended');
+        producersRef.current.delete('audio');
+      });
+      
+      console.log('✅ Audio producer created - ID:', audioProducer.id);
+    }
+
+    console.log('✅ Media production completed successfully');
+    
+    // Now mark as ready since production succeeded
+    transportReadyRef.current.send = true;
+    
+  } catch (error) {
+    console.error('Error producing media:', error);
+    setErrorWithType('PRODUCER', 'Failed to produce media', true, error);
+    throw error;
+  }
+}, []);
   // 🔥 FIXED: Transport creation with proper connection handling
 const createSendTransport = useCallback(async (transportParams: any) => {
   try {
@@ -398,94 +483,6 @@ const createSendTransport = useCallback(async (transportParams: any) => {
       throw error;
     }
   }, []);
-
-  // 🔥 FIXED: Proper wait for transport ready state
-  const produceMedia = useCallback(async () => {
-  if (!sendTransportRef.current || !localStreamRef.current) {
-    console.warn('Cannot produce media - missing transport or stream');
-    return;
-  }
-
-  const videoTrack = localStreamRef.current.getVideoTracks()[0];
-  const audioTrack = localStreamRef.current.getAudioTracks()[0];
-
-  console.log('🎬 Starting media production with tracks:', {
-    video: !!videoTrack,
-    audio: !!audioTrack,
-    videoId: videoTrack?.id,
-    audioId: audioTrack?.id
-  });
-
-  console.log('🔍 Transport state before producing:', {
-    connectionState: sendTransportRef.current.connectionState,
-    dtlsState: sendTransportRef.current.dtlsState,
-    iceConnectionState: sendTransportRef.current.iceConnectionState
-  });
-
-  // 🔥 DON'T WAIT - Just start producing! MediaSoup will trigger connect event automatically
-  try {
-    // Produce video track
-    if (videoTrack && !producersRef.current.has('video')) {
-      console.log('📹 Producing video... (this will trigger transport connection)');
-      const videoProducer = await sendTransportRef.current.produce({ 
-        track: videoTrack,
-        encodings: [
-          { maxBitrate: 500000, scalabilityMode: 'S1T3' },
-          { maxBitrate: 1000000, scalabilityMode: 'S1T3' },
-          { maxBitrate: 2000000, scalabilityMode: 'S1T3' }
-        ]
-      });
-      
-      producersRef.current.set('video', videoProducer);
-      
-      videoProducer.on('transportclose', () => {
-        console.log('Video producer transport closed');
-        producersRef.current.delete('video');
-      });
-      
-      videoProducer.on('trackended', () => {
-        console.log('Video producer track ended');
-        producersRef.current.delete('video');
-      });
-      
-      console.log('✅ Video producer created - ID:', videoProducer.id);
-    }
-
-    // Produce audio track
-    if (audioTrack && !producersRef.current.has('audio')) {
-      console.log('🎤 Producing audio... (this will also use the connected transport)');
-      const audioProducer = await sendTransportRef.current.produce({ 
-        track: audioTrack,
-        encodings: [{ maxBitrate: 128000 }]
-      });
-      
-      producersRef.current.set('audio', audioProducer);
-      
-      audioProducer.on('transportclose', () => {
-        console.log('Audio producer transport closed');
-        producersRef.current.delete('audio');
-      });
-      
-      audioProducer.on('trackended', () => {
-        console.log('Audio producer track ended');
-        producersRef.current.delete('audio');
-      });
-      
-      console.log('✅ Audio producer created - ID:', audioProducer.id);
-    }
-
-    console.log('✅ Media production completed successfully');
-    
-    // Now mark as ready since production succeeded
-    transportReadyRef.current.send = true;
-    
-  } catch (error) {
-    console.error('Error producing media:', error);
-    setErrorWithType('PRODUCER', 'Failed to produce media', true, error);
-    throw error;
-  }
-}, []);
-
 
   // Consumer creation - simplified but functional
   const consumeRemoteMedia = useCallback(async (
