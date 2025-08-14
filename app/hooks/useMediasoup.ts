@@ -297,74 +297,70 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
   }, [socket]);
 
   const createReceiveTransport = useCallback(async (transportParams: any) => {
-    try {
-      if (!deviceRef.current) throw new Error('Device not initialized');
+  try {
+    if (!deviceRef.current) throw new Error('Device not initialized');
 
-      if (recvTransportRef.current && !recvTransportRef.current.closed) {
-        console.log('✅ Receive transport already exists');
-        return recvTransportRef.current;
-      }
-
-      console.log('📡 Creating receive transport...');
-
-      const recvTransport = deviceRef.current.createRecvTransport({
-        id: transportParams.id,
-        iceParameters: transportParams.iceParameters,
-        iceCandidates: transportParams.iceCandidates,
-        dtlsParameters: transportParams.dtlsParameters,
-        sctpParameters: transportParams.sctpParameters,
-      });
-      
-      recvTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
-        try {
-          console.log('🔗 Connecting receive transport...');
-          socket?.emit('connect_transport', {
-            transportId: recvTransport.id,
-            dtlsParameters,
-            direction: 'recv'
-          });
-          
-          await createEventPromise(
-            socket,
-            'transport_connected',
-            'transport_connect_error',
-            15000,
-            (data) => data.transportId === recvTransport.id && data.direction === 'recv'
-          );
-          
-          console.log('✅ Receive transport connected');
-          callback();
-        } catch (error) {
-          console.error('Error connecting receive transport:', error);
-      // 🔥 CRITICAL: Track DTLS state using connectionstatechange event
-      recvTransport.on('connectionstatechange', (state) => {
-        console.log('📡 Receive transport connection state:', state);
-        if (state === 'connected') {
-          transportReadyRef.current.recv = true;
-          console.log('✅ Receive transport is now ready for consuming');
-        } else if (state === 'failed') {
-          transportReadyRef.current.recv = false;
-          setErrorWithType('TRANSPORT', 'Receive transport DTLS failed', true);
-        }
-        if (state === 'failed' || state === 'disconnected') {
-          transportReadyRef.current.recv = false;
-          setErrorWithType('TRANSPORT', 'Receive transport connection failed', true);
-        }
-      });
-          transportReadyRef.current.recv = false;
-          setErrorWithType('TRANSPORT', 'Receive transport connection failed', true);
-        }
-      });
-
-      recvTransportRef.current = recvTransport;
-      console.log('✅ Receive transport created successfully');
-      return recvTransport;
-    } catch (error) {
-      console.error('Error creating receive transport:', error);
-      setErrorWithType('TRANSPORT', 'Failed to create receive transport', true, error);
-      throw error;
+    if (recvTransportRef.current && !recvTransportRef.current.closed) {
+      console.log('✅ Receive transport already exists');
+      return recvTransportRef.current;
     }
-  }, [socket]);
+
+    console.log('📡 Creating receive transport...');
+
+    const recvTransport = deviceRef.current.createRecvTransport({
+      id: transportParams.id,
+      iceParameters: transportParams.iceParameters,
+      iceCandidates: transportParams.iceCandidates,
+      dtlsParameters: transportParams.dtlsParameters,
+      sctpParameters: transportParams.sctpParameters,
+    });
+    
+    recvTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
+      try {
+        console.log('🔗 Connecting receive transport...');
+        socket?.emit('connect_transport', {
+          transportId: recvTransport.id,
+          dtlsParameters,
+          direction: 'recv'
+        });
+        
+        await createEventPromise(
+          socket,
+          'transport_connected',
+          'transport_connect_error',
+          15000,
+          (data) => data.transportId === recvTransport.id && data.direction === 'recv'
+        );
+        
+        console.log('✅ Receive transport connected');
+        callback();
+      } catch (error) {
+        console.error('Error connecting receive transport:', error);
+        errback(error as Error);
+      }
+    });
+
+    // 🔥 FIXED: Move connectionstatechange handler OUTSIDE the connect handler
+    recvTransport.on('connectionstatechange', (state) => {
+      console.log('📡 Receive transport connection state:', state);
+      if (state === 'connected') {
+        transportReadyRef.current.recv = true;
+        console.log('✅ Receive transport is now ready for consuming');
+      } else if (state === 'failed' || state === 'disconnected') {
+        transportReadyRef.current.recv = false;
+        setErrorWithType('TRANSPORT', 'Receive transport connection failed', true);
+      }
+    });
+
+    recvTransportRef.current = recvTransport;
+    console.log('✅ Receive transport created successfully');
+    return recvTransport;
+  } catch (error) {
+    console.error('Error creating receive transport:', error);
+    setErrorWithType('TRANSPORT', 'Failed to create receive transport', true, error);
+    throw error;
+  }
+}, [socket]);
   
   const startLocalStream = useCallback(async (): Promise<MediaStream> => {
     try {
