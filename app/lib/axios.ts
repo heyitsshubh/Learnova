@@ -2,7 +2,7 @@ import axios from 'axios';
 import { getAccessToken, refreshAccessToken, removeTokens } from '../utils/token';
 
 const axiosInstance = axios.create({
-  baseURL: 'https://api.heyitsshubh.me/api',
+  baseURL: 'https://api.heyitsshubh.me/api/auth',
   headers: { 'Content-Type': 'application/json' },
 });
 
