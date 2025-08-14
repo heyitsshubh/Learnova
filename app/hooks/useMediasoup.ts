@@ -193,170 +193,165 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
   }, []);
 
   // 🔥 FIXED: Transport creation with proper connection handling
-const createSendTransport = useCallback(async (transportParams: any) => {
-  try {
-    if (!deviceRef.current) throw new Error('Device not initialized');
-    
-    if (sendTransportRef.current && !sendTransportRef.current.closed) {
-      console.log('✅ Send transport already exists');
-      return sendTransportRef.current;
+  const createSendTransport = useCallback(async (transportParams: any) => {
+    try {
+      if (!deviceRef.current) throw new Error('Device not initialized');
+      
+      if (sendTransportRef.current && !sendTransportRef.current.closed) {
+        console.log('✅ Send transport already exists');
+        return sendTransportRef.current;
+      }
+
+      console.log('🚛 Creating send transport...');
+      
+      const sendTransport = deviceRef.current.createSendTransport({
+        id: transportParams.id,
+        iceParameters: transportParams.iceParameters,
+        iceCandidates: transportParams.iceCandidates,
+        dtlsParameters: transportParams.dtlsParameters,
+        sctpParameters: transportParams.sctpParameters,
+      });
+      
+      sendTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
+        try {
+          console.log('🔗 Send transport connect event fired! MediaSoup is connecting...');
+          
+          socket?.emit('connect_transport', {
+            transportId: sendTransport.id,
+            dtlsParameters,
+            direction: 'send'
+          });
+          
+          console.log('📤 Emitted connect_transport, waiting for server response...');
+          
+          const response = await createEventPromise(
+            socket,
+            'transport_connected',
+            'transport_connect_error',
+            15000,
+            (data) => data.transportId === sendTransport.id && data.direction === 'send'
+          );
+          
+          console.log('✅ Server confirmed transport connection:', response);
+          callback();
+        } catch (error) {
+          console.error('❌ Error in send transport connect handler:', error);
+          errback(error as Error);
+        }
+      });
+
+      // Connection state tracking for debugging
+      sendTransport.on('connectionstatechange', (state) => {
+        console.log('📡 Send transport connectionstatechange:', state);
+        if (state === 'connected') {
+          transportReadyRef.current.send = true;
+          console.log('✅ Send transport fully connected!');
+        } else if (state === 'failed' || state === 'disconnected') {
+          transportReadyRef.current.send = false;
+          console.log('❌ Send transport connection failed/disconnected');
+          setErrorWithType('TRANSPORT', 'Send transport connection failed', true);
+        }
+      });
+
+      sendTransport.on('produce', async ({ kind, rtpParameters }, callback, errback) => {
+        try {
+          console.log(`🎬 Transport produce event - creating ${kind} producer on server...`);
+          socket?.emit('start_producing', {
+            kind,
+            rtpParameters,
+          });
+          
+          const response = await createEventPromise(
+            socket,
+            'producer_created',
+            'producer_create_error',
+            15000,
+            (data) => data.kind === kind
+          );
+          
+          const producerResponse = response as { producerId: string };
+          console.log(`✅ Server created producer: ${kind} - ID: ${producerResponse.producerId}`);
+          callback({ id: producerResponse.producerId });
+        } catch (error) {
+          console.error(`❌ Error in produce event handler for ${kind}:`, error);
+          errback(error as Error);
+        }
+      });
+
+      sendTransportRef.current = sendTransport;
+      console.log('✅ Send transport created (will connect when producing)');
+      return sendTransport;
+    } catch (error) {
+      console.error('Error creating send transport:', error);
+      setErrorWithType('TRANSPORT', 'Failed to create send transport', true, error);
+      throw error;
     }
+  }, [socket]);
 
-    console.log('🚛 Creating send transport...');
-    
-    const sendTransport = deviceRef.current.createSendTransport({
-      id: transportParams.id,
-      iceParameters: transportParams.iceParameters,
-      iceCandidates: transportParams.iceCandidates,
-      dtlsParameters: transportParams.dtlsParameters,
-      sctpParameters: transportParams.sctpParameters,
-    });
-    
-    sendTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
-      try {
-        console.log('🔗 Send transport connect event fired! MediaSoup is connecting...');
-        
-        socket?.emit('connect_transport', {
-          transportId: sendTransport.id,
-          dtlsParameters,
-          direction: 'send'
-        });
-        
-        console.log('📤 Emitted connect_transport, waiting for server response...');
-        
-        const response = await createEventPromise(
-          socket,
-          'transport_connected',
-          'transport_connect_error',
-          15000,
-          (data) => data.transportId === sendTransport.id && data.direction === 'send'
-        );
-        
-        console.log('✅ Server confirmed transport connection:', response);
-        callback();
-      } catch (error) {
-        console.error('❌ Error in send transport connect handler:', error);
-        errback(error as Error);
-      }
-    });
-
-    // Connection state tracking for debugging
-    sendTransport.on('connectionstatechange', (state) => {
-      console.log('📡 Send transport connectionstatechange:', state);
-      if (state === 'connected') {
-        console.log('✅ Send transport fully connected!');
-      } else if (state === 'failed' || state === 'disconnected') {
-        console.log('❌ Send transport connection failed/disconnected');
-        setErrorWithType('TRANSPORT', 'Send transport connection failed', true);
-      }
-    });
-
-    // sendTransport.on('dtlsstatechange', (state) => {
-    //   console.log('🔒 Send transport DTLS state:', state);
-    // });
-
-    // NOTE: mediasoup-client Transport does not support 'iceconnectionstatechange' event.
-    // If you need ICE state info, use 'connectionstatechange' or 'icegatheringstatechange' if needed.
-
-    sendTransport.on('produce', async ({ kind, rtpParameters }, callback, errback) => {
-      try {
-        console.log(`🎬 Transport produce event - creating ${kind} producer on server...`);
-        socket?.emit('start_producing', {
-          kind,
-          rtpParameters,
-        });
-        
-        const response = await createEventPromise(
-          socket,
-          'producer_created',
-          'producer_create_error',
-          15000,
-          (data) => data.kind === kind
-        );
-        
-        const producerResponse = response as { producerId: string };
-        console.log(`✅ Server created producer: ${kind} - ID: ${producerResponse.producerId}`);
-        callback({ id: producerResponse.producerId });
-      } catch (error) {
-        console.error(`❌ Error in produce event handler for ${kind}:`, error);
-        errback(error as Error);
-      }
-    });
-
-    sendTransportRef.current = sendTransport;
-    console.log('✅ Send transport created (will connect when producing)');
-    return sendTransport;
-  } catch (error) {
-    console.error('Error creating send transport:', error);
-    setErrorWithType('TRANSPORT', 'Failed to create send transport', true, error);
-    throw error;
-  }
-}, [socket]);
   const createReceiveTransport = useCallback(async (transportParams: any) => {
-  try {
-    if (!deviceRef.current) throw new Error('Device not initialized');
+    try {
+      if (!deviceRef.current) throw new Error('Device not initialized');
 
-    if (recvTransportRef.current && !recvTransportRef.current.closed) {
-      console.log('✅ Receive transport already exists');
-      return recvTransportRef.current;
+      if (recvTransportRef.current && !recvTransportRef.current.closed) {
+        console.log('✅ Receive transport already exists');
+        return recvTransportRef.current;
+      }
+
+      console.log('📡 Creating receive transport...');
+
+      const recvTransport = deviceRef.current.createRecvTransport({
+        id: transportParams.id,
+        iceParameters: transportParams.iceParameters,
+        iceCandidates: transportParams.iceCandidates,
+        dtlsParameters: transportParams.dtlsParameters,
+        sctpParameters: transportParams.sctpParameters,
+      });
+      
+      recvTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
+        try {
+          console.log('🔗 Connecting receive transport...');
+          socket?.emit('connect_transport', {
+            transportId: recvTransport.id,
+            dtlsParameters,
+            direction: 'recv'
+          });
+          
+          await createEventPromise(
+            socket,
+            'transport_connected',
+            'transport_connect_error',
+            15000,
+            (data) => data.transportId === recvTransport.id && data.direction === 'recv'
+          );
+          
+          console.log('✅ Receive transport connected');
+          callback();
+        } catch (error) {
+          console.error('Error connecting receive transport:', error);
+          errback(error as Error);
+        }
+      });
+
+      recvTransport.on('connectionstatechange', (state) => {
+        console.log('📡 Receive transport connection state:', state);
+        if (state === 'connected') {
+          transportReadyRef.current.recv = true;
+          console.log('✅ Receive transport is now ready for consuming');
+        } else if (state === 'failed' || state === 'disconnected') {
+          transportReadyRef.current.recv = false;
+          setErrorWithType('TRANSPORT', 'Receive transport connection failed', true);
+        }
+      });
+
+      recvTransportRef.current = recvTransport;
+      console.log('✅ Receive transport created successfully');
+      return recvTransport;
+    } catch (error) {
+      console.error('Error creating receive transport:', error);
+      setErrorWithType('TRANSPORT', 'Failed to create receive transport', true, error);
+      throw error;
     }
-
-    console.log('📡 Creating receive transport...');
-
-    const recvTransport = deviceRef.current.createRecvTransport({
-      id: transportParams.id,
-      iceParameters: transportParams.iceParameters,
-      iceCandidates: transportParams.iceCandidates,
-      dtlsParameters: transportParams.dtlsParameters,
-      sctpParameters: transportParams.sctpParameters,
-    });
-    
-    recvTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
-      try {
-        console.log('🔗 Connecting receive transport...');
-        socket?.emit('connect_transport', {
-          transportId: recvTransport.id,
-          dtlsParameters,
-          direction: 'recv'
-        });
-        
-        await createEventPromise(
-          socket,
-          'transport_connected',
-          'transport_connect_error',
-          15000,
-          (data) => data.transportId === recvTransport.id && data.direction === 'recv'
-        );
-        
-        console.log('✅ Receive transport connected');
-        callback();
-      } catch (error) {
-        console.error('Error connecting receive transport:', error);
-        errback(error as Error);
-      }
-    });
-
-    // 🔥 FIXED: Move connectionstatechange handler OUTSIDE the connect handler
-    recvTransport.on('connectionstatechange', (state) => {
-      console.log('📡 Receive transport connection state:', state);
-      if (state === 'connected') {
-        transportReadyRef.current.recv = true;
-        console.log('✅ Receive transport is now ready for consuming');
-      } else if (state === 'failed' || state === 'disconnected') {
-        transportReadyRef.current.recv = false;
-        setErrorWithType('TRANSPORT', 'Receive transport connection failed', true);
-      }
-    });
-
-    recvTransportRef.current = recvTransport;
-    console.log('✅ Receive transport created successfully');
-    return recvTransport;
-  } catch (error) {
-    console.error('Error creating receive transport:', error);
-    setErrorWithType('TRANSPORT', 'Failed to create receive transport', true, error);
-    throw error;
-  }
-}, [socket]);
+  }, [socket]);
   
   const startLocalStream = useCallback(async (): Promise<MediaStream> => {
     try {
@@ -400,91 +395,84 @@ const createSendTransport = useCallback(async (transportParams: any) => {
 
   // 🔥 FIXED: Proper wait for transport ready state
   const produceMedia = useCallback(async () => {
-  if (!sendTransportRef.current || !localStreamRef.current) {
-    console.warn('Cannot produce media - missing transport or stream');
-    return;
-  }
-
-  const videoTrack = localStreamRef.current.getVideoTracks()[0];
-  const audioTrack = localStreamRef.current.getAudioTracks()[0];
-
-  console.log('🎬 Starting media production with tracks:', {
-    video: !!videoTrack,
-    audio: !!audioTrack,
-    videoId: videoTrack?.id,
-    audioId: audioTrack?.id
-  });
-
-  console.log('🔍 Transport state before producing:', {
-    connectionState: sendTransportRef.current.connectionState,
-    dtlsState: sendTransportRef.current.iceGatheringState,
-    iceConnectionState: sendTransportRef.current.connectionState
-  });
-
-  // 🔥 DON'T WAIT - Just start producing! MediaSoup will trigger connect event automatically
-  try {
-    // Produce video track
-    if (videoTrack && !producersRef.current.has('video')) {
-      console.log('📹 Producing video... (this will trigger transport connection)');
-      const videoProducer = await sendTransportRef.current.produce({ 
-        track: videoTrack,
-        encodings: [
-          { maxBitrate: 500000, scalabilityMode: 'S1T3' },
-          { maxBitrate: 1000000, scalabilityMode: 'S1T3' },
-          { maxBitrate: 2000000, scalabilityMode: 'S1T3' }
-        ]
-      });
-      
-      producersRef.current.set('video', videoProducer);
-      
-      videoProducer.on('transportclose', () => {
-        console.log('Video producer transport closed');
-        producersRef.current.delete('video');
-      });
-      
-      videoProducer.on('trackended', () => {
-        console.log('Video producer track ended');
-        producersRef.current.delete('video');
-      });
-      
-      console.log('✅ Video producer created - ID:', videoProducer.id);
+    if (!sendTransportRef.current || !localStreamRef.current) {
+      console.warn('Cannot produce media - missing transport or stream');
+      return;
     }
 
-    // Produce audio track
-    if (audioTrack && !producersRef.current.has('audio')) {
-      console.log('🎤 Producing audio... (this will also use the connected transport)');
-      const audioProducer = await sendTransportRef.current.produce({ 
-        track: audioTrack,
-        encodings: [{ maxBitrate: 128000 }]
-      });
+    const videoTrack = localStreamRef.current.getVideoTracks()[0];
+    const audioTrack = localStreamRef.current.getAudioTracks()[0];
+
+    console.log('🎬 Starting media production with tracks:', {
+      video: !!videoTrack,
+      audio: !!audioTrack,
+      videoId: videoTrack?.id,
+      audioId: audioTrack?.id
+    });
+
+    // 🔥 DON'T WAIT - Just start producing! MediaSoup will trigger connect event automatically
+    try {
+      // Produce video track
+      if (videoTrack && !producersRef.current.has('video')) {
+        console.log('📹 Producing video... (this will trigger transport connection)');
+        const videoProducer = await sendTransportRef.current.produce({ 
+          track: videoTrack,
+          encodings: [
+            { maxBitrate: 500000, scalabilityMode: 'S1T3' },
+            { maxBitrate: 1000000, scalabilityMode: 'S1T3' },
+            { maxBitrate: 2000000, scalabilityMode: 'S1T3' }
+          ]
+        });
+        
+        producersRef.current.set('video', videoProducer);
+        
+        videoProducer.on('transportclose', () => {
+          console.log('Video producer transport closed');
+          producersRef.current.delete('video');
+        });
+        
+        videoProducer.on('trackended', () => {
+          console.log('Video producer track ended');
+          producersRef.current.delete('video');
+        });
+        
+        console.log('✅ Video producer created - ID:', videoProducer.id);
+      }
+
+      // Produce audio track
+      if (audioTrack && !producersRef.current.has('audio')) {
+        console.log('🎤 Producing audio... (this will also use the connected transport)');
+        const audioProducer = await sendTransportRef.current.produce({ 
+          track: audioTrack,
+          encodings: [{ maxBitrate: 128000 }]
+        });
+        
+        producersRef.current.set('audio', audioProducer);
+        
+        audioProducer.on('transportclose', () => {
+          console.log('Audio producer transport closed');
+          producersRef.current.delete('audio');
+        });
+        
+        audioProducer.on('trackended', () => {
+          console.log('Audio producer track ended');
+          producersRef.current.delete('audio');
+        });
+        
+        console.log('✅ Audio producer created - ID:', audioProducer.id);
+      }
+
+      console.log('✅ Media production completed successfully');
       
-      producersRef.current.set('audio', audioProducer);
+      // Now mark as ready since production succeeded
+      transportReadyRef.current.send = true;
       
-      audioProducer.on('transportclose', () => {
-        console.log('Audio producer transport closed');
-        producersRef.current.delete('audio');
-      });
-      
-      audioProducer.on('trackended', () => {
-        console.log('Audio producer track ended');
-        producersRef.current.delete('audio');
-      });
-      
-      console.log('✅ Audio producer created - ID:', audioProducer.id);
+    } catch (error) {
+      console.error('Error producing media:', error);
+      setErrorWithType('PRODUCER', 'Failed to produce media', true, error);
+      throw error;
     }
-
-    console.log('✅ Media production completed successfully');
-    
-    // Now mark as ready since production succeeded
-    transportReadyRef.current.send = true;
-    
-  } catch (error) {
-    console.error('Error producing media:', error);
-    setErrorWithType('PRODUCER', 'Failed to produce media', true, error);
-    throw error;
-  }
-}, []);
-
+  }, []);
 
   // Consumer creation - simplified but functional
   const consumeRemoteMedia = useCallback(async (
@@ -588,18 +576,16 @@ const createSendTransport = useCallback(async (transportParams: any) => {
             existingPeer.consumers = new Map(existingPeer.consumers);
             existingPeer.consumers.set(consumer.id, consumer);
             
-            // Create completely new stream and add track
+            // Create completely new stream and add unique tracks
             const newStream = new MediaStream();
-            
-            // First add all existing tracks
+            const trackIds = new Set<string>();
             existingPeer.stream.getTracks().forEach(track => {
-              if (track.readyState === 'live') {
+              if (track.readyState === 'live' && !trackIds.has(track.id)) {
                 newStream.addTrack(track);
+                trackIds.add(track.id);
               }
             });
-            
-            // Then add the new track if it's valid
-            if (consumer.track && consumer.track.readyState === 'live') {
+            if (consumer.track && consumer.track.readyState === 'live' && !trackIds.has(consumer.track.id)) {
               newStream.addTrack(consumer.track);
             }
             
@@ -1100,5 +1086,5 @@ const createSendTransport = useCallback(async (transportParams: any) => {
     isAudioEnabled,
     isConnected,
     hasJoinedClass
-  };
+  }
 }
