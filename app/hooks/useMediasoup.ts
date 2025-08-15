@@ -602,63 +602,63 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
         });
 
         // Update peers state with proper stream handling
-        setPeers(prevPeers => {
-          const existingPeerIndex = prevPeers.findIndex(p => p.id === producerSocketId);
-          const updatedPeers = [...prevPeers];
-          
-          if (existingPeerIndex >= 0) {
-            // Update existing peer
-            const existingPeer = { ...updatedPeers[existingPeerIndex] };
-            existingPeer.consumers = new Map(existingPeer.consumers);
-            existingPeer.consumers.set(consumer.id, consumer);
-            
-            // Create completely new stream and add unique tracks
-            const newStream = new MediaStream();
-            const trackIds = new Set<string>();
-            existingPeer.stream.getTracks().forEach(track => {
-              if (track.readyState === 'live' && !trackIds.has(track.id)) {
-                newStream.addTrack(track);
-                trackIds.add(track.id);
-              }
-            });
-            if (consumer.track && consumer.track.readyState === 'live' && !trackIds.has(consumer.track.id)) {
-              newStream.addTrack(consumer.track);
-            }
-            
-            existingPeer.stream = newStream;
-            
-            if (kind === 'video') {
-              existingPeer.isVideoEnabled = true;
-            } else if (kind === 'audio') {
-              existingPeer.isAudioEnabled = true;
-            }
-            
-            updatedPeers[existingPeerIndex] = existingPeer;
-            
-            console.log(`[UPDATE] Updated peer ${producerName} with ${kind} track`);
-          } else {
-            // Create new peer
-            const newStream = new MediaStream();
-            if (consumer.track && consumer.track.readyState === 'live') {
-              newStream.addTrack(consumer.track);
-            }
-            
-            const newPeer: Peer = {
-              id: producerSocketId,
-              name: producerName,
-              stream: newStream,
-              consumers: new Map([[consumer.id, consumer]]),
-              isAudioEnabled: kind === 'audio',
-              isVideoEnabled: kind === 'video'
-            };
-            
-            updatedPeers.push(newPeer);
-            
-            console.log(`[NEW] Created peer ${producerName} with ${kind} track`);
-          }
-          
-          return updatedPeers;
-        });
+setPeers(prevPeers => {
+  const existingPeerIndex = prevPeers.findIndex(p => p.id === producerSocketId);
+  const updatedPeers = [...prevPeers];
+  
+  if (existingPeerIndex >= 0) {
+    // Update existing peer
+    const existingPeer = { ...updatedPeers[existingPeerIndex] };
+    existingPeer.consumers = new Map(existingPeer.consumers);
+    existingPeer.consumers.set(consumer.id, consumer);
+    
+    // Create completely new stream and add unique tracks
+    const newStream = new MediaStream();
+    const trackIds = new Set<string>();
+    existingPeer.stream.getTracks().forEach(track => {
+      if (track.readyState === 'live' && !trackIds.has(track.id)) {
+        newStream.addTrack(track);
+        trackIds.add(track.id);
+      }
+    });
+    if (consumer.track && consumer.track.readyState === 'live' && !trackIds.has(consumer.track.id)) {
+      newStream.addTrack(consumer.track);
+    }
+    
+    existingPeer.stream = newStream;
+    
+    if (kind === 'video') {
+      existingPeer.isVideoEnabled = true;
+    } else if (kind === 'audio') {
+      existingPeer.isAudioEnabled = true;
+    }
+    
+    updatedPeers[existingPeerIndex] = existingPeer;
+    
+    console.log(`[UPDATE] Updated peer ${producerName} with ${kind} track`);
+  } else {
+    // Create new peer
+    const newStream = new MediaStream();
+    if (consumer.track && consumer.track.readyState === 'live') {
+      newStream.addTrack(consumer.track);
+    }
+    
+    const newPeer: Peer = {
+      id: producerSocketId,
+      name: producerName,
+      stream: newStream,
+      consumers: new Map([[consumer.id, consumer]]),
+      isAudioEnabled: kind === 'audio',
+      isVideoEnabled: kind === 'video'
+    };
+    
+    updatedPeers.push(newPeer);
+    
+    console.log(`[NEW] Created peer ${producerName} with ${kind} track`);
+  }
+  
+  return updatedPeers;
+});
 
         // Handle consumer events
         const cleanupConsumer = () => {
@@ -1106,6 +1106,28 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
       joinVideoCall();
     }
   }, [connectionState, joinVideoCall]);
+  useEffect(() => {
+  console.log('🔄 Peers updated:', peers.length);
+  peers.forEach((peer, index) => {
+    console.log(`Peer ${index + 1}:`, {
+      id: peer.id,
+      name: peer.name,
+      videoTracks: peer.stream.getVideoTracks().map(track => ({
+        id: track.id,
+        enabled: track.enabled,
+        readyState: track.readyState
+      })),
+      audioTracks: peer.stream.getAudioTracks().map(track => ({
+        id: track.id,
+        enabled: track.enabled,
+        readyState: track.readyState
+      })),
+      isVideoEnabled: peer.isVideoEnabled,
+      isAudioEnabled: peer.isAudioEnabled,
+      consumers: Array.from(peer.consumers.keys())
+    });
+  });
+}, [peers]);
 
   return {
     startLocalStream,
