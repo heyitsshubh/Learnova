@@ -99,24 +99,31 @@ const createEventPromise = <T>(
 };
 
 // Helper function to fetch TURN credentials
+// ...existing code...
 async function getTurnConfig(): Promise<any[]> {
   try {
-      // Use GET method to fetch credentials
     const res = await fetch("https://api.heyitsshubh.me/credentials", {
       method: "GET"
-    }); // Use your deployed URL
+    });
     if (!res.ok) {
       throw new Error(`Failed to fetch TURN credentials: ${res.statusText}`);
     }
-
-    const data = await res.json();
-    return data.iceServers || [];
+    // Expecting { username, credential, urls }
+    const { username, credential, urls } = await res.json();
+    // Return in iceServers format
+    return [
+      {
+        urls,
+        username,
+        credential
+      }
+    ];
   } catch (error) {
     console.error("Failed to fetch TURN credentials:", error);
     return [];
   }
 }
-
+// ...existing code...
 export function useMediasoup(classId: string, userId?: string, token?: string): UseMediasoupReturn {
   const { socket, isConnected } = useSocket();
   
