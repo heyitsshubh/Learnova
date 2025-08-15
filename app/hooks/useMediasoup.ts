@@ -102,8 +102,8 @@ const createEventPromise = <T>(
 // ...existing code...
 async function getTurnConfig(): Promise<any[]> {
   try {
-    console.log("🌐 Fetching TURN credentials from https://api.heyitsshubh.me/credentials ...");
-    const res = await fetch("https://api.heyitsshubh.me/credentials", {
+    console.log("🌐 Fetching TURN credentials from https://api.heyitsshubh.me/turn-credentials ...");
+    const res = await fetch("https://api.heyitsshubh.me/turn-credentials", {
       method: "GET"
     });
     console.log("🔄 Response status:", res.status, res.statusText);
