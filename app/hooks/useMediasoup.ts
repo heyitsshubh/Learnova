@@ -101,11 +101,14 @@ const createEventPromise = <T>(
 // Helper function to fetch TURN credentials
 async function getTurnConfig(): Promise<any[]> {
   try {
-    const res = await fetch("https://api.heyitsshubh.me/credentials"); // Use your deployed URL
+      // Use GET method to fetch credentials
+    const res = await fetch("https://api.heyitsshubh.me/credentials", {
+      method: "GET"
+    }); // Use your deployed URL
     if (!res.ok) {
       throw new Error(`Failed to fetch TURN credentials: ${res.statusText}`);
     }
-      
+
     const data = await res.json();
     return data.iceServers || [];
   } catch (error) {
