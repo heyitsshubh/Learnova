@@ -240,7 +240,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
         dtlsParameters: transportParams.dtlsParameters,
         sctpParameters: transportParams.sctpParameters,
         iceServers, // <-- use dynamic servers
-        iceTransportPolicy: 'all', // Allow both STUN and TURN
+        iceTransportPolicy: 'relay', // Allow both STUN and TURN
       });
         
       sendTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
