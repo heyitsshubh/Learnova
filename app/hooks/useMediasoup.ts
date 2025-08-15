@@ -103,7 +103,7 @@ const createEventPromise = <T>(
 async function getTurnConfig(): Promise<any[]> {
   try {
     console.log("🌐 Fetching TURN credentials from https://api.heyitsshubh.me/turn-credentials ...");
-    const res = await fetch("https://api.heyitsshubh.me/turn-credentials", {
+    const res = await fetch("https://project2-zphf.onrender.com/api/turn-credentials", {
       method: "GET"
     });
     console.log("🔄 Response status:", res.status, res.statusText);
