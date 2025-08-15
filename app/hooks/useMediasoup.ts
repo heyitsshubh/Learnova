@@ -232,8 +232,6 @@ const createSendTransport = useCallback(async (transportParams: any) => {
       // 🔥 ADD ICE SERVERS HERE
       iceServers: ICE_SERVERS,
       iceTransportPolicy: 'all', // Allow both STUN and TURN
-      bundlePolicy: 'max-bundle',
-      rtcpMuxPolicy: 'require',
     });
       
       sendTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
@@ -331,8 +329,7 @@ const createSendTransport = useCallback(async (transportParams: any) => {
         sctpParameters: transportParams.sctpParameters,
           iceServers: ICE_SERVERS,
       iceTransportPolicy: 'all',
-      bundlePolicy: 'max-bundle', 
-      rtcpMuxPolicy: 'require',
+  
       });
       
       recvTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {

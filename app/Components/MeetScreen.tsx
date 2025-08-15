@@ -288,6 +288,13 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
       </div>
     );
   };
+  peers.forEach(peer => {
+  const videoTracks = peer.stream.getVideoTracks();
+  console.log(`Peer ${peer.name || peer.id} video tracks:`, videoTracks);
+  if (videoTracks.length > 0) {
+    console.log(`Track readyState:`, videoTracks[0].readyState); // should be 'live'
+  }
+});
 
   // Error display
   if (error && !isConnecting) {
@@ -446,7 +453,7 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
                     <div className="text-xs text-gray-400">Host</div>
                   </div>
                   <div className="flex gap-1">
-                    {isVideoEnabled ? '📹' : '📹❌'}
+                    {isVideoEnabled ? '📹' : '📹❌'}F
                     {isAudioEnabled ? '🎤' : '🎤❌'}
                   </div>
                 </div>
