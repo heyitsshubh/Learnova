@@ -229,6 +229,8 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
         return sendTransportRef.current;
       }
 
+      console.log("Using ICE servers:", iceServers);
+
       console.log('🚛 Creating send transport...');
       
       const sendTransport = deviceRef.current.createSendTransport({
@@ -325,6 +327,8 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
         console.log('✅ Receive transport already exists');
         return recvTransportRef.current;
       }
+
+      console.log("Using ICE servers:", iceServers);
 
       console.log('📡 Creating receive transport...');
 
@@ -511,212 +515,211 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
   }, []);
 
   // Consumer creation - simplified but functional
-  const consumeRemoteMedia = useCallback(async (
-    producerId: string, 
-    producerSocketId: string, 
-    producerName: string, 
-    kind: 'audio' | 'video'
-  ) => {
-    try {
-      if (!recvTransportRef.current || !deviceRef.current) {
-        console.warn('Cannot consume - missing transport or device');
-        return;
-      }
+const consumeRemoteMedia = useCallback(async (
+  producerId: string, 
+  producerSocketId: string, 
+  producerName: string, 
+  kind: 'audio' | 'video'
+) => {
+  console.log(`[consumeRemoteMedia] Called for producerId: ${producerId}, socketId: ${producerSocketId}, name: ${producerName}, kind: ${kind}`);
+  try {
+    if (!recvTransportRef.current || !deviceRef.current) {
+      console.warn('[consumeRemoteMedia] Cannot consume - missing transport or device');
+      return;
+    }
 
-      // Wait for receive transport to be ready
+    // Wait for receive transport to be ready
+    if (!transportReadyRef.current.recv) {
+      console.log('[consumeRemoteMedia] ⏳ Waiting for receive transport to be ready...');
+      const maxWait = 5000;
+      const checkInterval = 100;
+      let waited = 0;
+      while (!transportReadyRef.current.recv && waited < maxWait) {
+        await new Promise(resolve => setTimeout(resolve, checkInterval));
+        waited += checkInterval;
+      }
       if (!transportReadyRef.current.recv) {
-        console.log('⏳ Waiting for receive transport to be ready...');
-        const maxWait = 5000;
-        const checkInterval = 100;
-        let waited = 0;
-        
-        while (!transportReadyRef.current.recv && waited < maxWait) {
-          await new Promise(resolve => setTimeout(resolve, checkInterval));
-          waited += checkInterval;
-        }
-        
-        if (!transportReadyRef.current.recv) {
-          console.warn('Receive transport not ready, skipping consumption');
-          return;
-        }
-      }
-
-      // Prevent duplicate consumption
-      if (pendingConsumersRef.current.has(producerId)) {
-        console.warn('Already consuming producer:', producerId);
+        console.warn('[consumeRemoteMedia] Receive transport not ready, skipping consumption');
         return;
       }
-      
-      pendingConsumersRef.current.add(producerId);
-      
-      console.log(`📥 Starting to consume ${kind} from ${producerName} (${producerId})`);
-      
-      try {
-        // Send consume request
-        socket?.emit('start_consuming', {
-          producerId,
-          consumerRtpCapabilities: deviceRef.current?.rtpCapabilities
-        });
+    }
 
-        // Wait for consumer_created event
-        const consumerData = await createEventPromise(
-          socket,
-          'consumer_created',
-          'consumer_creation_failed',
-          20000,
-          (data) => data.producerId === producerId
-        );
+    // Prevent duplicate consumption
+    if (pendingConsumersRef.current.has(producerId)) {
+      console.warn('[consumeRemoteMedia] Already consuming producer:', producerId);
+      return;
+    }
+    pendingConsumersRef.current.add(producerId);
 
-        const typedConsumerData = consumerData as { 
-          consumerId: string; 
-          rtpParameters: any; 
-          kind: string;
-          producerPeer?: { socketId: string; userName: string; userId: string };
-        };
+    console.log(`[consumeRemoteMedia] 📥 Starting to consume ${kind} from ${producerName} (${producerId})`);
 
-        console.log(`🍿 Creating consumer for ${kind} from ${producerName}...`);
+    try {
+      // Send consume request
+      socket?.emit('start_consuming', {
+        producerId,
+        consumerRtpCapabilities: deviceRef.current?.rtpCapabilities
+      });
 
-        const consumer = await recvTransportRef.current.consume({
-          id: typedConsumerData.consumerId,
-          producerId,
-          kind: kind as mediasoupClient.types.MediaKind,
-          rtpParameters: typedConsumerData.rtpParameters
-        });
-        
-        consumersRef.current.set(consumer.id, consumer);
+      // Wait for consumer_created event
+      const consumerData = await createEventPromise(
+        socket,
+        'consumer_created',
+        'consumer_creation_failed',
+        20000,
+        (data) => data.producerId === producerId
+      );
 
-        // Ensure consumer is not paused
-        if (consumer.paused) {
-          console.log(`▶️ Resuming consumer: ${kind}`);
-          consumer.resume();
+      const typedConsumerData = consumerData as { 
+        consumerId: string; 
+        rtpParameters: any; 
+        kind: string;
+        producerPeer?: { socketId: string; userName: string; userId: string };
+      };
+
+      console.log(`[consumeRemoteMedia] 🍿 Creating consumer for ${kind} from ${producerName}...`);
+
+      const consumer = await recvTransportRef.current.consume({
+        id: typedConsumerData.consumerId,
+        producerId,
+        kind: kind as mediasoupClient.types.MediaKind,
+        rtpParameters: typedConsumerData.rtpParameters
+      });
+
+      consumersRef.current.set(consumer.id, consumer);
+
+      // Ensure consumer is not paused
+      if (consumer.paused) {
+        console.log(`[consumeRemoteMedia] ▶️ Resuming consumer: ${kind}`);
+        consumer.resume();
+      }
+
+      console.log(`[consumeRemoteMedia] ✅ Consumer created and active for ${kind}:`, {
+        consumerId: consumer.id,
+        producerId,
+        paused: consumer.paused,
+        track: consumer.track,
+        trackId: consumer.track?.id,
+        trackEnabled: consumer.track?.enabled,
+        trackReadyState: consumer.track?.readyState
+      });
+
+      // Update peers state with proper stream handling
+      console.log(`[consumeRemoteMedia] Updating peers state for producerSocketId: ${producerSocketId}, kind: ${kind}`);
+      setPeers(prevPeers => {
+        const existingPeerIndex = prevPeers.findIndex(p => p.id === producerSocketId);
+        const updatedPeers = [...prevPeers];
+
+        if (existingPeerIndex >= 0) {
+          // Update existing peer
+          const existingPeer = { ...updatedPeers[existingPeerIndex] };
+          existingPeer.consumers = new Map(existingPeer.consumers);
+          existingPeer.consumers.set(consumer.id, consumer);
+
+          // Create completely new stream and add unique tracks
+          const newStream = new MediaStream();
+          const trackIds = new Set<string>();
+          existingPeer.stream.getTracks().forEach(track => {
+            if (track.readyState === 'live' && !trackIds.has(track.id)) {
+              newStream.addTrack(track);
+              trackIds.add(track.id);
+            }
+          });
+          if (consumer.track && consumer.track.readyState === 'live' && !trackIds.has(consumer.track.id)) {
+            newStream.addTrack(consumer.track);
+          }
+
+          existingPeer.stream = newStream;
+
+          if (kind === 'video') {
+            existingPeer.isVideoEnabled = true;
+          } else if (kind === 'audio') {
+            existingPeer.isAudioEnabled = true;
+          }
+
+          updatedPeers[existingPeerIndex] = existingPeer;
+
+          console.log(`[consumeRemoteMedia] [UPDATE] Updated peer ${producerName} with ${kind} track`);
+        } else {
+          // Create new peer
+          const newStream = new MediaStream();
+          if (consumer.track && consumer.track.readyState === 'live') {
+            newStream.addTrack(consumer.track);
+          }
+
+          const newPeer: Peer = {
+            id: producerSocketId,
+            name: producerName,
+            stream: newStream,
+            consumers: new Map([[consumer.id, consumer]]),
+            isAudioEnabled: kind === 'audio',
+            isVideoEnabled: kind === 'video'
+          };
+
+          updatedPeers.push(newPeer);
+
+          console.log(`[consumeRemoteMedia] [NEW] Created peer ${producerName} with ${kind} track`);
         }
 
-        console.log(`✅ Consumer created and active for ${kind}:`, {
-          consumerId: consumer.id,
-          producerId,
-          paused: consumer.paused,
-          track: consumer.track,
-          trackId: consumer.track?.id,
-          trackEnabled: consumer.track?.enabled,
-          trackReadyState: consumer.track?.readyState
-        });
+        console.log(`[consumeRemoteMedia] Peers state after update:`, updatedPeers);
+        return updatedPeers;
+      });
 
-        // Update peers state with proper stream handling
-setPeers(prevPeers => {
-  const existingPeerIndex = prevPeers.findIndex(p => p.id === producerSocketId);
-  const updatedPeers = [...prevPeers];
-  
-  if (existingPeerIndex >= 0) {
-    // Update existing peer
-    const existingPeer = { ...updatedPeers[existingPeerIndex] };
-    existingPeer.consumers = new Map(existingPeer.consumers);
-    existingPeer.consumers.set(consumer.id, consumer);
-    
-    // Create completely new stream and add unique tracks
-    const newStream = new MediaStream();
-    const trackIds = new Set<string>();
-    existingPeer.stream.getTracks().forEach(track => {
-      if (track.readyState === 'live' && !trackIds.has(track.id)) {
-        newStream.addTrack(track);
-        trackIds.add(track.id);
-      }
-    });
-    if (consumer.track && consumer.track.readyState === 'live' && !trackIds.has(consumer.track.id)) {
-      newStream.addTrack(consumer.track);
-    }
-    
-    existingPeer.stream = newStream;
-    
-    if (kind === 'video') {
-      existingPeer.isVideoEnabled = true;
-    } else if (kind === 'audio') {
-      existingPeer.isAudioEnabled = true;
-    }
-    
-    updatedPeers[existingPeerIndex] = existingPeer;
-    
-    console.log(`[UPDATE] Updated peer ${producerName} with ${kind} track`);
-  } else {
-    // Create new peer
-    const newStream = new MediaStream();
-    if (consumer.track && consumer.track.readyState === 'live') {
-      newStream.addTrack(consumer.track);
-    }
-    
-    const newPeer: Peer = {
-      id: producerSocketId,
-      name: producerName,
-      stream: newStream,
-      consumers: new Map([[consumer.id, consumer]]),
-      isAudioEnabled: kind === 'audio',
-      isVideoEnabled: kind === 'video'
-    };
-    
-    updatedPeers.push(newPeer);
-    
-    console.log(`[NEW] Created peer ${producerName} with ${kind} track`);
-  }
-  
-  return updatedPeers;
-});
+      // Handle consumer events
+      const cleanupConsumer = () => {
+        consumersRef.current.delete(consumer.id);
+        if (!consumer.closed) {
+          consumer.close();
+        }
+        setPeers(prevPeers => {
+          const peerIndex = prevPeers.findIndex(p => p.id === producerSocketId);
+          if (peerIndex >= 0) {
+            const updatedPeers = [...prevPeers];
+            const peer = { ...updatedPeers[peerIndex] };
+            peer.consumers = new Map(peer.consumers);
+            peer.consumers.delete(consumer.id);
 
-        // Handle consumer events
-        const cleanupConsumer = () => {
-          consumersRef.current.delete(consumer.id);
-          if (!consumer.closed) {
-            consumer.close();
-          }
-          
-          setPeers(prevPeers => {
-            const peerIndex = prevPeers.findIndex(p => p.id === producerSocketId);
-            if (peerIndex >= 0) {
-              const updatedPeers = [...prevPeers];
-              const peer = { ...updatedPeers[peerIndex] };
-              peer.consumers = new Map(peer.consumers);
-              peer.consumers.delete(consumer.id);
-              
-              // Recreate stream without this track
-              const newStream = new MediaStream();
-              peer.stream.getTracks().forEach(track => {
-                if (track.id !== consumer.track?.id && track.readyState === 'live') {
-                  newStream.addTrack(track);
-                }
-              });
-              peer.stream = newStream;
-              
-              if (kind === 'video') {
-                peer.isVideoEnabled = false;
-              } else if (kind === 'audio') {
-                peer.isAudioEnabled = false;
+            // Recreate stream without this track
+            const newStream = new MediaStream();
+            peer.stream.getTracks().forEach(track => {
+              if (track.id !== consumer.track?.id && track.readyState === 'live') {
+                newStream.addTrack(track);
               }
-              
-              updatedPeers[peerIndex] = peer;
-              return updatedPeers;
+            });
+            peer.stream = newStream;
+
+            if (kind === 'video') {
+              peer.isVideoEnabled = false;
+            } else if (kind === 'audio') {
+              peer.isAudioEnabled = false;
             }
-            return prevPeers;
-          });
-        };
 
-        consumer.on('trackended', () => {
-          console.log(`Consumer track ended: ${kind} from ${producerName}`);
-          cleanupConsumer();
+            updatedPeers[peerIndex] = peer;
+            return updatedPeers;
+          }
+          return prevPeers;
         });
+      };
 
-        consumer.on('transportclose', () => {
-          console.log(`Consumer transport closed: ${kind} from ${producerName}`);
-          cleanupConsumer();
-        });
-        
-      } finally {
-        pendingConsumersRef.current.delete(producerId);
-      }
-      
-    } catch (error) {
+      consumer.on('trackended', () => {
+        console.log(`[consumeRemoteMedia] Consumer track ended: ${kind} from ${producerName}`);
+        cleanupConsumer();
+      });
+
+      consumer.on('transportclose', () => {
+        console.log(`[consumeRemoteMedia] Consumer transport closed: ${kind} from ${producerName}`);
+        cleanupConsumer();
+      });
+
+    } finally {
       pendingConsumersRef.current.delete(producerId);
-      console.error('Error consuming remote media:', error);
-      setErrorWithType('CONSUMER', `Failed to consume remote media: ${kind}`, true, error);
     }
-  }, [socket]);
+
+  } catch (error) {
+    pendingConsumersRef.current.delete(producerId);
+    console.error(`[consumeRemoteMedia] Error consuming producerId: ${producerId}, kind: ${kind}`, error);
+    setErrorWithType('CONSUMER', `Failed to consume remote media: ${kind}`, true, error);
+  }
+}, [socket]);
 
   const joinVideoCall = useCallback(async () => {
     if (!socket || !isConnected) {
