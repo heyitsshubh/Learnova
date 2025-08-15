@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import * as mediasoupClient from "mediasoup-client";
 import { useSocket } from "../Components/Contexts/SocketContext";
+import { fetchTurnCredentials } from "../services/meet";
+
 
 export enum ConnectionState {
   IDLE = 'idle',
@@ -100,37 +102,7 @@ const createEventPromise = <T>(
 
 // Helper function to fetch TURN credentials
 // ...existing code...
-async function getTurnConfig(): Promise<any[]> {
-  try {
-    console.log("🌐 Fetching TURN credentials from https://api.heyitsshubh.me/turn-credentials ...");
-    const res = await fetch("https://project2-zphf.onrender.com/api/turn-credentials", {
-      method: "GET"
-    });
-    console.log("🔄 Response status:", res.status, res.statusText);
 
-    if (!res.ok) {
-      console.error("❌ Failed to fetch TURN credentials:", res.statusText);
-      throw new Error(`Failed to fetch TURN credentials: ${res.statusText}`);
-    }
-
-    const json = await res.json();
-    console.log("📦 Received TURN credentials JSON:", json);
-
-    const { username, credential, urls } = json;
-    console.log("✅ Parsed TURN credentials:", { urls, username, credential });
-
-    return [
-      {
-        urls,
-        username,
-        credential
-      }
-    ];
-  } catch (error) {
-    console.error("Failed to fetch TURN credentials:", error);
-    return [];
-  }
-}
 // ...existing code...
 export function useMediasoup(classId: string, userId?: string, token?: string): UseMediasoupReturn {
   const { socket, isConnected } = useSocket();
@@ -160,14 +132,17 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
   ]);
 
   // Fetch TURN credentials on mount
+ 
   useEffect(() => {
-    getTurnConfig().then(turnServers => {
+  if (token) {
+    fetchTurnCredentials().then(turnServers => {
       if (turnServers.length > 0) {
         setIceServers(prev => [...prev, ...turnServers]);
-        console.log("🔑 Loaded TURN servers:", turnServers);
+        console.log(" Loaded TURN servers:", turnServers);
       }
     });
-  }, []);
+  }
+}, [token]);
 
   // Internal refs for tracking state
   const hasJoinedClassRef = useRef(false);

@@ -100,3 +100,34 @@ export const joinMeeting = async (meetingId: string) => {
     throw error;
   }
 };
+
+
+
+export const fetchTurnCredentials = async () => {
+  const token = getAccessToken();
+  if (!token) {
+    if (typeof window !== 'undefined') window.location.href = '/login';
+    throw new Error('No access token found.');
+  }
+  try {
+    const response = await axios.get(
+      'https://api.heyitsshubh.me/api/turn-credentials',
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    // Map to WebRTC format
+    const servers = response.data.iceServers || [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return servers.map((server: any) => ({
+      urls: server.urls,
+      username: server.username,
+      credential: server.credential,
+    }));
+  } catch (error) {
+    console.error('Error fetching TURN credentials:', error);
+    return [];
+  }
+};
