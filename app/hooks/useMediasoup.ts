@@ -192,25 +192,49 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
     }
   }, []);
 
-  // 🔥 FIXED: Transport creation with proper connection handling
-  const createSendTransport = useCallback(async (transportParams: any) => {
-    try {
-      if (!deviceRef.current) throw new Error('Device not initialized');
-      
-      if (sendTransportRef.current && !sendTransportRef.current.closed) {
-        console.log('✅ Send transport already exists');
-        return sendTransportRef.current;
-      }
+  const ICE_SERVERS = [
+  // Google's public STUN servers
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun2.l.google.com:19302' },
+  
+  // Your own TURN server (replace with your AWS TURN server)
+     {
+            urls: "turn:global.turn.twilio.com:443",
+            username: "572a8528b6d50e961344ce7d4eb97280f55b57a1a740b6409d6aa5c654687d74",
+            credential: "xof1gCWW2oSomiEEaiUTHVxBY0963S4jBKzyglwh1uk="
+          },
+          {
+            urls: "turn:global.turn.twilio.com:3478",
+            username: "572a8528b6d50e961344ce7d4eb97280f55b57a1a740b6409d6aa5c654687d74",
+            credential: "xof1gCWW2oSomiEEaiUTHVxBY0963S4jBKzyglwh1uk="
+          }
+];
 
-      console.log('🚛 Creating send transport...');
-      
-      const sendTransport = deviceRef.current.createSendTransport({
-        id: transportParams.id,
-        iceParameters: transportParams.iceParameters,
-        iceCandidates: transportParams.iceCandidates,
-        dtlsParameters: transportParams.dtlsParameters,
-        sctpParameters: transportParams.sctpParameters,
-      });
+  // 🔥 FIXED: Transport creation with proper connection handling
+const createSendTransport = useCallback(async (transportParams: any) => {
+  try {
+    if (!deviceRef.current) throw new Error('Device not initialized');
+    
+    if (sendTransportRef.current && !sendTransportRef.current.closed) {
+      console.log('✅ Send transport already exists');
+      return sendTransportRef.current;
+    }
+
+    console.log('🚛 Creating send transport...');
+    
+    const sendTransport = deviceRef.current.createSendTransport({
+      id: transportParams.id,
+      iceParameters: transportParams.iceParameters,
+      iceCandidates: transportParams.iceCandidates,
+      dtlsParameters: transportParams.dtlsParameters,
+      sctpParameters: transportParams.sctpParameters,
+      // 🔥 ADD ICE SERVERS HERE
+      iceServers: ICE_SERVERS,
+      iceTransportPolicy: 'all', // Allow both STUN and TURN
+      bundlePolicy: 'max-bundle',
+      rtcpMuxPolicy: 'require',
+    });
       
       sendTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
         try {
@@ -305,6 +329,10 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
         iceCandidates: transportParams.iceCandidates,
         dtlsParameters: transportParams.dtlsParameters,
         sctpParameters: transportParams.sctpParameters,
+          iceServers: ICE_SERVERS,
+      iceTransportPolicy: 'all',
+      bundlePolicy: 'max-bundle', 
+      rtcpMuxPolicy: 'require',
       });
       
       recvTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
