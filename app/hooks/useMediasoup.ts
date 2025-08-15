@@ -102,15 +102,23 @@ const createEventPromise = <T>(
 // ...existing code...
 async function getTurnConfig(): Promise<any[]> {
   try {
+    console.log("🌐 Fetching TURN credentials from https://api.heyitsshubh.me/credentials ...");
     const res = await fetch("https://api.heyitsshubh.me/credentials", {
       method: "GET"
     });
+    console.log("🔄 Response status:", res.status, res.statusText);
+
     if (!res.ok) {
+      console.error("❌ Failed to fetch TURN credentials:", res.statusText);
       throw new Error(`Failed to fetch TURN credentials: ${res.statusText}`);
     }
-    // Expecting { username, credential, urls }
-    const { username, credential, urls } = await res.json();
-    // Return in iceServers format
+
+    const json = await res.json();
+    console.log("📦 Received TURN credentials JSON:", json);
+
+    const { username, credential, urls } = json;
+    console.log("✅ Parsed TURN credentials:", { urls, username, credential });
+
     return [
       {
         urls,
