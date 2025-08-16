@@ -1424,7 +1424,7 @@ const consumeRemoteMedia = useCallback(async (
     // Register all event listeners
     socket.on('class_joined', handleClassJoined);
     socket.on('existing_producers', handleExistingProducers);
-    socket.on('new_producer_available', handleNewProducer);
+    socket.on('new_producer', handleNewProducer);
     socket.on('peer_disconnected', handlePeerDisconnected);
     socket.on('user_left_video', handleUserLeftVideo);
     socket.on('producer_closed', handleProducerClosed);
@@ -1434,7 +1434,7 @@ const consumeRemoteMedia = useCallback(async (
       // Cleanup all event listeners
       socket.off('class_joined', handleClassJoined);
       socket.off('existing_producers', handleExistingProducers);
-      socket.off('new_producer_available', handleNewProducer);
+      socket.off('new_producer', handleNewProducer);
       socket.off('peer_disconnected', handlePeerDisconnected);
       socket.off('user_left_video', handleUserLeftVideo);
       socket.off('producer_closed', handleProducerClosed);
