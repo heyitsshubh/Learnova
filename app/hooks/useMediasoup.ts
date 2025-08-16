@@ -1061,110 +1061,103 @@ const consumeRemoteMedia = useCallback(async (
     setErrorWithType('CONSUMER', `Failed to consume remote media: ${kind}`, true, error);
   }
 }, [socket]);
-
-  const joinVideoCall = useCallback(async () => {
-    if (!socket || !isConnected) {
-      setErrorWithType('NETWORK', 'Socket not connected', true);
-      return;
+const joinVideoCall = useCallback(async () => {
+  if (!socket || !isConnected) {
+    setErrorWithType('NETWORK', 'Socket not connected', true);
+    return;
+  }
+  
+  if (!hasJoinedClassRef.current) {
+    setErrorWithType('CLASS_ERROR', 'Must join class before joining video call', true);
+    return;
+  }
+  
+  if (isInitializedRef.current && connectionState !== ConnectionState.FAILED) {
+    console.warn('Video call already initialized');
+    return;
+  }
+  
+  setConnectionState(ConnectionState.CONNECTING);
+  clearError();
+  isInitializedRef.current = true;
+  
+  // Reset transport ready state
+  transportReadyRef.current = { send: false, recv: false };
+  
+  console.log('🎥 Starting video call setup for class:', classId);
+  
+  try {
+    // Step 1: Join video call
+    console.log('1️⃣ Joining video call...');
+    socket.emit('join_video_call', { classId });
+    
+    // Step 2: Wait for video_call_ready
+    const readyData = await createEventPromise(
+      socket,
+      'video_call_ready',
+      'video_call_error',
+      20000
+    );
+    
+    console.log('2️⃣ Video call ready, initializing device...');
+    
+    // Step 3: Initialize device
+    const { rtpCapabilities } = readyData as { rtpCapabilities: any };
+    const deviceInitialized = await initializeDevice(rtpCapabilities);
+    if (!deviceInitialized) {
+      throw new Error('Failed to initialize device');
     }
     
-    if (!hasJoinedClassRef.current) {
-      setErrorWithType('CLASS_ERROR', 'Must join class before joining video call', true);
-      return;
+    // Step 4: Set RTP capabilities and wait for transports
+    console.log('3️⃣ Setting RTP capabilities...');
+    if (!deviceRef.current?.rtpCapabilities) {
+      throw new Error('Device RTP capabilities not available');
     }
     
-    if (isInitializedRef.current && connectionState !== ConnectionState.FAILED) {
-      console.warn('Video call already initialized');
-      return;
-    }
+    socket.emit('set_rtp_capabilities', { 
+      rtpCapabilities: deviceRef.current.rtpCapabilities 
+    });
     
-    setConnectionState(ConnectionState.CONNECTING);
-    clearError();
-    isInitializedRef.current = true;
-    
-    // Reset transport ready state
-    transportReadyRef.current = { send: false, recv: false };
-    
-    console.log('🎥 Starting video call setup for class:', classId);
-    
-    try {
-      // Step 1: Join video call
-      console.log('1️⃣ Joining video call...');
-      socket.emit('join_video_call', { classId });
-      
-      // Step 2: Wait for video_call_ready
-      const readyData = await createEventPromise(
-        socket,
-        'video_call_ready',
-        'video_call_error',
-        20000
-      );
-      
-      console.log('2️⃣ Video call ready, initializing device...');
-      
-      // Step 3: Initialize device
-      const { rtpCapabilities } = readyData as { rtpCapabilities: any };
-      const deviceInitialized = await initializeDevice(rtpCapabilities);
-      if (!deviceInitialized) {
-        throw new Error('Failed to initialize device');
-      }
-      
-      // Step 4: Set RTP capabilities and wait for transports
-      console.log('3️⃣ Setting RTP capabilities...');
-      if (!deviceRef.current?.rtpCapabilities) {
-        throw new Error('Device RTP capabilities not available');
-      }
-      
-      socket.emit('set_rtp_capabilities', { 
-        rtpCapabilities: deviceRef.current.rtpCapabilities 
-      });
-      
-      const transports = await createEventPromise(
-        socket,
-        'transports_created',
-        'transport_create_error',
-        20000
-      ) as { sendTransport: any; recvTransport: any };
+    const transports = await createEventPromise(
+      socket,
+      'transports_created',
+      'transport_create_error',
+      20000
+    ) as { sendTransport: any; recvTransport: any };
 
-      console.log('4️⃣ Creating transports...');
+    console.log('4️⃣ Creating transports...');
 
-      // Step 5: Create transports
-      await Promise.all([
-        createSendTransport(transports.sendTransport),
-        createReceiveTransport(transports.recvTransport)
-      ]);
-
+    // Step 5: Create transports (only once!)
     await Promise.all([
-  createSendTransportWithAggressiveICE(
-    deviceRef,
-    sendTransportRef,
-    transports.sendTransport,
-    socket,
-    transportReadyRef,
-    setErrorWithType
-  ),
-  createReceiveTransport(transports.recvTransport)
-]);
-      
-      console.log('5️⃣ Starting local media and producing...');
-      
-      // Step 6: Start local stream and produce media
-      await startLocalStream();
-      await produceMedia();
-      
-      setConnectionState(ConnectionState.CONNECTED);
-      clearError();
-      console.log('✅ Video call setup complete - Ready to communicate!');
-      
-    } catch (error) {
-      console.error('❌ Error during video call setup:', error);
-      const errorMessage = (typeof error === 'object' && error !== null && 'message' in error)
-        ? (error as any).message
-        : 'Failed to establish video call';
-      setErrorWithType('NETWORK', errorMessage, true, error);
-      setConnectionState(ConnectionState.FAILED);
-    }
-  }, [socket, isConnected, classId, connectionState, initializeDevice, createSendTransport, createReceiveTransport, startLocalStream, produceMedia]);
+      createSendTransport(transports.sendTransport),
+      createReceiveTransport(transports.recvTransport)
+    ]);
+    
+    console.log('5️⃣ Starting local media and producing...');
+    
+    // Step 6: Start local stream and produce media
+    await startLocalStream();
+    await produceMedia();
+    
+    setConnectionState(ConnectionState.CONNECTED);
+    clearError();
+    console.log('✅ Video call setup complete - Ready to communicate!');
+    
+    // Step 7: Request existing producers after everything is ready
+    setTimeout(() => {
+      console.log('6️⃣ Requesting existing producers...');
+      socket.emit('get_existing_producers');
+    }, 1000);
+    
+  } catch (error) {
+    console.error('❌ Error during video call setup:', error);
+    const errorMessage = (typeof error === 'object' && error !== null && 'message' in error)
+      ? (error as any).message
+      : 'Failed to establish video call';
+    setErrorWithType('NETWORK', errorMessage, true, error);
+    setConnectionState(ConnectionState.FAILED);
+  }
+}, [socket, isConnected, classId, connectionState, initializeDevice, createSendTransport, createReceiveTransport, startLocalStream, produceMedia]);
 
   const leaveVideoCall = useCallback(() => {
     console.log('👋 Leaving video call...');
