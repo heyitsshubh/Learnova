@@ -225,6 +225,10 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
 
         // 🔥 CRITICAL: Set srcObject
         videoElement.srcObject = peer.stream;
+
+           peer.stream.getVideoTracks().forEach((track: MediaStreamTrack) => {
+      console.log(`Remote track enabled for peer ${peer.name || peer.id}:`, track.enabled);
+    });
         
         // Store ref for debugging
         remoteVideoRefs.current.set(peer.id, videoElement);
