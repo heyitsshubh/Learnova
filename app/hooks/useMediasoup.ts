@@ -53,6 +53,7 @@ export interface UseMediasoupReturn {
   hasJoinedClass: boolean;
   testNetworkConnectivity: () => Promise<void>;
   createEmergencyTransport: () => Promise<void>;
+  refreshIceServersAndReconnect: () => Promise<void>;
 }
 
 // Helper function for promise-based socket events
@@ -676,15 +677,17 @@ sendTransport.on('connectionstatechange', (state) => {
       }
     });
 
-      recvTransport.on('connectionstatechange', (state) => {
-        console.log('📡 Receive transport connection state:', state);
-        if (state === 'connected') {
-          transportReadyRef.current.recv = true;
-          console.log('✅ Receive transport is now ready for consuming');
-          // Consume any pending producers
-          pendingProducersRef.current.forEach(producer => {
-            consumeRemoteMedia(producer.producerId, producer.producerSocketId, producer.producerName, producer.kind);
-          });
+    recvTransport.on('connectionstatechange', (state) => {
+  console.log('📡 Receive transport connection state:', state);
+  if (state === 'connected') {
+    transportReadyRef.current.recv = true;
+    console.log('✅ Receive transport is now ready for consuming');
+    // Add this log:
+    console.log('Pending producers:', pendingProducersRef.current);
+    pendingProducersRef.current.forEach(producer => {
+      console.log('Consuming pending producer:', producer);
+      consumeRemoteMedia(producer.producerId, producer.producerSocketId, producer.producerName, producer.kind);
+    });
           pendingProducersRef.current = [];
         } else if (state === 'failed' || state === 'disconnected') {
           transportReadyRef.current.recv = false;
@@ -1503,6 +1506,10 @@ const consumeRemoteMedia = useCallback(async (
       if (!deviceRef.current || !socket) return;
       const transportParams = {}; // Replace with actual transport params if available
       await createEmergencyTransport(deviceRef, transportParams, socket, setErrorWithType);
+
+    },
+    refreshIceServersAndReconnect
+    
     }
   }
-}
+
