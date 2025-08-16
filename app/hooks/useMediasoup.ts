@@ -265,33 +265,41 @@ const createSendTransport = useCallback(async (transportParams: any) => {
     });
       
     sendTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
-      try {
-        console.log('🔗 Send transport connect event fired!');
-        
-        socket?.emit('connect_transport', {
-          transportId: sendTransport.id,
-          dtlsParameters,
-          direction: 'send'
-        });
-        
-        console.log('📤 Emitted connect_transport, waiting for server response...');
-        
-        const response = await createEventPromise(
-          socket,
-          'transport_connected',
-          'transport_connect_error',
-          15000,
-          (data) => data.transportId === sendTransport.id && data.direction === 'send'
-        );
-        
-        console.log('✅ Server confirmed transport connection:', response);
-        callback();
-      } catch (error) {
-        console.error('❌ Error in send transport connect handler:', error);
-        errback(error as Error);
-      }
+  try {
+    console.log('🔗 Send transport connect event - ICE should be connected now');
+    console.log('📊 Transport connection state before connect:', sendTransport.connectionState);
+    
+    socket?.emit('connect_transport', {
+      transportId: sendTransport.id,
+      dtlsParameters,
+      direction: 'send'
     });
-
+    
+    console.log('📤 Waiting for server to confirm transport connection...');
+    
+    const response = await createEventPromise(
+      socket,
+      'transport_connected',
+      'transport_connect_error',
+      20000, // Increased timeout
+      (data) => data.transportId === sendTransport.id && data.direction === 'send'
+    );
+    
+    console.log('✅ Server confirmed send transport connection:', response);
+    callback();
+  } catch (error) {
+    console.error('❌ Send transport connect failed:', error);
+    errback(error as Error);
+  }
+});
+    sendTransport.on('icestatechange', (iceState) => {
+  console.log('🧊 Send transport ICE state:', iceState);
+  if (iceState === 'connected') {
+    console.log('🎉 Send transport ICE finally connected!');
+  } else if (iceState === 'failed') {
+    console.log('💥 Send transport ICE failed - network issue');
+  }
+});
       // Connection state tracking for debugging
       sendTransport.on('connectionstatechange', (state) => {
         console.log('📡 Send transport connectionstatechange:', state);
