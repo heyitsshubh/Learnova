@@ -102,6 +102,9 @@ const createEventPromise = <T>(
   });
 };
 
+// Helper function to fetch TURN credentials
+// Moved inside useMediasoup to avoid top-level hook usage error
+
 // Helper to get fresh ICE servers (TURN/STUN)
 const getFreshIceServers = async (): Promise<RTCIceServer[]> => {
   try {
@@ -141,10 +144,10 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
   const [error, setError] = useState<MediasoupError | null>(null);
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
-  const [hasJoinedClass, setHasJoinedClass] = useState(false);
-  const hasJoinedClassRef = useRef<boolean>(false);
-  const transportReadyRef = useRef<{ send: boolean; recv: boolean }>({ send: false, recv: false });
-  const isInitializedRef = useRef<boolean>(false);
+const [hasJoinedClass, setHasJoinedClass] = useState(false);
+const hasJoinedClassRef = useRef<boolean>(false);
+const transportReadyRef = useRef<{ send: boolean; recv: boolean }>({ send: false, recv: false });
+const isInitializedRef = useRef<boolean>(false);
 
   // Helper functions
   const setErrorWithType = (type: MediasoupError['type'], message: string, retry = false, originalError?: any) => {
@@ -154,44 +157,6 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
   };
 
   const clearError = () => setError(null);
-
-  // Wait for transport connection with timeout
-  const waitForTransportConnection = useCallback(async (
-    transport: mediasoupClient.types.Transport, 
-    type: 'send' | 'recv',
-    timeout: number = 15000
-  ): Promise<boolean> => {
-    return new Promise((resolve) => {
-      if (transport.connectionState === 'connected') {
-        console.log(`✅ ${type} transport already connected`);
-        resolve(true);
-        return;
-      }
-
-      const timeoutHandle = setTimeout(() => {
-        console.warn(`⏰ ${type} transport connection timeout after ${timeout}ms`);
-        transport.off('connectionstatechange', connectionHandler);
-        resolve(false);
-      }, timeout);
-
-      const connectionHandler = (state: string) => {
-        console.log(`📡 ${type} transport connection state: ${state}`);
-        if (state === 'connected') {
-          clearTimeout(timeoutHandle);
-          transport.off('connectionstatechange', connectionHandler);
-          console.log(`✅ ${type} transport connected successfully`);
-          resolve(true);
-        } else if (state === 'failed' || state === 'disconnected' || state === 'closed') {
-          clearTimeout(timeoutHandle);
-          transport.off('connectionstatechange', connectionHandler);
-          console.error(`❌ ${type} transport connection failed: ${state}`);
-          resolve(false);
-        }
-      };
-
-      transport.on('connectionstatechange', connectionHandler);
-    });
-  }, []);
 
   // Join class function
   const joinClass = useCallback(async (): Promise<void> => {
@@ -353,7 +318,15 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
       setErrorWithType('TRANSPORT', 'Failed to create send transport', true, error);
       throw error;
     }
-  }, [socket]);
+  }, [socket, getFreshIceServers]);
+
+  // Enhanced consumer creation and peer management
+  // (Removed duplicate empty declaration of consumeRemoteMedia)
+
+  // Enhanced consumer creation and peer management
+  // (Removed duplicate declaration of consumeRemoteMedia)
+
+  // (Duplicate 'consumeRemoteMedia' declaration removed)
 
   // Enhanced consumer creation and peer management
   const consumeRemoteMedia = useCallback(async (
@@ -727,15 +700,6 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
       return;
     }
 
-    // Wait for transport to be connected before producing
-    if (sendTransportRef.current.connectionState !== 'connected') {
-      console.log('⏳ Waiting for send transport to connect before producing...');
-      const isConnected = await waitForTransportConnection(sendTransportRef.current, 'send', 15000);
-      if (!isConnected) {
-        throw new Error('Send transport failed to connect, cannot produce media');
-      }
-    }
-
     const videoTrack = localStreamRef.current.getVideoTracks()[0];
     const audioTrack = localStreamRef.current.getAudioTracks()[0];
 
@@ -803,7 +767,9 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
       setErrorWithType('PRODUCER', 'Failed to produce media', true, error);
       throw error;
     }
-  }, [waitForTransportConnection]);
+  }, []);
+
+
 
   const joinVideoCall = useCallback(async () => {
     if (!socket || !isConnected) {
@@ -866,47 +832,24 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
 
       console.log('4️⃣ Creating transports...');
 
-      const [sendTransport, recvTransport] = await Promise.all([
+      await Promise.all([
         createSendTransport(transports.sendTransport),
         createReceiveTransport(transports.recvTransport)
       ]);
 
-      console.log('5️⃣ Waiting for both transports to be fully connected...');
-      
-      // CRITICAL: Wait for both transports to be fully connected before proceeding
-      const [sendConnected, recvConnected] = await Promise.all([
-        waitForTransportConnection(sendTransport, 'send', 20000),
-        waitForTransportConnection(recvTransport, 'recv', 20000)
-      ]);
+      console.log('5️⃣ Starting local media and producing...');
 
-      if (!sendConnected) {
-        throw new Error('Send transport failed to connect');
-      }
-      if (!recvConnected) {
-        throw new Error('Receive transport failed to connect');
-      }
-
-      console.log('6️⃣ Both transports connected! Starting local media and producing...');
-
-      // Now it's safe to start local stream and produce media
       await startLocalStream();
-      
-      // CRITICAL: Verify transport state before producing
-      if (sendTransportRef.current?.connectionState !== 'connected') {
-        throw new Error('Send transport not in connected state before producing');
-      }
-
       await produceMedia();
 
       setConnectionState(ConnectionState.CONNECTED);
       clearError();
       console.log('✅ Video call setup complete - Ready to communicate!');
 
-      // Give a moment for everything to settle before requesting existing producers
       setTimeout(() => {
-        console.log('7️⃣ Requesting existing producers...');
+        console.log('6️⃣ Requesting existing producers...');
         socket.emit('get_existing_producers');
-      }, 1500);
+      }, 1000);
 
     } catch (error) {
       console.error('❌ Error during video call setup:', error);
@@ -916,7 +859,7 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
       setErrorWithType('NETWORK', errorMessage, true, error);
       setConnectionState(ConnectionState.FAILED);
     }
-  }, [socket, isConnected, classId, connectionState, initializeDevice, createSendTransport, createReceiveTransport, startLocalStream, produceMedia, waitForTransportConnection]);
+  }, [socket, isConnected, classId, connectionState, initializeDevice, createSendTransport, createReceiveTransport, startLocalStream, produceMedia]);
 
   const leaveVideoCall = useCallback(() => {
     console.log('👋 Leaving video call...');
