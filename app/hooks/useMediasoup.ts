@@ -125,24 +125,33 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
   const [hasJoinedClass, setHasJoinedClass] = useState(false);
 
   // ICE servers state
-  const [iceServers, setIceServers] = useState<any[]>([
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' }
-  ]);
-
-  // Fetch TURN credentials on mount
- 
-  useEffect(() => {
-  if (token) {
-    fetchTurnCredentials().then(turnServers => {
-      if (turnServers.length > 0) {
-        setIceServers(prev => [...prev, ...turnServers]);
-        console.log(" Loaded TURN servers:", turnServers);
-      }
-    });
+  // const [iceServers, setIceServers] = useState<any[]>([
+  //   { urls: 'stun:stun.l.google.com:19302' },
+  //   { urls: 'stun:stun1.l.google.com:19302' },
+  //   { urls: 'stun:stun2.l.google.com:19302' }
+  // ]);
+const getFreshIceServers = useCallback(async () => {
+  try {
+    console.log('🔄 Fetching fresh ICE servers...');
+    const turnServers = await fetchTurnCredentials();
+    
+    const fallbackStun = [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+    ];
+    
+    const iceServers = [...fallbackStun, ...turnServers];
+    console.log('✅ Fresh ICE servers ready:', iceServers.length, 'servers');
+    return iceServers;
+  } catch (error) {
+    console.error('❌ Failed to get ICE servers, using STUN only:', error);
+    return [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+    ];
   }
-}, [token]);
+}, []);
+
 
   // Internal refs for tracking state
   const hasJoinedClassRef = useRef(false);
@@ -219,57 +228,69 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
     }
   }, []);
 
-  // 🔥 FIXED: Transport creation with proper connection handling
-  const createSendTransport = useCallback(async (transportParams: any) => {
-    try {
-      if (!deviceRef.current) throw new Error('Device not initialized');
-      
-      if (sendTransportRef.current && !sendTransportRef.current.closed) {
-        console.log('✅ Send transport already exists');
-        return sendTransportRef.current;
+const createSendTransport = useCallback(async (transportParams: any) => {
+  try {
+    if (!deviceRef.current) throw new Error('Device not initialized');
+    
+    if (sendTransportRef.current && !sendTransportRef.current.closed) {
+      console.log('✅ Send transport already exists');
+      return sendTransportRef.current;
+    }
+
+    // 🔥 Get fresh ICE servers for this transport
+    const freshIceServers = await getFreshIceServers();
+    console.log("Using fresh ICE servers for send transport:", freshIceServers);
+
+    console.log('🚛 Creating send transport...');
+    
+    const sendTransport = deviceRef.current.createSendTransport({
+      id: transportParams.id,
+      iceParameters: transportParams.iceParameters,
+      iceCandidates: transportParams.iceCandidates,
+      dtlsParameters: transportParams.dtlsParameters,
+      sctpParameters: transportParams.sctpParameters,
+      iceServers: freshIceServers, // Fresh credentials
+      iceTransportPolicy: 'all', // Allow both STUN and TURN
+      additionalSettings: {
+        // No unsupported properties here
       }
+    });
 
-      console.log("Using ICE servers:", iceServers);
-
-      console.log('🚛 Creating send transport...');
+    // Add ICE gathering state debugging
+    sendTransport.on('icegatheringstatechange', (iceGatheringState) => {
+      console.log('🧊 Send transport ICE gathering state:', iceGatheringState);
+      if (iceGatheringState === 'complete') {
+        console.log('✅ ICE gathering complete for send transport');
+      }
+    });
       
-      const sendTransport = deviceRef.current.createSendTransport({
-        id: transportParams.id,
-        iceParameters: transportParams.iceParameters,
-        iceCandidates: transportParams.iceCandidates,
-        dtlsParameters: transportParams.dtlsParameters,
-        sctpParameters: transportParams.sctpParameters,
-        iceServers, // <-- use dynamic servers
-        iceTransportPolicy: 'relay', // Allow both STUN and TURN
-      });
+    sendTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
+      try {
+        console.log('🔗 Send transport connect event fired!');
         
-      sendTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
-        try {
-          console.log('🔗 Send transport connect event fired! MediaSoup is connecting...');
-          
-          socket?.emit('connect_transport', {
-            transportId: sendTransport.id,
-            dtlsParameters,
-            direction: 'send'
-          });
-          
-          console.log('📤 Emitted connect_transport, waiting for server response...');
-          
-          const response = await createEventPromise(
-            socket,
-            'transport_connected',
-            'transport_connect_error',
-            15000,
-            (data) => data.transportId === sendTransport.id && data.direction === 'send'
-          );
-          
-          console.log('✅ Server confirmed transport connection:', response);
-          callback();
-        } catch (error) {
-          console.error('❌ Error in send transport connect handler:', error);
-          errback(error as Error);
-        }
-      });
+        socket?.emit('connect_transport', {
+          transportId: sendTransport.id,
+          dtlsParameters,
+          direction: 'send'
+        });
+        
+        console.log('📤 Emitted connect_transport, waiting for server response...');
+        
+        const response = await createEventPromise(
+          socket,
+          'transport_connected',
+          'transport_connect_error',
+          15000,
+          (data) => data.transportId === sendTransport.id && data.direction === 'send'
+        );
+        
+        console.log('✅ Server confirmed transport connection:', response);
+        callback();
+      } catch (error) {
+        console.error('❌ Error in send transport connect handler:', error);
+        errback(error as Error);
+      }
+    });
 
       // Connection state tracking for debugging
       sendTransport.on('connectionstatechange', (state) => {
@@ -309,63 +330,77 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
         }
       });
 
-      sendTransportRef.current = sendTransport;
-      console.log('✅ Send transport created (will connect when producing)');
-      return sendTransport;
-    } catch (error) {
-      console.error('Error creating send transport:', error);
-      setErrorWithType('TRANSPORT', 'Failed to create send transport', true, error);
-      throw error;
+     sendTransportRef.current = sendTransport;
+    console.log('✅ Send transport created with fresh ICE servers');
+    return sendTransport;
+  } catch (error) {
+    console.error('Error creating send transport:', error);
+    setErrorWithType('TRANSPORT', 'Failed to create send transport', true, error);
+    throw error;
+  }
+}, [socket, getFreshIceServers]);
+
+
+ const createReceiveTransport = useCallback(async (transportParams: any) => {
+  try {
+    if (!deviceRef.current) throw new Error('Device not initialized');
+
+    if (recvTransportRef.current && !recvTransportRef.current.closed) {
+      console.log('✅ Receive transport already exists');
+      return recvTransportRef.current;
     }
-  }, [socket, iceServers]);
 
-  const createReceiveTransport = useCallback(async (transportParams: any) => {
-    try {
-      if (!deviceRef.current) throw new Error('Device not initialized');
+    // 🔥 Get fresh ICE servers for this transport
+    const freshIceServers = await getFreshIceServers();
+    console.log("Using fresh ICE servers for receive transport:", freshIceServers);
 
-      if (recvTransportRef.current && !recvTransportRef.current.closed) {
-        console.log('✅ Receive transport already exists');
-        return recvTransportRef.current;
+    console.log('📡 Creating receive transport...');
+
+    const recvTransport = deviceRef.current.createRecvTransport({
+      id: transportParams.id,
+      iceParameters: transportParams.iceParameters,
+      iceCandidates: transportParams.iceCandidates,
+      dtlsParameters: transportParams.dtlsParameters,
+      sctpParameters: transportParams.sctpParameters,
+      iceServers: freshIceServers, // Fresh credentials
+      iceTransportPolicy: 'all', // Same policy for consistency
+      additionalSettings: {
+        // No unsupported properties here
       }
+    });
 
-      console.log("Using ICE servers:", iceServers);
-
-      console.log('📡 Creating receive transport...');
-
-      const recvTransport = deviceRef.current.createRecvTransport({
-        id: transportParams.id,
-        iceParameters: transportParams.iceParameters,
-        iceCandidates: transportParams.iceCandidates,
-        dtlsParameters: transportParams.dtlsParameters,
-        sctpParameters: transportParams.sctpParameters,
-        iceServers, // <-- use dynamic servers
-        iceTransportPolicy: 'all',
-      });
-      
-      recvTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
-        try {
-          console.log('🔗 Connecting receive transport...');
-          socket?.emit('connect_transport', {
-            transportId: recvTransport.id,
-            dtlsParameters,
-            direction: 'recv'
-          });
-          
-          await createEventPromise(
-            socket,
-            'transport_connected',
-            'transport_connect_error',
-            15000,
-            (data) => data.transportId === recvTransport.id && data.direction === 'recv'
-          );
-          
-          console.log('✅ Receive transport connected');
-          callback();
-        } catch (error) {
-          console.error('Error connecting receive transport:', error);
-          errback(error as Error);
-        }
-      });
+    // Add ICE gathering state debugging
+    recvTransport.on('icegatheringstatechange', (iceGatheringState) => {
+      console.log('🧊 Receive transport ICE gathering state:', iceGatheringState);
+      if (iceGatheringState === 'complete') {
+        console.log('✅ ICE gathering complete for receive transport');
+      }
+    });
+    
+    recvTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
+      try {
+        console.log('🔗 Connecting receive transport...');
+        socket?.emit('connect_transport', {
+          transportId: recvTransport.id,
+          dtlsParameters,
+          direction: 'recv'
+        });
+        
+        await createEventPromise(
+          socket,
+          'transport_connected',
+          'transport_connect_error',
+          15000,
+          (data) => data.transportId === recvTransport.id && data.direction === 'recv'
+        );
+        
+        console.log('✅ Receive transport connected');
+        callback();
+      } catch (error) {
+        console.error('Error connecting receive transport:', error);
+        errback(error as Error);
+      }
+    });
 
       recvTransport.on('connectionstatechange', (state) => {
         console.log('📡 Receive transport connection state:', state);
@@ -384,14 +419,38 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
       });
 
       recvTransportRef.current = recvTransport;
-      console.log('✅ Receive transport created successfully');
-      return recvTransport;
-    } catch (error) {
-      console.error('Error creating receive transport:', error);
-      setErrorWithType('TRANSPORT', 'Failed to create receive transport', true, error);
-      throw error;
+    console.log('✅ Receive transport created with fresh ICE servers');
+    return recvTransport;
+  } catch (error) {
+    console.error('Error creating receive transport:', error);
+    setErrorWithType('TRANSPORT', 'Failed to create receive transport', true, error);
+    throw error;
+  }
+}, [socket, getFreshIceServers]);
+  const refreshIceServersAndReconnect = useCallback(async () => {
+  console.log('🔄 Refreshing ICE servers and reconnecting...');
+  try {
+    // Close existing transports
+    if (sendTransportRef.current && !sendTransportRef.current.closed) {
+      sendTransportRef.current.close();
+      sendTransportRef.current = null;
     }
-  }, [socket, iceServers]);
+    if (recvTransportRef.current && !recvTransportRef.current.closed) {
+      recvTransportRef.current.close();
+      recvTransportRef.current = null;
+    }
+
+    // Reset transport ready state
+    transportReadyRef.current = { send: false, recv: false };
+
+    // Trigger reconnection with fresh ICE servers
+    // You'll need to emit a reconnection event to your server
+    socket?.emit('request_transport_refresh');
+
+  } catch (error) {
+    console.error('Error refreshing ICE servers:', error);
+  }
+}, [socket]);
   
   const startLocalStream = useCallback(async (): Promise<MediaStream> => {
     try {
