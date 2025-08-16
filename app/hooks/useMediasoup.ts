@@ -484,40 +484,28 @@ const isInitializedRef = useRef<boolean>(false);
           }
           return newPeers;
         });
-
-        consumer.on('trackended', () => {
-          consumersRef.current.delete(consumer.id);
-          if (!consumer.closed) {
-            consumer.close();
-          }
-          setPeers(prevPeers => {
-            const peerIndex = prevPeers.findIndex(p => p.id === producerSocketId);
-            if (peerIndex >= 0) {
-              const updatedPeers = [...prevPeers];
-              const peer = { ...updatedPeers[peerIndex] };
-              peer.consumers = new Map(peer.consumers);
-              peer.consumers.delete(consumer.id);
-
-              const newStream = new MediaStream();
-              peer.stream.getTracks().forEach(track => {
-                if (track.id !== consumer.track?.id && track.readyState === 'live') {
-                  newStream.addTrack(track);
-                }
-              });
-              peer.stream = newStream;
-
-              if (kind === 'video') {
-                peer.isVideoEnabled = false;
-              } else if (kind === 'audio') {
-                peer.isAudioEnabled = false;
-              }
-
-              updatedPeers[peerIndex] = peer;
-              return updatedPeers;
-            }
-            return prevPeers;
-          });
-        });
+consumer.on('trackended', () => {
+  consumersRef.current.delete(consumer.id);
+  setPeers(prevPeers => {
+    const peerIndex = prevPeers.findIndex(p => p.id === producerSocketId);
+    if (peerIndex >= 0) {
+      const updatedPeers = [...prevPeers];
+      const peer = { ...updatedPeers[peerIndex] };
+      peer.isVideoEnabled = false;
+      // Remove ended track from stream
+      const newStream = new MediaStream();
+      peer.stream.getTracks().forEach(track => {
+        if (track.kind !== 'video' || track.readyState === 'live') {
+          newStream.addTrack(track);
+        }
+      });
+      peer.stream = newStream;
+      updatedPeers[peerIndex] = peer;
+      return updatedPeers;
+    }
+    return prevPeers;
+  });
+});
 
         consumer.on('transportclose', () => {
           consumersRef.current.delete(consumer.id);
