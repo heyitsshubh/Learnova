@@ -51,6 +51,8 @@ export interface UseMediasoupReturn {
   isAudioEnabled: boolean;
   isConnected: boolean;
   hasJoinedClass: boolean;
+  testNetworkConnectivity: () => Promise<void>;
+  createEmergencyTransport: () => Promise<void>;
 }
 
 // Helper function for promise-based socket events
@@ -104,6 +106,278 @@ const createEventPromise = <T>(
 // ...existing code...
 
 // ...existing code...
+
+const getRestrictedNetworkIceServers = async () => {
+  try {
+    console.log('🔄 Getting restrictive network ICE servers...');
+    const turnServers = await fetchTurnCredentials();
+
+    // Only use TCP TURN servers, prioritize port 443
+    const tcpTurnServers = turnServers
+      .filter((server: { urls: string }) => server.urls.includes('transport=tcp'))
+      .sort((a: { urls: string }, b: { urls: string }) => {
+        if (a.urls.includes(':443')) return -1;
+        if (b.urls.includes(':443')) return 1;
+        return 0;
+      });
+
+    console.log('🔒 Using TCP TURN only:', tcpTurnServers);
+    return tcpTurnServers;
+  } catch (error) {
+    console.error('❌ Failed to get ICE servers:', error);
+    return [];
+  }
+};
+
+const createSendTransportWithAggressiveICE = async (
+  deviceRef: React.MutableRefObject<mediasoupClient.Device | null>,
+  sendTransportRef: React.MutableRefObject<mediasoupClient.types.Transport | null>,
+  transportParams: any,
+  socket: any,
+  transportReadyRef: React.MutableRefObject<{ send: boolean; recv: boolean }>,
+  setErrorWithType: any
+) => {
+  try {
+    if (!deviceRef.current) throw new Error('Device not initialized');
+
+    if (sendTransportRef.current && !sendTransportRef.current.closed) {
+      console.log('✅ Send transport already exists');
+      return sendTransportRef.current;
+    }
+
+    const iceServers = await getRestrictedNetworkIceServers();
+
+    if (iceServers.length === 0) {
+      throw new Error('No available ICE servers for restrictive network');
+    }
+
+    console.log('🚛 Creating send transport with restrictive network config...');
+
+    const sendTransport = deviceRef.current.createSendTransport({
+      id: transportParams.id,
+      iceParameters: transportParams.iceParameters,
+      iceCandidates: transportParams.iceCandidates,
+      dtlsParameters: transportParams.dtlsParameters,
+      sctpParameters: transportParams.sctpParameters,
+      iceServers,
+      iceTransportPolicy: 'relay',
+      additionalSettings: {
+        iceCandidatePoolSize: 10,
+        bundlePolicy: 'max-bundle',
+        rtcpMuxPolicy: 'require'
+      }
+    });
+
+    // Removed unsupported 'icestatechange' event handler.
+    // Use 'connectionstatechange' and 'icegatheringstatechange' for transport state monitoring.
+
+    
+    sendTransport.on('connectionstatechange', (state) => {
+      console.log(`📡 Send transport connection state: ${state}`);
+      if (state === 'connected') {
+        transportReadyRef.current.send = true;
+        console.log('✅ Send transport fully connected! Your media is now being sent.');
+      } else if (state === 'failed') {
+        transportReadyRef.current.send = false;
+        console.log('❌ Send transport connection failed');
+        setErrorWithType('TRANSPORT', 'Network blocking media connection. Try mobile hotspot.', true);
+      } else if (state === 'disconnected') {
+        transportReadyRef.current.send = false;
+        console.log('⚠️ Send transport disconnected');
+      }
+    });
+
+      sendTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
+      try {
+        console.log('🔗 Send transport connect event - ICE connection established!');
+        socket?.emit('connect_transport', {
+          transportId: sendTransport.id,
+          dtlsParameters,
+          direction: 'send'
+        });
+
+         await createEventPromise(
+          socket,
+          'transport_connected',
+          'transport_connect_error',
+          20000,
+          (data) => data.transportId === sendTransport.id && data.direction === 'send'
+        );
+
+        console.log('✅ Server confirmed send transport connection');
+        callback();
+      } catch (error) {
+        console.error('❌ Error in send transport connect handler:', error);
+        errback(error as Error);
+      }
+    });
+
+    
+    sendTransport.on('produce', async ({ kind, rtpParameters }, callback, errback) => {
+      try {
+        console.log(`🎬 Producing ${kind} media...`);
+        socket?.emit('start_producing', { kind, rtpParameters });
+
+        const response = await createEventPromise(
+          socket,
+          'producer_created',
+          'producer_create_error',
+          15000,
+          (data) => data.kind === kind
+        );
+
+        const producerResponse = response as { producerId: string };
+        console.log(`✅ ${kind} producer created - ID: ${producerResponse.producerId}`);
+        callback({ id: producerResponse.producerId });
+      } catch (error) {
+        console.error(`❌ Error producing ${kind}:`, error);
+        errback(error as Error);
+      }
+    });
+
+        sendTransportRef.current = sendTransport;
+    console.log('✅ Send transport created with restrictive network settings');
+    return sendTransport;
+
+  } catch (error) {
+    console.error('❌ Error creating send transport:', error);
+    setErrorWithType('TRANSPORT', 'Failed to create send transport', true, error);
+    throw error;
+  }
+};
+
+// Strategy 3: Quick network test function
+const testNetworkConnectivity = async () => {
+  console.log('🧪 Testing network connectivity...');
+
+  try {
+    const pc = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    });
+
+    let stunWorking = false;
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        console.log('ICE candidate:', event.candidate.type, event.candidate.protocol);
+        if (event.candidate.type === 'srflx') {
+          stunWorking = true;
+          console.log('✅ STUN is working - found server reflexive candidate');
+        }
+      }
+    };
+    
+    pc.onicegatheringstatechange = () => {
+      if (pc.iceGatheringState === 'complete') {
+        if (!stunWorking) {
+          console.log('❌ STUN is blocked - you need TURN servers');
+        }
+        pc.close();
+      }
+    };
+
+    pc.createDataChannel('test');
+    await pc.setLocalDescription(await pc.createOffer());
+
+    setTimeout(() => pc.close(), 10000);
+
+  } catch (error) {
+    console.error('Network test failed:', error);
+  }
+};
+// Removed erroneous call to createSendTransportWithAggressiveICE() - function requires 6 arguments.
+
+
+// Strategy 4: Emergency fallback with different TURN configuration
+const createEmergencyTransport = async (
+  deviceRef: React.MutableRefObject<mediasoupClient.Device | null>,
+  transportParams: any,
+  socket: any,
+  setErrorWithType: any
+) => {
+  try {
+    console.log('🚨 Creating emergency transport with different settings...');
+
+    const emergencyIceServers = [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' }
+    ];
+
+    const sendTransport = deviceRef.current!.createSendTransport({
+      id: transportParams.id,
+      iceParameters: transportParams.iceParameters,
+      iceCandidates: transportParams.iceCandidates,
+      dtlsParameters: transportParams.dtlsParameters,
+      sctpParameters: transportParams.sctpParameters,
+      iceServers: emergencyIceServers,
+      iceTransportPolicy: 'all',
+    });
+
+    sendTransport.on('connectionstatechange', (state) => {
+      console.log(`📡 Emergency transport connection: ${state}`);
+      if (state === 'connected') {
+        console.log('✅ Emergency transport fully connected!');
+      } else if (state === 'failed' || state === 'disconnected') {
+        console.log('❌ Emergency transport connection failed/disconnected');
+        setErrorWithType('TRANSPORT', 'Emergency transport connection failed', true);
+      }
+    });
+
+    sendTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
+      try {
+        console.log('🔗 Emergency transport connect event');
+        socket?.emit('connect_transport', {
+          transportId: sendTransport.id,
+          dtlsParameters,
+          direction: 'send'
+        });
+
+        // Wait for server confirmation
+        await createEventPromise(
+          socket,
+          'transport_connected',
+          'transport_connect_error',
+          20000,
+          (data) => data.transportId === sendTransport.id && data.direction === 'send'
+        );
+
+        console.log('✅ Server confirmed emergency transport connection');
+        callback();
+      } catch (error) {
+        console.error('❌ Error in emergency transport connect handler:', error);
+        errback(error as Error);
+      }
+    });
+
+    sendTransport.on('produce', async ({ kind, rtpParameters }, callback, errback) => {
+      try {
+        console.log(`🎬 Emergency transport producing ${kind}...`);
+        socket?.emit('start_producing', { kind, rtpParameters });
+
+        const response = await createEventPromise(
+          socket,
+          'producer_created',
+          'producer_create_error',
+          15000,
+          (data) => data.kind === kind
+        );
+
+        const producerResponse = response as { producerId: string };
+        console.log(`✅ Emergency ${kind} producer created - ID: ${producerResponse.producerId}`);
+        callback({ id: producerResponse.producerId });
+      } catch (error) {
+        console.error(`❌ Error producing ${kind} in emergency transport:`, error);
+        errback(error as Error);
+      }
+    });
+
+    return sendTransport;
+  } catch (error) {
+    console.error('❌ Emergency transport creation failed:', error);
+    throw error;
+  }
+};
+
 export function useMediasoup(classId: string, userId?: string, token?: string): UseMediasoupReturn {
   const { socket, isConnected } = useSocket();
   
@@ -851,6 +1125,18 @@ const consumeRemoteMedia = useCallback(async (
         createSendTransport(transports.sendTransport),
         createReceiveTransport(transports.recvTransport)
       ]);
+
+    await Promise.all([
+  createSendTransportWithAggressiveICE(
+    deviceRef,
+    sendTransportRef,
+    transports.sendTransport,
+    socket,
+    transportReadyRef,
+    setErrorWithType
+  ),
+  createReceiveTransport(transports.recvTransport)
+]);
       
       console.log('5️⃣ Starting local media and producing...');
       
@@ -1209,6 +1495,14 @@ const consumeRemoteMedia = useCallback(async (
     isVideoEnabled,
     isAudioEnabled,
     isConnected,
-    hasJoinedClass
+    hasJoinedClass,
+    testNetworkConnectivity,
+    createEmergencyTransport: async () => {
+      // You may need to provide the required arguments here or handle them appropriately
+      // Example: If you want to use current refs and state, pass them in
+      if (!deviceRef.current || !socket) return;
+      const transportParams = {}; // Replace with actual transport params if available
+      await createEmergencyTransport(deviceRef, transportParams, socket, setErrorWithType);
+    }
   }
 }
