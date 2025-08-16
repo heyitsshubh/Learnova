@@ -704,6 +704,11 @@ sendTransport.on('connectionstatechange', (state) => {
     throw error;
   }
 }, [socket, getFreshIceServers]);
+console.log('6️⃣ Requesting existing producers...');
+if (socket) {
+  socket.emit('get_existing_producers');
+}
+  
   const refreshIceServersAndReconnect = useCallback(async () => {
   console.log('🔄 Refreshing ICE servers and reconnecting...');
   try {
@@ -1512,4 +1517,3 @@ const consumeRemoteMedia = useCallback(async (
     
     }
   }
-
