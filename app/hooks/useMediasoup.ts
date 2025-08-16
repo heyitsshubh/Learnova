@@ -250,7 +250,7 @@ const createSendTransport = useCallback(async (transportParams: any) => {
       dtlsParameters: transportParams.dtlsParameters,
       sctpParameters: transportParams.sctpParameters,
       iceServers: freshIceServers, // Fresh credentials
-      iceTransportPolicy: 'all', // Allow both STUN and TURN
+      iceTransportPolicy: 'relay', // Allow both STUN and TURN
       additionalSettings: {
         // No unsupported properties here
       }
@@ -363,7 +363,7 @@ const createSendTransport = useCallback(async (transportParams: any) => {
       dtlsParameters: transportParams.dtlsParameters,
       sctpParameters: transportParams.sctpParameters,
       iceServers: freshIceServers, // Fresh credentials
-      iceTransportPolicy: 'all', // Same policy for consistency
+      iceTransportPolicy: 'relay', // Same policy for consistency
       additionalSettings: {
         // No unsupported properties here
       }
