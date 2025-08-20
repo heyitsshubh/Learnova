@@ -51,63 +51,131 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
   }, [joinClass, isConnected, hasJoinedClass]);
 
   // 🔥 CRITICAL FIX: Better local video attachment
-  useEffect(() => {
-    const attachLocalVideo = async () => {
-      if (localVideoRef.current && localStreamRef.current) {
-        try {
-          console.log('📹 Attaching local video stream...', {
-            streamId: localStreamRef.current.id,
-            tracks: localStreamRef.current.getTracks().map(t => `${t.kind}:${t.id}:${t.readyState}`)
-          });
+ useEffect(() => {
+  if (localStreamRef.current) {
+    const videoTracks = localStreamRef.current.getVideoTracks();
+    const audioTracks = localStreamRef.current.getAudioTracks();
+    
+    console.log('🎥 Local stream details:', {
+      streamId: localStreamRef.current.id,
+      active: localStreamRef.current.active,
+      videoTracks: videoTracks.length,
+      audioTracks: audioTracks.length,
+      videoTrackDetails: videoTracks.map((t: MediaStreamTrack) => ({
+        id: t.id,
+        enabled: t.enabled,
+        readyState: t.readyState,
+        muted: t.muted
+      })),
+      audioTrackDetails: audioTracks.map((t: MediaStreamTrack) => ({
+        id: t.id,
+        enabled: t.enabled,
+        readyState: t.readyState,
+        muted: t.muted
+      }))
+    });
 
-          // 🔥 FIX: Always set srcObject first
-          localVideoRef.current.srcObject = localStreamRef.current;
-          
-          // 🔥 FIX: Add metadata loaded handler
-          const handleMetadataLoaded = () => {
-            console.log('📹 Local video metadata loaded');
-            if (localVideoRef.current && localVideoRef.current.paused) {
-              localVideoRef.current.play().catch(e => {
-                console.warn('Local video autoplay prevented (this is usually fine):', e);
-              });
-            }
-          };
-
-          localVideoRef.current.addEventListener('loadedmetadata', handleMetadataLoaded, { once: true });
-          
-          // 🔥 FIX: Force load if metadata is already available
-          if (localVideoRef.current.readyState >= 1) {
-            handleMetadataLoaded();
-          }
-
-          console.log('✅ Local video attached successfully');
-        } catch (error) {
-          console.error('❌ Error attaching local video:', error);
-        }
-      }
-    };
-
-    if (isVideoCallReady && localStreamRef.current) {
-      attachLocalVideo();
+    // Check local video element
+    if (localVideoRef.current) {
+      console.log('🎥 Local video element:', {
+        srcObject: !!localVideoRef.current.srcObject,
+        readyState: localVideoRef.current.readyState,
+        videoWidth: localVideoRef.current.videoWidth,
+        videoHeight: localVideoRef.current.videoHeight,
+        paused: localVideoRef.current.paused
+      });
     }
-  }, [localStreamRef.current, isVideoCallReady]);
+  }
+}, [localStreamRef.current]);
+  // 🔥 ADD THIS useEffect for LOCAL VIDEO after your existing local stream debugging useEffect:
+
+useEffect(() => {
+  const attachLocalVideo = async () => {
+    if (localVideoRef.current && localStreamRef.current) {
+      try {
+        console.log('📹 Attaching local video stream...', {
+          streamId: localStreamRef.current.id,
+          tracks: localStreamRef.current.getTracks().map(t => `${t.kind}:${t.id}:${t.readyState}`)
+        });
+
+        // 🔥 CRITICAL: Set srcObject for local video
+        localVideoRef.current.srcObject = localStreamRef.current;
+        
+        // 🔥 FIX: Add metadata loaded handler
+        const handleMetadataLoaded = () => {
+          console.log('📹 Local video metadata loaded');
+          if (localVideoRef.current && localVideoRef.current.paused) {
+            localVideoRef.current.play().catch(e => {
+              console.warn('Local video autoplay prevented (this is usually fine):', e);
+            });
+          }
+        };
+
+        localVideoRef.current.addEventListener('loadedmetadata', handleMetadataLoaded, { once: true });
+        
+        // 🔥 FIX: Force load if metadata is already available
+        if (localVideoRef.current.readyState >= 1) {
+          handleMetadataLoaded();
+        }
+
+        console.log('✅ Local video attached successfully');
+      } catch (error) {
+        console.error('❌ Error attaching local video:', error);
+      }
+    }
+  };
+
+  if (isVideoCallReady && localStreamRef.current) {
+    attachLocalVideo();
+  }
+}, [localStreamRef.current, isVideoCallReady]);
 
   // 🔥 CRITICAL FIX: Comprehensive peer video handling
-  useEffect(() => {
-    console.log('🔄 Peers updated:', peers.length);
-    peers.forEach((peer, index) => {
-      console.log(`Peer ${index + 1}:`, {
-        id: peer.id,
-        name: peer.name,
-        streamId: peer.stream.id,
-        videoTracks: peer.stream.getVideoTracks().length,
-        audioTracks: peer.stream.getAudioTracks().length,
-        isVideoEnabled: peer.isVideoEnabled,
-        isAudioEnabled: peer.isAudioEnabled,
-        tracks: peer.stream.getTracks().map((t: MediaStreamTrack) => `${t.kind}:${t.id}:${t.readyState}:${t.enabled}`)
-      });
+ useEffect(() => {
+  console.log('🔄 Peers updated:', peers.length);
+  peers.forEach((peer, index) => {
+    const videoTracks = peer.stream.getVideoTracks();
+    const audioTracks = peer.stream.getAudioTracks();
+    
+    console.log(`Peer ${index + 1} (${peer.name || peer.id}):`, {
+      id: peer.id,
+      name: peer.name,
+      streamId: peer.stream.id,
+      videoTracks: videoTracks.length,
+      audioTracks: audioTracks.length,
+      isVideoEnabled: peer.isVideoEnabled,
+      isAudioEnabled: peer.isAudioEnabled,
+      streamActive: peer.stream.active,
+      videoTrackDetails: videoTracks.map((t: MediaStreamTrack) => ({
+        id: t.id,
+        kind: t.kind,
+        enabled: t.enabled,
+        readyState: t.readyState,
+        muted: t.muted
+      })),
+      audioTrackDetails: audioTracks.map((t: MediaStreamTrack) => ({
+        id: t.id,
+        kind: t.kind,
+        enabled: t.enabled,
+        readyState: t.readyState,
+        muted: t.muted
+      }))
     });
-  }, [peers]);
+
+    // 🔥 Check if video element has the stream
+    const videoElement = remoteVideoRefs.current.get(peer.id);
+    if (videoElement) {
+      console.log(`Video element for ${peer.name}:`, {
+        srcObject: !!videoElement.srcObject,
+        readyState: videoElement.readyState,
+        videoWidth: videoElement.videoWidth,
+        videoHeight: videoElement.videoHeight,
+        paused: videoElement.paused
+      });
+    }
+  });
+}, [peers]);
+
 
   // Track meeting duration
   useEffect(() => {
@@ -211,106 +279,91 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
   };
 
   // 🔥 FIXED: Remote video component with better error handling
-  const RemoteVideo: React.FC<{ peer: any }> = ({ peer }) => {
-    const videoRef = useRef<HTMLVideoElement>(null);
+ const RemoteVideo: React.FC<{ peer: any }> = ({ peer }) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
 
-    useEffect(() => {
-      if (videoRef.current && peer.stream) {
-        const videoElement = videoRef.current;
-        
-        console.log(`🎥 Attaching stream for peer ${peer.name}:`, {
-          streamId: peer.stream.id,
-          tracks: peer.stream.getTracks().map((t: MediaStreamTrack) => `${t.kind}:${t.id}:${t.readyState}:${t.enabled}`)
-        });
-
-        // 🔥 CRITICAL: Set srcObject
-    const videoTracks = peer.stream.getVideoTracks();
-    console.log(`Peer ${peer.name || peer.id} video tracks:`, videoTracks);
-    if (videoTracks.length > 1) {
-      console.warn(
-        `⚠️ Peer ${peer.name || peer.id} has multiple video tracks (${videoTracks.length}). Only the first will be rendered.`
-      );
-      // Optionally, remove extra tracks:
-      videoTracks.slice(1).forEach((track: MediaStreamTrack) => {
-        peer.stream.removeTrack(track);
-        console.log(`Removed extra video track ${track.id} from peer ${peer.name || peer.id}`);
+  useEffect(() => {
+    if (videoRef.current && peer.stream) {
+      const videoElement = videoRef.current;
+      
+      console.log(`🎥 Attaching stream for peer ${peer.name}:`, {
+        streamId: peer.stream.id,
+        tracks: peer.stream.getTracks().map((t: MediaStreamTrack) => `${t.kind}:${t.id}:${t.readyState}:${t.enabled}`)
       });
-    }
-    if (videoTracks.length > 0) {
-      console.log(`Track readyState:`, videoTracks[0].readyState); // should be 'live'
-      console.log(`Remote track enabled for peer ${peer.name || peer.id}:`, videoTracks[0].enabled);
-    }
 
-        
-        // Store ref for debugging
-        remoteVideoRefs.current.set(peer.id, videoElement);
+      // 🔥 CRITICAL FIX: Set srcObject FIRST!
+      videoElement.srcObject = peer.stream;
 
-        const handleLoadedMetadata = () => {
-          console.log(`📹 Remote video metadata loaded for ${peer.name}`);
-          if (videoElement.paused) {
-            videoElement.play().catch(e => {
-              console.warn(`Remote video autoplay prevented for ${peer.name}:`, e);
-            });
-          }
-        };
+      // Store ref for debugging
+      remoteVideoRefs.current.set(peer.id, videoElement);
 
-        const handleCanPlay = () => {
-          console.log(`▶️ Remote video can play for ${peer.name}`);
-        };
+      const handleLoadedMetadata = () => {
+        console.log(`📹 Remote video metadata loaded for ${peer.name}`);
+        if (videoElement.paused) {
+          videoElement.play().catch(e => {
+            console.warn(`Remote video autoplay prevented for ${peer.name}:`, e);
+          });
+        }
+      };
 
-        const handleError = (e: Event) => {
-          console.error(`❌ Remote video error for ${peer.name}:`, e);
-        };
+      const handleCanPlay = () => {
+        console.log(`▶️ Remote video can play for ${peer.name}`);
+      };
 
-        videoElement.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true });
-        videoElement.addEventListener('canplay', handleCanPlay, { once: true });
-        videoElement.addEventListener('error', handleError);
+      const handleError = (e: Event) => {
+        console.error(`❌ Remote video error for ${peer.name}:`, e);
+        // Try to reload the stream
+        if (videoElement.srcObject !== peer.stream) {
+          console.log('🔄 Retrying stream attachment...');
+          videoElement.srcObject = peer.stream;
+        }
+      };
 
+      videoElement.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true });
+      videoElement.addEventListener('canplay', handleCanPlay, { once: true });
+      videoElement.addEventListener('error', handleError);
         // 🔥 FIX: Force load if metadata is already available
         if (videoElement.readyState >= 1) {
-          handleLoadedMetadata();
-        }
-
-        return () => {
-          videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
-          videoElement.removeEventListener('canplay', handleCanPlay);
-          videoElement.removeEventListener('error', handleError);
-          remoteVideoRefs.current.delete(peer.id);
-        };
+        handleLoadedMetadata();
       }
-    }, [peer.stream, peer.name, peer.id]);
 
-    return (
-      <div key={peer.id} className="relative bg-gray-800 rounded-lg overflow-hidden">
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted={false}
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute bottom-2 left-2 bg-black/50 px-2 py-1 rounded text-sm">
-          {peer.name || `User ${peer.id.slice(-4)}`}
-          {!peer.isVideoEnabled && " (Video Off)"}
-          {!peer.isAudioEnabled && " (Muted)"}
-        </div>
-        {!peer.isVideoEnabled && (
-          <div className="absolute inset-0 bg-gray-700 flex items-center justify-center">
-            <div className="w-16 h-16 bg-gray-600 rounded-full flex items-center justify-center text-2xl">
-              👤
-            </div>
-          </div>
-        )}
+       return () => {
+        videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
+        videoElement.removeEventListener('canplay', handleCanPlay);
+        videoElement.removeEventListener('error', handleError);
+        remoteVideoRefs.current.delete(peer.id);
+        // Clean up srcObject
+        if (videoElement.srcObject === peer.stream) {
+          videoElement.srcObject = null;
+        }
+      };
+    }
+  }, [peer.stream, peer.name, peer.id]);
+
+  return (
+    <div key={peer.id} className="relative bg-gray-800 rounded-lg overflow-hidden">
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted={false} // Remote videos should NOT be muted
+        className="w-full h-full object-cover"
+      />
+      <div className="absolute bottom-2 left-2 bg-black/50 px-2 py-1 rounded text-sm">
+        {peer.name || `User ${peer.id.slice(-4)}`}
+        {!peer.isVideoEnabled && " (Video Off)"}
+        {!peer.isAudioEnabled && " (Muted)"}
       </div>
-    );
-  };
-  peers.forEach(peer => {
-  const videoTracks = peer.stream.getVideoTracks();
-  console.log(`Peer ${peer.name || peer.id} video tracks:`, videoTracks);
-  if (videoTracks.length > 0) {
-    console.log(`Track readyState:`, videoTracks[0].readyState); // should be 'live'
-  }
-});
+      {!peer.isVideoEnabled && (
+        <div className="absolute inset-0 bg-gray-700 flex items-center justify-center">
+          <div className="w-16 h-16 bg-gray-600 rounded-full flex items-center justify-center text-2xl">
+            👤
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
   // Error display
   if (error && !isConnecting) {
