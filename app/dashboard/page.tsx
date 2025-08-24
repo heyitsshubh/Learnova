@@ -32,8 +32,8 @@ const donutData = [
 export default function DashboardPage() {
   return (
     <ProtectedRoute>
-      <div className="min-h-screen p-6 bg-[#fafbfc]">
-        <div className="max-w-[1200px] mx-auto">
+      <div className="min-h-screen p-4 sm:p-6 bg-[#fafbfc]">
+        <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-6">
             <h1 className="text-2xl font-semibold text-slate-800">Home</h1>
@@ -41,50 +41,61 @@ export default function DashboardPage() {
           </div>
 
           {/* Top stats row */}
-          <div className="flex flex-wrap gap-8 mb-6  ">
+          <div className="flex flex-wrap gap-6 mb-6">
             {stats.map((s) => (
               <StatCard key={s.id} label={s.label} value={s.value} icon={s.icon} />
             ))}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Left: Subject Progress & Attendance & Quick Links */}
-            <div className="lg:col-span-2 flex flex-col gap-4">
+            {/* Left: Subject Progress & Attendance & Quick Links */}
+            <div className="lg:col-span-2 flex flex-col gap-6 min-w-0">
               {/* Subject Progress */}
-          
-                <AssignmentStatusBarChart />
-           
-              
+              <AssignmentStatusBarChart />
 
-              {/* Attendance & Quick Links */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-[1020px] h-[235px]">
-                {/* Attendance */}
-                <div className="bg-white rounded-lg shadow p-4 flex flex-col justify-between">
-                  <h3 className="text-sm font-medium text-gray-700 mb-3">Attendance</h3>
-                  <div style={{ width: '100%', height: 140 }}>
-                    <ResponsiveContainer width="100%" height={140}>
-                      <BarChart data={attendanceData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                        <XAxis dataKey="day" axisLine={false} tickLine={false} />
-                        <YAxis hide domain={[0, 100]} />
-                        <Tooltip />
-                        <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                          {attendanceData.map((_entry, index) => (
-                            <Cell key={`cell-${index}`} fill="#3B82F6" />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
+              {/* Attendance */}
+              <div className="bg-white rounded-xl shadow p-4 flex flex-col min-w-140">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-base font-semibold text-gray-700">Attendance</h3>
+                  <span className="text-xs text-gray-400">This Week</span>
                 </div>
-                {/* Quick Links */}
+                <div className=" h-36 flex items-center justify-center">
+                  <ResponsiveContainer width="80%" height={180}>
+                    <BarChart data={attendanceData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                      <XAxis
+                        dataKey="day"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 15, fill: '#374151', fontWeight: 600 }}
+                      />
+                      <YAxis
+                        hide
+                        domain={[0, 100]}
+                      />
+                      <Tooltip
+                        cursor={{ fill: '#f3f4f6' }}
+                        contentStyle={{ borderRadius: 8, fontSize: 30 }}
+                      />
+                      <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={44}>
+                        {attendanceData.map((_entry, index) => (
+                          <Cell key={`cell-${index}`} fill="#3B82F6" />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="flex justify-between mt-3">
+                  <span className="text-xs text-gray-500">Mon-Sat</span>
+                  <span className="text-xs text-teal-600 font-semibold">Avg: 65%</span>
+                </div>
               </div>
             </div>
-
-            {/* Center: Progress Donut & Chemistry */}
-            <div className="flex flex-col gap-4 ">
-              <div className="bg-white rounded-lg shadow p-4 flex flex-col items-center justify-center relative ml-[-90px] w-[330px] h-[300px]">
+            {/* Progress & Calendar */}
+            <div className="flex flex-col gap-6">
+              <div className="bg-white rounded-lg shadow p-4 flex flex-col items-center justify-center relative w-full max-w-xs mx-auto">
                 <h3 className="text-sm font-medium text-gray-700 mb-3">PROGRESS</h3>
-                <div className=" flex items-center justify-center relative">
+                <div className="flex items-center justify-center relative w-full">
                   <ResponsiveContainer width={160} height={160}>
                     <PieChart>
                       <Pie data={donutData} dataKey="value" innerRadius={48} outerRadius={70} paddingAngle={2}>
@@ -102,14 +113,12 @@ export default function DashboardPage() {
                 <p className="text-xs text-gray-500 mt-3">iCourses | Assignments</p>
                 <p className="text-sm font-medium mt-1">Chemistry</p>
               </div>
-              {/* Calendar */}
               <Calendar />
             </div>
 
-            {/* Right: Notifications & To-Do List */}
-            <div className="flex flex-col gap-4 mt-[-145px] ml-[-50px]">
-              {/* Notifications */}
-              <div className="bg-white rounded-lg shadow p-4 w-[350px] h-[370px]">
+            {/* Notifications & Todo */}
+            <div className="flex flex-col gap-6">
+              <div className="bg-white rounded-lg shadow p-4 w-full max-w-xs ">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-medium text-gray-700">
                     Notifications <span className="text-xs text-gray-400">(2)</span>
@@ -133,14 +142,9 @@ export default function DashboardPage() {
                   </div>
                 </div>
               </div>
-              {/* To-Do List */}
-           
-                <TodoList />
-             
+              <TodoList />
             </div>
           </div>
-
-          {/* Footer spacer */}
           <div className="h-12" />
         </div>
       </div>

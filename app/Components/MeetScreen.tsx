@@ -224,23 +224,11 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ classId, userId, token }) => {
         });
 
         // 🔥 CRITICAL: Set srcObject
-    const videoTracks = peer.stream.getVideoTracks();
-    console.log(`Peer ${peer.name || peer.id} video tracks:`, videoTracks);
-    if (videoTracks.length > 1) {
-      console.warn(
-        `⚠️ Peer ${peer.name || peer.id} has multiple video tracks (${videoTracks.length}). Only the first will be rendered.`
-      );
-      // Optionally, remove extra tracks:
-      videoTracks.slice(1).forEach((track: MediaStreamTrack) => {
-        peer.stream.removeTrack(track);
-        console.log(`Removed extra video track ${track.id} from peer ${peer.name || peer.id}`);
-      });
-    }
-    if (videoTracks.length > 0) {
-      console.log(`Track readyState:`, videoTracks[0].readyState); // should be 'live'
-      console.log(`Remote track enabled for peer ${peer.name || peer.id}:`, videoTracks[0].enabled);
-    }
+        videoElement.srcObject = peer.stream;
 
+           peer.stream.getVideoTracks().forEach((track: MediaStreamTrack) => {
+      console.log(`Remote track enabled for peer ${peer.name || peer.id}:`, track.enabled);
+    });
         
         // Store ref for debugging
         remoteVideoRefs.current.set(peer.id, videoElement);
