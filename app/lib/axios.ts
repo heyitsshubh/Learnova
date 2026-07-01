@@ -2,7 +2,7 @@ import axios from 'axios';
 import { getAccessToken, refreshAccessToken, removeTokens } from '../utils/token';
 
 const axiosInstance = axios.create({
-  baseURL: 'https://project2-zphf.onrender.com/api/auth',
+  baseURL: 'https://bhattanisha.me/api/auth',
   headers: { 'Content-Type': 'application/json' },
 });
 
