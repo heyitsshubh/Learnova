@@ -118,7 +118,7 @@ export default function DashboardPage() {
 
             {/* Notifications & Todo */}
             <div className="flex flex-col gap-6">
-              <div className="bg-white rounded-lg shadow p-4 w-full max-w-xs ">
+              <div className="bg-white rounded-lg shadow p-4 w-full max-w-xs  ">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-medium text-gray-700">
                     Notifications <span className="text-xs text-gray-400">(2)</span>
