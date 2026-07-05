@@ -50,7 +50,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const newSocket = io('https://project2-zphf.onrender.com', {
+    const newSocket = io('https://bhattanisha.me', {
       auth: {
         token: localStorage.getItem('accessToken'),
       },

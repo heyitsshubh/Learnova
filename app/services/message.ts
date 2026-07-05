@@ -48,7 +48,7 @@ export const fetchMessages = async (classId: string): Promise<Message[]> => {
   try {
     getTokenOrRedirect();
     const response = await axiosInstance.get<ApiResponse>(
-      `https://api.heyitsshubh.me/api/class/${classId}/messages`
+      `https://bhattanisha.me/api/class/${classId}/messages`
     );
 
     if (response.status === 200) {

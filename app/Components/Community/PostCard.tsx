@@ -158,125 +158,130 @@ export default function PostCard({
   };
 
   return (
-    <div className={`bg-white rounded-xl shadow-sm border p-4 ${post.isPinned ? 'ring-1 ring-amber-200' : ''}`}>
+    <div className={`overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ${post.isPinned ? 'ring-1 ring-amber-200' : ''}`}>
       {post.isPinned && (
-        <div className="flex items-center gap-1 text-[11px] font-medium text-amber-600 mb-2">
+        <div className="flex items-center gap-1 border-b border-amber-100 bg-amber-50 px-4 py-2 text-[11px] font-medium text-amber-700 sm:px-5">
           <Pin size={11} className="fill-amber-500 text-amber-500" />
           Pinned
         </div>
       )}
 
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-start gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-full bg-slate-600 text-white flex items-center justify-center text-sm font-semibold shrink-0 overflow-hidden">
+      <div className="px-4 py-4 sm:px-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-600 text-sm font-semibold text-white">
             {post.author?.profilePicture ? (
-              <Image src={post.author.profilePicture} alt={post.author.name} width={40} height={40} className="object-cover w-full h-full" />
+              <Image src={post.author.profilePicture} alt={post.author.name} width={40} height={40} className="h-full w-full object-cover" />
             ) : (
               getInitials(post.author?.name || '?')
             )}
           </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-semibold text-slate-800">{post.author?.name}</span>
-              {post.author?.role && (
-                <span className="text-[10px] uppercase tracking-wide text-gray-400">{post.author.role}</span>
-              )}
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-semibold text-slate-800">{post.author?.name}</span>
+                {post.author?.role && (
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-500">
+                    {post.author.role}
+                  </span>
+                )}
+              </div>
+              <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-400">
+                <span>{timeAgo(post.createdAt)}</span>
+                {post.isEdited && <span>edited</span>}
+              </div>
             </div>
-            <div className="flex items-center gap-2 text-xs text-gray-400">
-              <span>{timeAgo(post.createdAt)}</span>
-              {post.isEdited && <span>· edited</span>}
-            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <span className={`text-[11px] font-medium px-2 py-1 rounded-full ${CATEGORY_STYLES[post.category] || 'bg-slate-100 text-slate-600'}`}>
+              {post.category}
+            </span>
+
+            {(isAuthor || canModerate) && (
+              <div className="relative">
+                <button onClick={() => setMenuOpen((v) => !v)} className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600" type="button">
+                  <MoreVertical size={16} />
+                </button>
+                {menuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+                    <div className="absolute right-0 z-20 mt-2 w-40 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                      {isAuthor && (
+                        <button
+                          onClick={() => {
+                            setIsEditing(true);
+                            setMenuOpen(false);
+                          }}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-slate-700 transition hover:bg-slate-50"
+                          type="button"
+                        >
+                          <Pencil size={12} /> Edit
+                        </button>
+                      )}
+                      {canModerate && (
+                        <button
+                          onClick={handlePin}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-slate-700 transition hover:bg-slate-50"
+                          type="button"
+                        >
+                          <Pin size={12} /> {post.isPinned ? 'Unpin' : 'Pin'}
+                        </button>
+                      )}
+                      {(isAuthor || isAdmin) && (
+                        <button
+                          onClick={handleDelete}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-red-500 transition hover:bg-red-50"
+                          type="button"
+                        >
+                          <Trash2 size={12} /> Delete
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${CATEGORY_STYLES[post.category] || 'bg-gray-100 text-gray-600'}`}>
-            {post.category}
-          </span>
-
-          {(isAuthor || canModerate) && (
-            <div className="relative">
-              <button onClick={() => setMenuOpen((v) => !v)} className="p-1 text-gray-400 hover:text-gray-600" type="button">
-                <MoreVertical size={16} />
-              </button>
-              {menuOpen && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-                  <div className="absolute right-0 mt-1 w-36 bg-white border rounded-lg shadow-lg z-20 py-1">
-                    {isAuthor && (
-                      <button
-                        onClick={() => {
-                          setIsEditing(true);
-                          setMenuOpen(false);
-                        }}
-                        className="flex items-center gap-2 w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
-                        type="button"
-                      >
-                        <Pencil size={12} /> Edit
-                      </button>
-                    )}
-                    {canModerate && (
-                      <button
-                        onClick={handlePin}
-                        className="flex items-center gap-2 w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
-                        type="button"
-                      >
-                        <Pin size={12} /> {post.isPinned ? 'Unpin' : 'Pin'}
-                      </button>
-                    )}
-                    {(isAuthor || isAdmin) && (
-                      <button
-                        onClick={handleDelete}
-                        className="flex items-center gap-2 w-full text-left px-3 py-1.5 text-xs text-red-500 hover:bg-red-50"
-                        type="button"
-                      >
-                        <Trash2 size={12} /> Delete
-                      </button>
-                    )}
-                  </div>
-                </>
-              )}
+        <div className="mt-4">
+          {isEditing ? (
+            <div>
+              <textarea
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                className="min-h-[100px] w-full resize-none rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800 outline-none transition focus:border-blue-400 focus:bg-white"
+                maxLength={5000}
+              />
+              <div className="mt-3 flex gap-2">
+                <button
+                  onClick={handleSaveEdit}
+                  className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-700"
+                  type="button"
+                >
+                  <Check size={12} /> Save
+                </button>
+                <button
+                  onClick={() => {
+                    setIsEditing(false);
+                    setEditContent(post.content);
+                  }}
+                  className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-200"
+                  type="button"
+                >
+                  <X size={12} /> Cancel
+                </button>
+              </div>
             </div>
+          ) : (
+            <p className="text-sm leading-6 text-slate-700 whitespace-pre-wrap break-words">{post.content}</p>
           )}
         </div>
-      </div>
 
-      <div className="mt-3">
-        {isEditing ? (
-          <div>
-            <textarea
-              value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
-              className="w-full text-sm text-slate-800 border rounded-lg p-2 resize-none min-h-[70px] outline-none focus:border-blue-400"
-              maxLength={5000}
-            />
-            <div className="flex gap-2 mt-2">
-              <button
-                onClick={handleSaveEdit}
-                className="flex items-center gap-1 text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg"
-                type="button"
-              >
-                <Check size={12} /> Save
-              </button>
-              <button
-                onClick={() => {
-                  setIsEditing(false);
-                  setEditContent(post.content);
-                }}
-                className="flex items-center gap-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1.5 rounded-lg"
-                type="button"
-              >
-                <X size={12} /> Cancel
-              </button>
-            </div>
-          </div>
-        ) : (
-          <p className="text-sm text-slate-700 whitespace-pre-wrap break-words">{post.content}</p>
-        )}
       </div>
 
       {post.attachments?.length > 0 && (
-        <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {post.attachments.map((att, idx) => {
             const isImage = att.mimetype?.startsWith('image/');
             return isImage ? (
@@ -285,7 +290,7 @@ export default function PostCard({
                 href={att.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block rounded-lg overflow-hidden border h-32 relative bg-gray-50"
+                className="relative block h-40 overflow-hidden rounded-xl border border-slate-200 bg-slate-50"
               >
                 <Image src={att.url} alt={att.filename} fill className="object-cover" unoptimized />
               </a>
@@ -295,9 +300,9 @@ export default function PostCard({
                 href={att.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 border rounded-lg p-2 text-xs text-gray-600 hover:bg-gray-50"
+                className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 transition hover:bg-slate-100"
               >
-                <FileText size={16} className="text-gray-400 shrink-0" />
+                <FileText size={16} className="shrink-0 text-slate-400" />
                 <span className="truncate">{att.filename}</span>
               </a>
             );
@@ -305,10 +310,10 @@ export default function PostCard({
         </div>
       )}
 
-      <div className="flex items-center gap-4 mt-3 pt-3 border-t">
+      <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4">
         <button
           onClick={handleLike}
-          className={`flex items-center gap-1.5 text-xs font-medium transition ${
+          className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${
             post.isLiked ? 'text-rose-500' : 'text-gray-500 hover:text-rose-500'
           }`}
           type="button"
@@ -318,7 +323,7 @@ export default function PostCard({
         </button>
         <button
           onClick={() => setShowComments((v) => !v)}
-          className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-blue-600 transition"
+          className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-slate-500 transition hover:text-blue-600"
           type="button"
         >
           <MessageCircle size={15} />
@@ -327,21 +332,21 @@ export default function PostCard({
       </div>
 
       {showComments && (
-        <div className="mt-3 pt-3 border-t space-y-3">
+        <div className="mt-4 space-y-3 rounded-2xl border border-slate-100 bg-slate-50 p-3 sm:p-4">
           {post.comments.map((comment) => (
             <div key={comment._id} className="flex items-start gap-2 group">
-              <div className="w-7 h-7 rounded-full bg-slate-400 text-white flex items-center justify-center text-[10px] font-semibold shrink-0">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-400 text-[10px] font-semibold text-white">
                 {getInitials(comment.author?.name || '?')}
               </div>
-              <div className="flex-1 min-w-0 bg-gray-50 rounded-lg px-3 py-1.5">
+              <div className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-semibold text-slate-700">{comment.author?.name}</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-gray-400">{timeAgo(comment.createdAt)}</span>
+                    <span className="text-[10px] text-slate-400">{timeAgo(comment.createdAt)}</span>
                     {(comment.author?._id === currentUserId || isAuthor || isAdmin) && (
                       <button
                         onClick={() => handleDeleteComment(comment._id)}
-                        className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition"
+                        className="opacity-0 transition group-hover:opacity-100 text-slate-300 hover:text-red-500"
                         type="button"
                       >
                         <X size={11} />
@@ -349,7 +354,7 @@ export default function PostCard({
                     )}
                   </div>
                 </div>
-                <p className="text-xs text-gray-600 break-words">{comment.text}</p>
+                <p className="mt-1 text-xs text-slate-600 break-words">{comment.text}</p>
               </div>
             </div>
           ))}
@@ -360,13 +365,13 @@ export default function PostCard({
               onChange={(e) => setCommentText(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
               placeholder="Write a comment..."
-              className="flex-1 text-xs border rounded-full px-3 py-1.5 outline-none focus:border-blue-400"
+              className="flex-1 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs outline-none transition focus:border-blue-400"
               maxLength={1000}
             />
             <button
               onClick={handleAddComment}
               disabled={submittingComment || !commentText.trim()}
-              className="text-blue-600 disabled:text-gray-300"
+              className="rounded-full p-2 text-blue-600 transition hover:bg-blue-50 disabled:text-slate-300"
               type="button"
             >
               <Send size={16} />

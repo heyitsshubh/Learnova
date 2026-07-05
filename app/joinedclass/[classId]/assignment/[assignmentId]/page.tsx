@@ -112,7 +112,7 @@ export default function JoinedAssignmentDetailPage({ params }: { params: Promise
   };
 
   const getFileUrl = (attachment: Attachment) => {
-    const baseUrl = 'https://project2-zphf.onrender.com';
+    const baseUrl = 'https://bhattanisha.me';
 
     if (attachment.path) {
       const cleanPath = attachment.path.startsWith('/') ? attachment.path.slice(1) : attachment.path;

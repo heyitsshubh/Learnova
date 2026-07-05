@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { Image as ImageIcon, Send, X, ChevronDown } from 'lucide-react';
+import { ChevronDown, Image as ImageIcon, Send, X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { createPost, CommunityCategory, CommunityPost } from '../../services/community';
 import { getInitials } from './timeUtils';
@@ -32,7 +32,7 @@ export default function CreatePost({ userName, userRole, onPostCreated }: Create
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const availableCategories =
-    userRole === 'student' ? CATEGORY_OPTIONS.filter((c) => c !== 'Announcement') : CATEGORY_OPTIONS;
+    userRole === 'student' ? CATEGORY_OPTIONS.filter((item) => item !== 'Announcement') : CATEGORY_OPTIONS;
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files || []);
@@ -45,7 +45,7 @@ export default function CreatePost({ userName, userRole, onPostCreated }: Create
   };
 
   const removeFile = (index: number) => {
-    setFiles((prev) => prev.filter((_, i) => i !== index));
+    setFiles((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
   };
 
   const handleSubmit = async () => {
@@ -53,6 +53,7 @@ export default function CreatePost({ userName, userRole, onPostCreated }: Create
       toast.error('Write something before posting');
       return;
     }
+
     setPosting(true);
     try {
       const formData = new FormData();
@@ -77,99 +78,120 @@ export default function CreatePost({ userName, userRole, onPostCreated }: Create
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border p-4">
-      <div className="flex gap-3">
-        <div className="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-semibold shrink-0">
-          {getInitials(userName)}
-        </div>
-        <div className="flex-1 min-w-0">
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Share something with the community — a doubt, a resource, an update..."
-            className="w-full resize-none border-none outline-none text-sm text-slate-800 placeholder:text-gray-400 min-h-[60px]"
-            maxLength={5000}
-          />
-
-          {files.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-2">
-              {files.map((file, idx) => (
-                <div
-                  key={`${file.name}-${idx}`}
-                  className="flex items-center gap-1.5 bg-gray-100 rounded-lg px-2 py-1 text-xs text-gray-600"
-                >
-                  <span className="max-w-[140px] truncate">{file.name}</span>
-                  <button onClick={() => removeFile(idx)} className="text-gray-400 hover:text-red-500">
-                    <X size={12} />
-                  </button>
-                </div>
-              ))}
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-100 px-4 py-4 sm:px-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-sm font-semibold text-white shadow-sm">
+            {getInitials(userName)}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-sm font-semibold text-slate-800">Start a conversation</h2>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">
+                {userRole}
+              </span>
             </div>
-          )}
+            <p className="mt-0.5 text-xs text-slate-500">
+              Share a question, upload a resource, or post an update for the community.
+            </p>
+          </div>
+        </div>
+      </div>
 
-          <div className="flex items-center justify-between mt-3 pt-3 border-t">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition"
-                type="button"
+      <div className="px-4 py-4 sm:px-5">
+        <textarea
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="Share something with the community — a doubt, a resource, an update..."
+          className="min-h-[140px] w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white"
+          maxLength={5000}
+        />
+
+        {files.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {files.map((file, idx) => (
+              <div
+                key={`${file.name}-${idx}`}
+                className="flex max-w-full items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-600"
               >
-                <ImageIcon size={16} />
-                Attach
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*,.pdf,.doc,.docx"
-                multiple
-                hidden
-                onChange={handleFileSelect}
-              />
-
-              <div className="relative">
+                <span className="max-w-[160px] truncate">{file.name}</span>
                 <button
-                  onClick={() => setShowCategoryMenu((v) => !v)}
-                  className="flex items-center gap-1 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 px-2.5 py-1.5 rounded-lg transition"
+                  onClick={() => removeFile(idx)}
+                  className="text-slate-400 transition hover:text-rose-500"
                   type="button"
                 >
-                  {category}
-                  <ChevronDown size={12} />
+                  <X size={12} />
                 </button>
-                {showCategoryMenu && (
-                  <>
-                    <div className="fixed inset-0 z-10" onClick={() => setShowCategoryMenu(false)} />
-                    <div className="absolute left-0 mt-1 w-40 bg-white border rounded-lg shadow-lg z-20 py-1">
-                      {availableCategories.map((opt) => (
-                        <button
-                          key={opt}
-                          onClick={() => {
-                            setCategory(opt);
-                            setShowCategoryMenu(false);
-                          }}
-                          className={`block w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 ${
-                            opt === category ? 'text-blue-600 font-medium' : 'text-gray-700'
-                          }`}
-                          type="button"
-                        >
-                          {opt}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
               </div>
-            </div>
+            ))}
+          </div>
+        )}
 
+        <div className="mt-4 flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={handleSubmit}
-              disabled={posting || !content.trim()}
-              className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs font-medium px-4 py-1.5 rounded-lg transition"
+              onClick={() => fileInputRef.current?.click()}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
               type="button"
             >
-              <Send size={13} />
-              {posting ? 'Posting...' : 'Post'}
+              <ImageIcon size={16} />
+              Attach
             </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,.pdf,.doc,.docx"
+              multiple
+              hidden
+              onChange={handleFileSelect}
+            />
+
+            <div className="relative">
+              <button
+                onClick={() => setShowCategoryMenu((value) => !value)}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-blue-300 hover:bg-white"
+                type="button"
+              >
+                {category}
+                <ChevronDown size={12} />
+              </button>
+
+              {showCategoryMenu && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowCategoryMenu(false)} />
+                  <div className="absolute left-0 z-20 mt-2 w-44 rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                    {availableCategories.map((option) => (
+                      <button
+                        key={option}
+                        onClick={() => {
+                          setCategory(option);
+                          setShowCategoryMenu(false);
+                        }}
+                        className={`block w-full px-3 py-2 text-left text-xs transition hover:bg-slate-50 ${
+                          option === category ? 'font-medium text-blue-600' : 'text-slate-700'
+                        }`}
+                        type="button"
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <span className="text-xs text-slate-400">Up to {MAX_FILES} attachments</span>
           </div>
+
+          <button
+            onClick={handleSubmit}
+            disabled={posting || !content.trim()}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            type="button"
+          >
+            <Send size={13} />
+            {posting ? 'Posting...' : 'Post'}
+          </button>
         </div>
       </div>
     </div>

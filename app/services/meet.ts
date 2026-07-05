@@ -86,7 +86,7 @@ export const joinMeeting = async (meetingId: string) => {
   const token = getTokenOrRedirect();
   try {
     const response = await axios.post(
-      `https://api.heyitsshubh.me/api/meetings/${meetingId}/join`,
+      `https://bhattanisha.me/api/meetings/${meetingId}/join`,
       {},
       {
         headers: {
