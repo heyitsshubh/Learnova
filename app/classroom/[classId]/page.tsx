@@ -30,6 +30,15 @@ interface Meeting {
   status?: string;
 }
 
+function getErrorMessage(error: unknown): string {
+  if (typeof error !== 'object' || error === null || !('response' in error)) {
+    return '';
+  }
+
+  const response = (error as { response?: { data?: { message?: unknown } } }).response;
+  return typeof response?.data?.message === 'string' ? response.data.message : '';
+}
+
 function parseAsIST(dateString: string) {
   const [datePart, timePart] = dateString.split('T');
   const [year, month, day] = datePart.split('-').map(Number);
@@ -130,8 +139,8 @@ export default function MeetPage() {
     // Start the meeting via API
     try {
       await startMeeting(meetingId);
-    } catch (startErr: any) {
-      const alreadyActive = startErr?.response?.data?.message === 'Meeting is already active';
+    } catch (startErr: unknown) {
+      const alreadyActive = getErrorMessage(startErr) === 'Meeting is already active';
       if (!alreadyActive) {
         throw startErr;
       }
