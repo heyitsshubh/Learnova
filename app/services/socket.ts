@@ -23,7 +23,7 @@ class SocketService {
 
     if (!this.socket) {
       try {
-        this.socket = io('https://api.heyitsshubh.me', {
+        this.socket = io('https://bhattanisha.me', {
           auth: { token },
           autoConnect: true,
           timeout: 20000,

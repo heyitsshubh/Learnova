@@ -1,7 +1,7 @@
 import axiosInstance from '../lib/axios';
 import { getAccessToken } from '../utils/token';
 
-const API_URL = 'https://api.heyitsshubh.me/api/community';
+const API_URL = 'https://bhattanisha.me/api/community';
 
 const redirectToLogin = () => {
   if (typeof window !== 'undefined') {

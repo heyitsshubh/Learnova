@@ -1,7 +1,7 @@
 import axiosInstance from '../lib/axios';
 import { getAccessToken } from '../utils/token';
 
-const API_URL = 'https://api.heyitsshubh.me/api/class/';
+const API_URL = 'https://bhattanisha.me/api/class/';
 
 const redirectToLogin = () => {
   if (typeof window !== 'undefined') {
@@ -31,7 +31,7 @@ export const createClass = async (formData: {
 export const joinClassByCode = async (classCode: string) => {
   getTokenOrRedirect();
   const res = await axiosInstance.post(
-    'https://api.heyitsshubh.me/api/class/join-by-code',
+    'https://bhattanisha.me/api/class/join-by-code',
     { classCode }
   );
   return res.data;
@@ -40,7 +40,7 @@ export const joinClassByCode = async (classCode: string) => {
 export const getJoinedClasses = async (userId: string) => {
   getTokenOrRedirect();
   const res = await axiosInstance.get(
-    `https://api.heyitsshubh.me/api/class/all?userId=${userId}&filter=joined`
+    `https://bhattanisha.me/api/class/all?userId=${userId}&filter=joined`
   );
   return res.data;
 };
@@ -48,7 +48,7 @@ export const getJoinedClasses = async (userId: string) => {
 export const getCreatedClasses = async (userId: string) => {
   getTokenOrRedirect();
   const res = await axiosInstance.get(
-    `https://api.heyitsshubh.me/api/class/all?userId=${userId}&filter=created`
+    `https://bhattanisha.me/api/class/all?userId=${userId}&filter=created`
   );
   return res.data;
 };
@@ -56,7 +56,7 @@ export const getCreatedClasses = async (userId: string) => {
 export const deleteClass = async (classId: string) => {
   getTokenOrRedirect();
   const res = await axiosInstance.delete(
-    `https://api.heyitsshubh.me/api/class/${classId}`
+    `https://bhattanisha.me/api/class/${classId}`
   );
   return res.data;
 };
@@ -65,7 +65,7 @@ export const getClassmates = async (classId: string) => {
   if (!classId) throw new Error('classId is required');
   getTokenOrRedirect();
   const res = await axiosInstance.get(
-    `https://api.heyitsshubh.me/api/class/classmates/${classId}`
+    `https://bhattanisha.me/api/class/classmates/${classId}`
   );
   return Array.isArray(res.data) ? res.data : res.data.classmates;
 };
@@ -73,7 +73,7 @@ export const getClassmates = async (classId: string) => {
 export const leaveClass = async (classId: string) => {
   getTokenOrRedirect();
   const res = await axiosInstance.post(
-    'https://api.heyitsshubh.me/api/class/leave',
+    'https://bhattanisha.me/api/class/leave',
     { classId }
   );
   return res.data;
