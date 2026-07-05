@@ -15,7 +15,7 @@ import {
   FaVideo,
   FaSpinner
 } from 'react-icons/fa';
-import { useSocket } from '../../../Components/Contexts/SocketContext';
+import { useSocket } from '../../Components/Contexts/SocketContext';
 
 interface Meeting {
   _id: string;
