@@ -81,7 +81,7 @@ export default function CreatePost({ userName, userRole, onPostCreated }: Create
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="border-b border-slate-100 px-4 py-4 sm:px-5">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-sm font-semibold text-white shadow-sm">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[rgba(45,156,219,0.5)] text-sm font-semibold text-white shadow-sm">
             {getInitials(userName)}
           </div>
           <div className="min-w-0 flex-1">
@@ -117,7 +117,7 @@ export default function CreatePost({ userName, userRole, onPostCreated }: Create
                 <span className="max-w-[160px] truncate">{file.name}</span>
                 <button
                   onClick={() => removeFile(idx)}
-                  className="text-slate-400 transition hover:text-rose-500"
+                  className="cursor-pointer text-slate-400 transition hover:text-rose-500"
                   type="button"
                 >
                   <X size={12} />
@@ -131,7 +131,7 @@ export default function CreatePost({ userName, userRole, onPostCreated }: Create
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
+              className="cursor-pointer inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
               type="button"
             >
               <ImageIcon size={16} />
@@ -149,7 +149,11 @@ export default function CreatePost({ userName, userRole, onPostCreated }: Create
             <div className="relative">
               <button
                 onClick={() => setShowCategoryMenu((value) => !value)}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-blue-300 hover:bg-white"
+                className={`cursor-pointer inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium transition ${
+                  showCategoryMenu
+                    ? 'border-transparent bg-[rgba(45,156,219,0.5)] text-white'
+                    : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-blue-300 hover:bg-white'
+                }`}
                 type="button"
               >
                 {category}
@@ -167,7 +171,7 @@ export default function CreatePost({ userName, userRole, onPostCreated }: Create
                           setCategory(option);
                           setShowCategoryMenu(false);
                         }}
-                        className={`block w-full px-3 py-2 text-left text-xs transition hover:bg-slate-50 ${
+                        className={`cursor-pointer block w-full px-3 py-2 text-left text-xs transition hover:bg-slate-50 ${
                           option === category ? 'font-medium text-blue-600' : 'text-slate-700'
                         }`}
                         type="button"
@@ -186,7 +190,7 @@ export default function CreatePost({ userName, userRole, onPostCreated }: Create
           <button
             onClick={handleSubmit}
             disabled={posting || !content.trim()}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            className="cursor-pointer inline-flex items-center justify-center gap-2 rounded-xl bg-[rgba(45,156,219,0.5)] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[rgba(45,156,219,0.7)] disabled:cursor-not-allowed disabled:bg-slate-300"
             type="button"
           >
             <Send size={13} />

@@ -163,7 +163,7 @@ export default function CommunityPage() {
                   <select
                     value={sort}
                     onChange={(e) => setSort(e.target.value as 'newest' | 'mostLiked')}
-                    className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600 outline-none transition focus:border-blue-400 focus:bg-white"
+                    className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600 outline-none transition focus:border-blue-200 focus:bg-white"
                   >
                     <option value="newest">Newest</option>
                     <option value="mostLiked">Most liked</option>
@@ -175,10 +175,10 @@ export default function CommunityPage() {
                     <button
                       key={cat}
                       onClick={() => setCategory(cat)}
-                      className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                      className={`cursor-pointer shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
                         category === cat
-                          ? 'border-blue-600 bg-blue-600 text-white shadow-sm'
-                          : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-600'
+                          ? 'border-transparent bg-[rgba(45,156,219,0.5)] text-white shadow-sm'
+                          : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300 '
                       }`}
                       type="button"
                     >
@@ -220,7 +220,7 @@ export default function CommunityPage() {
                   <button
                     onClick={handleLoadMore}
                     disabled={loadingMore}
-                    className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-sm font-medium text-blue-600 transition hover:border-blue-300 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="cursor-pointer inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-sm font-medium text-blue-600 transition hover:border-blue-300 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
                     type="button"
                   >
                     {loadingMore ? 'Loading...' : 'Load more'}
@@ -261,12 +261,12 @@ export default function CommunityPage() {
                       onClick={() => setCategory(cat)}
                       className={`flex w-full items-center justify-between rounded-xl px-4 py-3 text-left text-sm transition ${
                         category === cat
-                          ? 'bg-blue-50 text-blue-600'
+                          ? 'bg-[rgba(45,156,219,0.5)] text-white'
                           : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
                       }`}
                     >
                       <span>{cat}</span>
-                      <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-slate-500 shadow-sm">
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold shadow-sm ${category === cat ? 'bg-white/20 text-white' : 'bg-white text-slate-500'}`}>
                         {count}
                       </span>
                     </button>

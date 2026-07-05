@@ -170,12 +170,12 @@ export default function PostCard({
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-600 text-sm font-semibold text-white">
-            {post.author?.profilePicture ? (
-              <Image src={post.author.profilePicture} alt={post.author.name} width={40} height={40} className="h-full w-full object-cover" />
-            ) : (
-              getInitials(post.author?.name || '?')
-            )}
-          </div>
+              {post.author?.profilePicture ? (
+                <Image src={post.author.profilePicture} alt={post.author.name} width={40} height={40} className="h-full w-full object-cover" />
+              ) : (
+                getInitials(post.author?.name || '?')
+              )}
+            </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm font-semibold text-slate-800">{post.author?.name}</span>
@@ -199,7 +199,7 @@ export default function PostCard({
 
             {(isAuthor || canModerate) && (
               <div className="relative">
-                <button onClick={() => setMenuOpen((v) => !v)} className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600" type="button">
+                <button onClick={() => setMenuOpen((v) => !v)} className="cursor-pointer rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600" type="button">
                   <MoreVertical size={16} />
                 </button>
                 {menuOpen && (
@@ -212,7 +212,7 @@ export default function PostCard({
                             setIsEditing(true);
                             setMenuOpen(false);
                           }}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-slate-700 transition hover:bg-slate-50"
+                          className="cursor-pointer flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-slate-700 transition hover:bg-slate-50"
                           type="button"
                         >
                           <Pencil size={12} /> Edit
@@ -221,7 +221,7 @@ export default function PostCard({
                       {canModerate && (
                         <button
                           onClick={handlePin}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-slate-700 transition hover:bg-slate-50"
+                          className="cursor-pointer flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-slate-700 transition hover:bg-slate-50"
                           type="button"
                         >
                           <Pin size={12} /> {post.isPinned ? 'Unpin' : 'Pin'}
@@ -230,7 +230,7 @@ export default function PostCard({
                       {(isAuthor || isAdmin) && (
                         <button
                           onClick={handleDelete}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-red-500 transition hover:bg-red-50"
+                          className="cursor-pointer flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-red-500 transition hover:bg-red-50"
                           type="button"
                         >
                           <Trash2 size={12} /> Delete
@@ -256,7 +256,7 @@ export default function PostCard({
               <div className="mt-3 flex gap-2">
                 <button
                   onClick={handleSaveEdit}
-                  className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-700"
+                  className="cursor-pointer inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-700"
                   type="button"
                 >
                   <Check size={12} /> Save
@@ -266,7 +266,7 @@ export default function PostCard({
                     setIsEditing(false);
                     setEditContent(post.content);
                   }}
-                  className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-200"
+                  className="cursor-pointer inline-flex items-center gap-1 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-200"
                   type="button"
                 >
                   <X size={12} /> Cancel
@@ -313,17 +313,23 @@ export default function PostCard({
       <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4">
         <button
           onClick={handleLike}
-          className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${
-            post.isLiked ? 'text-rose-500' : 'text-gray-500 hover:text-rose-500'
+          className={`cursor-pointer flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${
+            post.isLiked
+              ? 'bg-[rgba(45,156,219,0.5)] text-white'
+              : 'text-gray-500 hover:bg-[rgba(45,156,219,0.5)] hover:text-white'
           }`}
           type="button"
         >
-          <Heart size={15} className={post.isLiked ? 'fill-rose-500' : ''} />
+          <Heart size={15} className={post.isLiked ? 'fill-white' : ''} />
           {post.likesCount || 0}
         </button>
         <button
           onClick={() => setShowComments((v) => !v)}
-          className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-slate-500 transition hover:text-blue-600"
+          className={`cursor-pointer flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${
+            showComments
+              ? 'bg-[rgba(45,156,219,0.5)] text-white'
+              : 'text-slate-500 hover:bg-[rgba(45,156,219,0.5)] hover:text-white'
+          }`}
           type="button"
         >
           <MessageCircle size={15} />
@@ -346,7 +352,7 @@ export default function PostCard({
                     {(comment.author?._id === currentUserId || isAuthor || isAdmin) && (
                       <button
                         onClick={() => handleDeleteComment(comment._id)}
-                        className="opacity-0 transition group-hover:opacity-100 text-slate-300 hover:text-red-500"
+                        className="cursor-pointer opacity-0 transition group-hover:opacity-100 text-slate-300 hover:text-red-500"
                         type="button"
                       >
                         <X size={11} />
@@ -371,7 +377,7 @@ export default function PostCard({
             <button
               onClick={handleAddComment}
               disabled={submittingComment || !commentText.trim()}
-              className="rounded-full p-2 text-blue-600 transition hover:bg-blue-50 disabled:text-slate-300"
+              className="cursor-pointer rounded-full p-2 text-blue-600 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:text-slate-300"
               type="button"
             >
               <Send size={16} />
