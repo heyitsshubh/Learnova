@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { fetchMeetingsByClass, startMeeting } from '../../../services/meet';
+import { fetchMeetingsByClass, startMeeting } from '../../services/meet';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
