@@ -102,9 +102,6 @@ const createEventPromise = <T>(
   });
 };
 
-// Helper function to fetch TURN credentials
-// Moved inside useMediasoup to avoid top-level hook usage error
-
 // Helper to get fresh ICE servers (TURN/STUN)
 const getFreshIceServers = async (): Promise<RTCIceServer[]> => {
   try {
@@ -144,10 +141,10 @@ export function useMediasoup(classId: string, userId?: string, token?: string): 
   const [error, setError] = useState<MediasoupError | null>(null);
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
-const [hasJoinedClass, setHasJoinedClass] = useState(false);
-const hasJoinedClassRef = useRef<boolean>(false);
-const transportReadyRef = useRef<{ send: boolean; recv: boolean }>({ send: false, recv: false });
-const isInitializedRef = useRef<boolean>(false);
+  const [hasJoinedClass, setHasJoinedClass] = useState(false);
+  const hasJoinedClassRef = useRef<boolean>(false);
+  const transportReadyRef = useRef<{ send: boolean; recv: boolean }>({ send: false, recv: false });
+  const isInitializedRef = useRef<boolean>(false);
 
   // Helper functions
   const setErrorWithType = (type: MediasoupError['type'], message: string, retry = false, originalError?: any) => {
@@ -196,9 +193,48 @@ const isInitializedRef = useRef<boolean>(false);
     }
   }, [socket, isConnected, classId, userId, token]);
 
+  // ---------------------------------------------------------------------
+  // FIX: initializeDevice now force-closes any stale transports/producers/
+  // consumers BEFORE creating a new Device. Transports are permanently tied
+  // to the Device that created them (and its negotiated RTP extension IDs).
+  // Previously, a second call to joinVideoCall() (e.g. after a retry) could
+  // create a brand-new Device while createSendTransport/createReceiveTransport
+  // silently reused the OLD transport (via the "already exists" check),
+  // because the transport refs were never cleared. That mismatch caused
+  // Chrome to reject renegotiation with:
+  //   "RTP extension ID reassignment not supported (collision on active MID 0)"
+  // when produce() tried to renegotiate the already-active peer connection
+  // with the new device's extension mapping. Camera/mic worked fine — the
+  // createOffer() call itself was throwing, so no producer ever reached the
+  // peer connection, resulting in a black video tile.
+  // ---------------------------------------------------------------------
   const initializeDevice = useCallback(async (rtpCapabilities: any) => {
     try {
       setConnectionState(ConnectionState.INITIALIZING);
+
+      // Force-close any stale transport tied to a previous Device instance.
+      if (sendTransportRef.current && !sendTransportRef.current.closed) {
+        sendTransportRef.current.close();
+      }
+      sendTransportRef.current = null;
+
+      if (recvTransportRef.current && !recvTransportRef.current.closed) {
+        recvTransportRef.current.close();
+      }
+      recvTransportRef.current = null;
+
+      // Producers/consumers created on the old transport are now invalid too.
+      producersRef.current.forEach((producer) => {
+        if (!producer.closed) producer.close();
+      });
+      producersRef.current.clear();
+
+      consumersRef.current.forEach((consumer) => {
+        if (!consumer.closed) consumer.close();
+      });
+      consumersRef.current.clear();
+
+      transportReadyRef.current = { send: false, recv: false };
 
       deviceRef.current = new mediasoupClient.Device();
       await deviceRef.current.load({ routerRtpCapabilities: rtpCapabilities });
@@ -318,15 +354,7 @@ const isInitializedRef = useRef<boolean>(false);
       setErrorWithType('TRANSPORT', 'Failed to create send transport', true, error);
       throw error;
     }
-  }, [socket, getFreshIceServers]);
-
-  // Enhanced consumer creation and peer management
-  // (Removed duplicate empty declaration of consumeRemoteMedia)
-
-  // Enhanced consumer creation and peer management
-  // (Removed duplicate declaration of consumeRemoteMedia)
-
-  // (Duplicate 'consumeRemoteMedia' declaration removed)
+  }, [socket]);
 
   // Enhanced consumer creation and peer management
   const consumeRemoteMedia = useCallback(async (
@@ -484,28 +512,29 @@ const isInitializedRef = useRef<boolean>(false);
           }
           return newPeers;
         });
-consumer.on('trackended', () => {
-  consumersRef.current.delete(consumer.id);
-  setPeers(prevPeers => {
-    const peerIndex = prevPeers.findIndex(p => p.id === producerSocketId);
-    if (peerIndex >= 0) {
-      const updatedPeers = [...prevPeers];
-      const peer = { ...updatedPeers[peerIndex] };
-      peer.isVideoEnabled = false;
-      // Remove ended track from stream
-      const newStream = new MediaStream();
-      peer.stream.getTracks().forEach(track => {
-        if (track.kind !== 'video' || track.readyState === 'live') {
-          newStream.addTrack(track);
-        }
-      });
-      peer.stream = newStream;
-      updatedPeers[peerIndex] = peer;
-      return updatedPeers;
-    }
-    return prevPeers;
-  });
-});
+
+        consumer.on('trackended', () => {
+          consumersRef.current.delete(consumer.id);
+          setPeers(prevPeers => {
+            const peerIndex = prevPeers.findIndex(p => p.id === producerSocketId);
+            if (peerIndex >= 0) {
+              const updatedPeers = [...prevPeers];
+              const peer = { ...updatedPeers[peerIndex] };
+              peer.isVideoEnabled = false;
+              // Remove ended track from stream
+              const newStream = new MediaStream();
+              peer.stream.getTracks().forEach(track => {
+                if (track.kind !== 'video' || track.readyState === 'live') {
+                  newStream.addTrack(track);
+                }
+              });
+              peer.stream = newStream;
+              updatedPeers[peerIndex] = peer;
+              return updatedPeers;
+            }
+            return prevPeers;
+          });
+        });
 
         consumer.on('transportclose', () => {
           consumersRef.current.delete(consumer.id);
@@ -553,22 +582,22 @@ consumer.on('trackended', () => {
     } finally {
       pendingConsumersRef.current.delete(producerId);
     }
-  }, [socket, setErrorWithType]);
+  }, [socket]);
 
   const createReceiveTransport = useCallback(async (transportParams: any) => {
     try {
       if (!deviceRef.current) throw new Error('Device not initialized');
-  
+
       if (recvTransportRef.current && !recvTransportRef.current.closed) {
         console.log('✅ Receive transport already exists');
         return recvTransportRef.current;
       }
-  
+
       const freshIceServers = await getFreshIceServers();
       console.log("Using fresh ICE servers for receive transport:", freshIceServers);
-  
+
       console.log('📡 Creating receive transport...');
-  
+
       const recvTransport = deviceRef.current.createRecvTransport({
         id: transportParams.id,
         iceParameters: transportParams.iceParameters,
@@ -579,14 +608,14 @@ consumer.on('trackended', () => {
         iceTransportPolicy: 'relay',
         additionalSettings: {}
       });
-  
+
       recvTransport.on('icegatheringstatechange', (iceGatheringState) => {
         console.log('🧊 Receive transport ICE gathering state:', iceGatheringState);
         if (iceGatheringState === 'complete') {
           console.log('✅ ICE gathering complete for receive transport');
         }
       });
-  
+
       recvTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
         try {
           console.log('🔗 Connecting receive transport...');
@@ -595,7 +624,7 @@ consumer.on('trackended', () => {
             dtlsParameters,
             direction: 'recv'
           });
-  
+
           await createEventPromise(
             socket,
             'transport_connected',
@@ -603,7 +632,7 @@ consumer.on('trackended', () => {
             15000,
             (data) => data.transportId === recvTransport.id && data.direction === 'recv'
           );
-  
+
           console.log('✅ Receive transport connected');
           callback();
         } catch (error) {
@@ -611,7 +640,7 @@ consumer.on('trackended', () => {
           errback(error as Error);
         }
       });
-  
+
       recvTransport.on('connectionstatechange', (state) => {
         console.log('📡 Receive transport connection state:', state);
         if (state === 'connected') {
@@ -631,7 +660,7 @@ consumer.on('trackended', () => {
           setErrorWithType('TRANSPORT', 'Receive transport connection failed', true);
         }
       });
-  
+
       recvTransportRef.current = recvTransport;
       console.log('✅ Receive transport created with fresh ICE servers');
       return recvTransport;
@@ -756,8 +785,6 @@ consumer.on('trackended', () => {
       throw error;
     }
   }, []);
-
-
 
   const joinVideoCall = useCallback(async () => {
     if (!socket || !isConnected) {
