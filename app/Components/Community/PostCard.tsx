@@ -61,6 +61,7 @@ export default function PostCard({
   const isAuthor = post.author?._id === currentUserId;
   const isAdmin = currentUserRole === 'admin';
   const canModerate = currentUserRole === 'teacher' || currentUserRole === 'admin';
+  const authorName = post.author?.name || 'Unknown user';
 
   const handleLike = async () => {
     if (liking) return;
@@ -171,14 +172,14 @@ export default function PostCard({
           <div className="flex min-w-0 items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-600 text-sm font-semibold text-white">
               {post.author?.profilePicture ? (
-                <Image src={post.author.profilePicture} alt={post.author.name} width={40} height={40} className="h-full w-full object-cover" />
+                <Image src={post.author.profilePicture} alt={authorName} width={40} height={40} className="h-full w-full object-cover" />
               ) : (
-                getInitials(post.author?.name || '?')
+                getInitials(authorName)
               )}
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-semibold text-slate-800">{post.author?.name}</span>
+                <span className="text-sm font-semibold text-slate-800">{authorName}</span>
                 {post.author?.role && (
                   <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-500">
                     {post.author.role}
@@ -342,11 +343,11 @@ export default function PostCard({
           {post.comments.map((comment) => (
             <div key={comment._id} className="flex items-start gap-2 group">
               <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-400 text-[10px] font-semibold text-white">
-                {getInitials(comment.author?.name || '?')}
+                {getInitials(comment.author?.name || 'Unknown user')}
               </div>
               <div className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-semibold text-slate-700">{comment.author?.name}</span>
+                  <span className="text-xs font-semibold text-slate-700">{comment.author?.name || 'Unknown user'}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] text-slate-400">{timeAgo(comment.createdAt)}</span>
                     {(comment.author?._id === currentUserId || isAuthor || isAdmin) && (
