@@ -5,15 +5,12 @@ import MeetScreen from '../../../../../Components/MeetScreen';
 
 export default function LectureJoinPage() {
   const params = useParams();
-  const classId = params.classId as string;
+  const classId = params.classId as string | undefined;
+  const meetingId = params.meetingId as string | undefined;
 
-  // Get userId and token from localStorage
-  const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : '';
-  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : '';
-
-  if (!userId || !token) {
-    return <div>Please log in to join the meeting.</div>;
+  if (!classId || !meetingId) {
+    return <div>Invalid meeting link.</div>;
   }
 
-  return <MeetScreen classId={classId} userId={userId} token={token} />;
+  return <MeetScreen meetingId={meetingId} classId={classId} />;
 }
