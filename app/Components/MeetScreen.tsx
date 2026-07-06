@@ -18,11 +18,9 @@ import { joinMeeting } from '../services/meet';
 type MeetScreenProps = {
   meetingId?: string;
   classId?: string;
-  userId?: string;
-  token?: string;
 };
 
-const MeetScreen: React.FC<MeetScreenProps> = ({ meetingId, classId, userId, token: providedToken }) => {
+const MeetScreen: React.FC<MeetScreenProps> = ({ meetingId, classId }) => {
   const [token, setToken] = useState<string | null>(null);
   const [serverUrl, setServerUrl] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
