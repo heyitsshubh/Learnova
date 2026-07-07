@@ -82,6 +82,43 @@ export const startMeeting = async (meetingId: string) => {
   }
 };
 
+export const completeMeeting = async (meetingId: string) => {
+  const token = getTokenOrRedirect();
+  try {
+    const response = await axios.post(
+      `https://bhattanisha.me/api/meetings/${meetingId}/complete`,
+      { status: 'done' },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error completing meeting:', error);
+    throw error;
+  }
+};
+
+export const deleteMeeting = async (meetingId: string) => {
+  const token = getTokenOrRedirect();
+  try {
+    const response = await axios.delete(
+      `https://bhattanisha.me/api/meetings/${meetingId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting meeting:', error);
+    throw error;
+  }
+};
+
 export const joinMeeting = async (meetingId: string) => {
   const token = getTokenOrRedirect();
   try {

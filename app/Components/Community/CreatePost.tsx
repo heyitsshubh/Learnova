@@ -146,7 +146,7 @@ export default function CreatePost({ userName, userRole, onPostCreated }: Create
               onChange={handleFileSelect}
             />
 
-            <div className="relative">
+            <div className="relative overflow-visible">
               <button
                 onClick={() => setShowCategoryMenu((value) => !value)}
                 className={`cursor-pointer inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium transition ${
@@ -163,7 +163,7 @@ export default function CreatePost({ userName, userRole, onPostCreated }: Create
               {showCategoryMenu && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setShowCategoryMenu(false)} />
-                  <div className="absolute left-0 z-20 mt-2 w-44 rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                  <div className="absolute left-0 top-full z-20 mt-2 w-44 rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
                     {availableCategories.map((option) => (
                       <button
                         key={option}
