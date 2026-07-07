@@ -91,7 +91,7 @@ const Sidebar: React.FC = () => {
 
       {/* Sidebar */}
       <div
-        className={`fixed top-0 left-0 h-full w-64 text-white flex flex-col z-50 transform transition-transform duration-300
+        className={`fixed top-0 left-0 h-full w-64 text-white flex flex-col  transform transition-transform duration-300
         ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
         style={{ backgroundColor: '#333333' }}
       >

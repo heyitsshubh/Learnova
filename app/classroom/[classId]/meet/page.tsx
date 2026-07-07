@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { fetchMeetingsByClass, startMeeting } from '../../../services/meet';
+import { fetchMeetingsByClass, startMeeting, deleteMeeting } from '../../../services/meet';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
@@ -13,7 +13,8 @@ import {
   FaCheckCircle,
   FaHourglassHalf,
   FaVideo,
-  FaSpinner
+  FaSpinner,
+  FaTrashAlt
 } from 'react-icons/fa';
 import { useSocket } from '../../../Components/Contexts/SocketContext';
 
@@ -112,6 +113,19 @@ export default function MeetPage() {
     );
   };
 
+  const isMeetingDone = (meeting: Meeting) => meeting.status === 'done';
+
+  const handleDeleteMeeting = async (meetingId: string) => {
+    if (!confirm('Delete this meeting? This cannot be undone.')) return;
+    try {
+      await deleteMeeting(meetingId);
+      setMeetings((prev) => prev.filter((meeting) => meeting._id !== meetingId));
+    } catch (error) {
+      console.error('Error deleting meeting:', error);
+      alert('Failed to delete the meeting. Please try again.');
+    }
+  };
+
  const handleStartLecture = async (meeting: Meeting) => {
   const meetingId = meeting._id;
   const classId = typeof meeting.classId === 'object' ? meeting.classId._id : meeting.classId;
@@ -185,7 +199,8 @@ export default function MeetPage() {
             {meetings.map((meeting) => {
               const started = isMeetingStarted(meeting.scheduledDate);
               const isCreator = isMeetingCreator(meeting);
-              const canStart =  started && isCreator; // Only the creator can start
+              const done = isMeetingDone(meeting);
+              const canStart = started && isCreator && !done; // Only the creator can start
               const isStartingThis = startingMeeting === meeting._id;
 
               return (
@@ -204,6 +219,11 @@ export default function MeetPage() {
                       {isCreator && (
                         <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-700 font-medium">
                           Created by you
+                        </span>
+                      )}
+                      {done && (
+                        <span className="text-xs px-2 py-1 rounded bg-slate-100 text-slate-600 font-medium">
+                          Meeting Done
                         </span>
                       )}
                     </div>
@@ -267,7 +287,12 @@ export default function MeetPage() {
 
                   <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                     <div className="flex items-center">
-                      {started ? (
+                      {done ? (
+                        <div className="flex items-center text-slate-500">
+                          <FaCheckCircle className="w-5 h-5 mr-2" />
+                          <span className="font-medium">Meeting Done</span>
+                        </div>
+                      ) : started ? (
                         <div className="flex items-center text-green-600">
                           <FaCheckCircle className="w-5 h-5 mr-2" />
                           <span className="font-medium">Meeting Available</span>
@@ -281,12 +306,20 @@ export default function MeetPage() {
                     </div>
 
                     <div>
-                      {started && canStart ? (
+                      {done && isCreator ? (
+                        <button
+                          className="inline-flex items-center px-6 py-2.5 border border-red-200 text-sm font-medium rounded-lg text-red-700 bg-red-50 hover:bg-red-100 transition-colors duration-200 shadow-sm"
+                          onClick={() => handleDeleteMeeting(meeting._id)}
+                          type="button"
+                        >
+                          <FaTrashAlt className="mr-2" /> Delete Meeting
+                        </button>
+                      ) : started && canStart ? (
                         <button
                           className={`px-8 py-3 rounded-lg font-semibold text-lg flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 ${
                             isStartingThis
-                              ? 'bg-gray-400 cursor-not-allowed text-white'
-                              : 'bg-blue-600 hover:bg-blue-700 text-white'
+                              ? 'bg-gray-400  text-white'
+                              : 'bg-[rgba(45,156,219,0.5)] cursor-pointer text-white'
                           }`}
                           onClick={() => handleStartLecture(meeting)}
                           disabled={isStartingThis}

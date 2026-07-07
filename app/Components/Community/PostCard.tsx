@@ -97,7 +97,6 @@ export default function PostCard({
   };
 
   const handleDelete = async () => {
-    if (!confirm('Delete this post? This cannot be undone.')) return;
     try {
       await deletePost(post._id);
       onDeleted(post._id);

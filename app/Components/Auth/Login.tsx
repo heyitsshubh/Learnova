@@ -203,7 +203,7 @@ const Login = () => {
         </form>
 
         <p className="text-sm mt-6 text-gray-500 text-center">
-          Already have an account?{' '}
+          Dont&apos;t have an account?{' '}
             <a
             href="#"
             onClick={handleSignup}

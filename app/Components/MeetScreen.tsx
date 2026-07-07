@@ -13,7 +13,7 @@ import {
 } from '@livekit/components-react';
 import '@livekit/components-styles';
 import { Track } from 'livekit-client';
-import { joinMeeting } from '../services/meet';
+import { completeMeeting, joinMeeting } from '../services/meet';
 
 type MeetScreenProps = {
   meetingId?: string;
@@ -86,6 +86,9 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ meetingId, classId }) => {
       data-lk-theme="default"
       style={{ height: '100vh', backgroundColor: '#111827' }}
       onDisconnected={() => {
+        if (userRole === 'teacher' || userRole === 'admin') {
+          void completeMeeting(meetingId || '');
+        }
         window.location.href = `/classroom/${classId}`;
       }}
     >

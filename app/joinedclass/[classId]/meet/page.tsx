@@ -30,6 +30,8 @@ interface Meeting {
   status?: string;
 }
 
+const isMeetingDone = (meeting: Meeting) => meeting.status === 'done';
+
 export default function MeetPage() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,6 +74,22 @@ export default function MeetPage() {
   useEffect(() => {
     fetchMeetings();
   }, []);
+
+  useEffect(() => {
+    setLectureStarted((prev) => {
+      let changed = false;
+      const next = { ...prev };
+
+      meetings.forEach((meeting) => {
+        if (isMeetingStarted(meeting.scheduledDate) && !next[meeting._id]) {
+          next[meeting._id] = true;
+          changed = true;
+        }
+      });
+
+      return changed ? next : prev;
+    });
+  }, [meetings, nowIST]);
 
   // Listen for meeting started event from backend
   useEffect(() => {
@@ -118,6 +136,9 @@ export default function MeetPage() {
 
   // Helper to check if user can join (meeting started by teacher)
   const canJoinMeeting = (meeting: Meeting) => {
+    if (isMeetingDone(meeting)) {
+      return false;
+    }
     const timeStarted = isMeetingStarted(meeting.scheduledDate);
     const teacherStarted = lectureStarted[meeting._id];
     return timeStarted && teacherStarted;
@@ -217,6 +238,7 @@ const handleJoinLecture = async (meeting: Meeting) => {
               const timeStarted = isMeetingStarted(meeting.scheduledDate);
               const teacherStarted = lectureStarted[meeting._id];
               const canJoin = canJoinMeeting(meeting);
+              const done = isMeetingDone(meeting);
               const timeUntil = getTimeUntilMeeting(meeting.scheduledDate);
               console.log('canJoin', meeting._id, canJoin, { timeStarted, teacherStarted });
 
@@ -237,6 +259,11 @@ const handleJoinLecture = async (meeting: Meeting) => {
                       {teacherStarted && (
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
                           Live
+                        </span>
+                      )}
+                      {done && (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                          Meeting Done
                         </span>
                       )}
                     </div>
@@ -261,7 +288,7 @@ const handleJoinLecture = async (meeting: Meeting) => {
                             })}
                           </div>
                           {timeUntil && (
-                            <div className="text-xs text-orange-600 font-medium">
+                            <div className="text-xs text-red-600 font-medium">
                               Starts in {timeUntil}
                             </div>
                           )}
@@ -305,7 +332,11 @@ const handleJoinLecture = async (meeting: Meeting) => {
                         </span>
                       )}
 
-                      {canJoin ? (
+                      {done ? (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                          <FaCheckCircle className="w-4 h-4 mr-1" /> Meeting Done
+                        </span>
+                      ) : canJoin ? (
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
                           <FaCheckCircle className="w-4 h-4 mr-1" /> Ready to Join
                         </span>
@@ -322,12 +353,20 @@ const handleJoinLecture = async (meeting: Meeting) => {
 
                     {/* Action button */}
                     <div>
-                      {canJoin ? (
+                      {done ? (
+                        <button
+                          className="inline-flex items-center px-6 py-2.5 border border-gray-300 text-sm font-medium rounded-lg text-gray-500 bg-gray-50 cursor-not-allowed"
+                          disabled
+                        >
+                          <FaCheckCircle className="w-4 h-4 mr-2" />
+                          Meeting Done
+                        </button>
+                      ) : canJoin ? (
                         <button
                           className="inline-flex items-center px-6 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200 shadow-md hover:shadow-lg"
                           onClick={() => handleJoinLecture(meeting)}
                         >
-                          <FaVideo className="w-4 h-4 mr-2" />
+                          <FaVideo className="w-4 h-4 mr-2 cursor-pointer" />
                           Join Meeting
                         </button>
                       ) : timeStarted ? (
@@ -354,7 +393,9 @@ const handleJoinLecture = async (meeting: Meeting) => {
                   <div className="pt-4 border-t border-gray-100">
                     <div className="flex items-center justify-between text-sm text-gray-500">
                       <span>
-                        {canJoin ? (
+                        {done ? (
+                          <span className="text-slate-500 font-medium">Meeting completed</span>
+                        ) : canJoin ? (
                           <span className="text-green-600 font-medium"> Ready to join when teacher starts</span>
                         ) : timeStarted ? (
                           <span className="text-yellow-600 font-medium">Teacher hasn&#39;t started the meeting yet</span>
@@ -362,7 +403,7 @@ const handleJoinLecture = async (meeting: Meeting) => {
                           <span className="text-gray-500">Meeting will be available at the scheduled time</span>
                         )}
                       </span>
-                      {timeUntil && (
+                      {!done && timeUntil && (
                         <span className="text-orange-600 font-medium">
                           Starts in {timeUntil}
                         </span>
