@@ -29,7 +29,7 @@ import { timeAgo, getInitials } from './timeUtils';
 interface PostCardProps {
   post: CommunityPost;
   currentUserId: string;
-  currentUserRole: 'student' | 'teacher' | 'admin';
+  currentUserRole: 'student' | 'teacher';
   onUpdated: (post: CommunityPost) => void;
   onDeleted: (postId: string) => void;
 }
@@ -59,8 +59,7 @@ export default function PostCard({
   const [liking, setLiking] = useState(false);
 
   const isAuthor = post.author?._id === currentUserId;
-  const isAdmin = currentUserRole === 'admin';
-  const canModerate = currentUserRole === 'teacher' || currentUserRole === 'admin';
+  const canModerate = currentUserRole === 'teacher';
   const authorName = post.author?.name || 'Unknown user';
 
   const handleLike = async () => {
@@ -227,7 +226,7 @@ export default function PostCard({
                           <Pin size={12} /> {post.isPinned ? 'Unpin' : 'Pin'}
                         </button>
                       )}
-                      {(isAuthor || isAdmin) && (
+                      {isAuthor && (
                         <button
                           onClick={handleDelete}
                           className="cursor-pointer flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-red-500 transition hover:bg-red-50"
@@ -349,7 +348,7 @@ export default function PostCard({
                   <span className="text-xs font-semibold text-slate-700">{comment.author?.name || 'Unknown user'}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] text-slate-400">{timeAgo(comment.createdAt)}</span>
-                    {(comment.author?._id === currentUserId || isAuthor || isAdmin) && (
+                    {(comment.author?._id === currentUserId || isAuthor) && (
                       <button
                         onClick={() => handleDeleteComment(comment._id)}
                         className="cursor-pointer opacity-0 transition group-hover:opacity-100 text-slate-300 hover:text-red-500"

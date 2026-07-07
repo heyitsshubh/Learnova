@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import ProtectedRoute from '../Components/ProtectedRoute';
 import Link from 'next/link';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, PieChart, Pie } from 'recharts';
@@ -8,28 +9,67 @@ import StatCard from '../Components/Dashboard/StatCard';
 import AssignmentStatusBarChart from '../Components/Dashboard/AssignmentStatusBarChart';
 import Calendar from '../Components/Dashboard/Calendar';
 import TodoList from '../Components/Dashboard/TodoList';
+import axiosInstance from '../lib/axios';
 
-const stats = [
-  { id: 'classes', label: 'My Classes', value: 5, icon: <HiOutlineBookOpen className="w-7 h-7 text-blue-500" /> },
-  { id: 'assignments', label: 'Assignments', value: 4, icon: <HiOutlineClipboardList className="w-7 h-7 text-yellow-500" /> },
-  { id: 'communities', label: 'Communities', value: 12, icon: <HiOutlineUsers className="w-7 h-7 text-green-500" /> }
-];
+interface Notification {
+  _id: string;
+  message: string;
+  type: string;
+  createdAt: string;
+}
 
-const attendanceData = [
-  { day: 'M', value: 50 },
-  { day: 'T', value: 75 },
-  { day: 'W', value: 60 },
-  { day: 'T', value: 80 },
-  { day: 'F', value: 90 },
-  { day: 'S', value: 40 }
-];
+interface AttendanceDay {
+  day: string;
+  value: number;
+}
 
-const donutData = [
-  { name: 'Courses', value: 65 },
-  { name: 'Assignments', value: 35 }
-];
+interface DashboardData {
+  user: { name: string };
+  classrooms: unknown[];
+  academicStats: {
+    totalAssignments: number;
+    completedAssignments: number;
+  };
+  postsCount: number;
+  unreadNotifications: number;
+  recentNotifications: Notification[];
+}
 
 export default function DashboardPage() {
+  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
+  const [attendance, setAttendance] = useState<AttendanceDay[]>([]);
+  const [attendanceAvg, setAttendanceAvg] = useState(0);
+
+  useEffect(() => {
+    axiosInstance
+      .get('https://bhattanisha.me/user/dashboard')
+      .then(res => setDashboard(res.data))
+      .catch(err => console.error('Failed to load dashboard:', err));
+
+    axiosInstance
+      .get('https://bhattanisha.me/user/attendance/weekly')
+      .then(res => {
+        setAttendance(res.data.weekly ?? []);
+        setAttendanceAvg(res.data.average ?? 0);
+      })
+      .catch(err => console.error('Failed to load attendance:', err));
+  }, []);
+
+  const stats = [
+    { id: 'classes', label: 'My Classes', value: dashboard?.classrooms.length ?? 0, icon: <HiOutlineBookOpen className="w-7 h-7 text-blue-500" /> },
+    { id: 'assignments', label: 'Assignments', value: dashboard?.academicStats.totalAssignments ?? 0, icon: <HiOutlineClipboardList className="w-7 h-7 text-yellow-500" /> },
+    { id: 'posts', label: 'My Posts', value: dashboard?.postsCount ?? 0, icon: <HiOutlineUsers className="w-7 h-7 text-green-500" /> }
+  ];
+
+  const completed = dashboard?.academicStats.completedAssignments ?? 0;
+  const total = dashboard?.academicStats.totalAssignments ?? 0;
+  const completionPct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+  const donutData = [
+    { name: 'Completed', value: completionPct },
+    { name: 'Remaining', value: 100 - completionPct }
+  ];
+
   return (
     <ProtectedRoute>
       <div className="min-h-screen p-4 sm:p-6 bg-[#fafbfc]">
@@ -37,7 +77,7 @@ export default function DashboardPage() {
           {/* Header */}
           <div className="mb-6">
             <h1 className="text-2xl font-semibold text-slate-800">Home</h1>
-            <p className="text-xs text-gray-500">Ayush Jaiswal / Home</p>
+            <p className="text-xs text-gray-500">{dashboard?.user.name ?? '...'} / Home</p>
           </div>
 
           {/* Top stats row */}
@@ -48,37 +88,23 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Left: Subject Progress & Attendance & Quick Links */}
-            {/* Left: Subject Progress & Attendance & Quick Links */}
+            {/* Left: Assignments status & Attendance */}
             <div className="lg:col-span-2 flex flex-col gap-6 min-w-0">
-              {/* Subject Progress */}
               <AssignmentStatusBarChart />
 
-              {/* Attendance */}
               <div className="bg-white rounded-xl shadow p-4 flex flex-col min-w-140">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-base font-semibold text-gray-700">Attendance</h3>
                   <span className="text-xs text-gray-400">This Week</span>
                 </div>
-                <div className=" h-36 flex items-center justify-center">
+                <div className="h-36 flex items-center justify-center">
                   <ResponsiveContainer width="80%" height={180}>
-                    <BarChart data={attendanceData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                      <XAxis
-                        dataKey="day"
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: 15, fill: '#374151', fontWeight: 600 }}
-                      />
-                      <YAxis
-                        hide
-                        domain={[0, 100]}
-                      />
-                      <Tooltip
-                        cursor={{ fill: '#f3f4f6' }}
-                        contentStyle={{ borderRadius: 8, fontSize: 30 }}
-                      />
+                    <BarChart data={attendance} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                      <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 15, fill: '#374151', fontWeight: 600 }} />
+                      <YAxis hide domain={[0, 100]} />
+                      <Tooltip cursor={{ fill: '#f3f4f6' }} contentStyle={{ borderRadius: 8, fontSize: 30 }} />
                       <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={44}>
-                        {attendanceData.map((_entry, index) => (
+                        {attendance.map((_entry, index) => (
                           <Cell key={`cell-${index}`} fill="#3B82F6" />
                         ))}
                       </Bar>
@@ -87,10 +113,11 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex justify-between mt-3">
                   <span className="text-xs text-gray-500">Mon-Sat</span>
-                  <span className="text-xs text-teal-600 font-semibold">Avg: 65%</span>
+                  <span className="text-xs text-teal-600 font-semibold">Avg: {attendanceAvg}%</span>
                 </div>
               </div>
             </div>
+
             {/* Progress & Calendar */}
             <div className="flex flex-col gap-6">
               <div className="bg-white rounded-lg shadow p-4 flex flex-col items-center justify-center relative w-full max-w-xs mx-auto">
@@ -106,40 +133,38 @@ export default function DashboardPage() {
                     </PieChart>
                   </ResponsiveContainer>
                   <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 text-center">
-                    <div className="text-3xl font-bold text-blue-600">65%</div>
-                    <div className="text-xs text-gray-500">Courses</div>
+                    <div className="text-3xl font-bold text-blue-600">{completionPct}%</div>
+                    <div className="text-xs text-gray-500">Completed</div>
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-3">iCourses | Assignments</p>
-                <p className="text-sm font-medium mt-1">Chemistry</p>
+                <p className="text-xs text-gray-500 mt-3">Assignments Progress</p>
               </div>
               <Calendar />
             </div>
 
             {/* Notifications & Todo */}
             <div className="flex flex-col gap-6">
-              <div className="bg-white rounded-lg shadow p-4 w-full max-w-xs  ">
+              <div className="bg-white rounded-lg shadow p-4 w-full max-w-xs">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-medium text-gray-700">
-                    Notifications <span className="text-xs text-gray-400">(2)</span>
+                    Notifications <span className="text-xs text-gray-400">({dashboard?.unreadNotifications ?? 0})</span>
                   </h3>
                   <Link href="#" className="text-xs text-blue-500">view all</Link>
                 </div>
                 <div className="space-y-3">
-                  <div className="flex items-start space-x-3 bg-gray-50 rounded p-2">
-                    <div className="w-8 h-8 bg-yellow-100 rounded flex items-center justify-center">🔔</div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">Sports Day Announcement</p>
-                      <p className="text-xs text-gray-500">The school’s Annual Sports Day will be held on May 12, 2024.</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start space-x-3 bg-gray-50 rounded p-2">
-                    <div className="w-8 h-8 bg-yellow-100 rounded flex items-center justify-center">📣</div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">Summer holidays</p>
-                      <p className="text-xs text-gray-500">The school will remain closed from May 25 to Jun 2.</p>
-                    </div>
-                  </div>
+                  {dashboard?.recentNotifications.length ? (
+                    dashboard.recentNotifications.map(n => (
+                      <div key={n._id} className="flex items-start space-x-3 bg-gray-50 rounded p-2">
+                        <div className="w-8 h-8 bg-yellow-100 rounded flex items-center justify-center">🔔</div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium capitalize">{n.type}</p>
+                          <p className="text-xs text-gray-500">{n.message}</p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-gray-400">No new notifications</p>
+                  )}
                 </div>
               </div>
               <TodoList />

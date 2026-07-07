@@ -23,7 +23,7 @@ export interface CommunityAuthor {
   name: string;
   email?: string;
   profilePicture?: string;
-  role?: 'student' | 'teacher' | 'admin';
+  role?: 'student' | 'teacher';
 }
 
 export interface CommunityAttachment {

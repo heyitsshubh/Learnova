@@ -8,7 +8,7 @@ import { getInitials } from './timeUtils';
 
 interface CreatePostProps {
   userName: string;
-  userRole: 'student' | 'teacher' | 'admin';
+  userRole: 'student' | 'teacher';
   onPostCreated: (post: CommunityPost) => void;
 }
 
