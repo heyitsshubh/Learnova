@@ -86,7 +86,7 @@ const MeetScreen: React.FC<MeetScreenProps> = ({ meetingId, classId }) => {
       data-lk-theme="default"
       style={{ height: '100vh', backgroundColor: '#111827' }}
       onDisconnected={() => {
-        if (userRole === 'teacher' || userRole === 'admin') {
+        if (userRole === 'teacher') {
           void completeMeeting(meetingId || '');
         }
         window.location.href = `/classroom/${classId}`;
@@ -138,4 +138,3 @@ const MeetingGrid: React.FC = () => {
 };
 
 export default MeetScreen;
-

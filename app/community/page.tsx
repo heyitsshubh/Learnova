@@ -31,13 +31,13 @@ export default function CommunityPage() {
 
   const [userId, setUserId] = useState('');
   const [userName, setUserName] = useState('');
-  const [userRole, setUserRole] = useState<'student' | 'teacher' | 'admin'>('student');
+  const [userRole, setUserRole] = useState<'student' | 'teacher'>('student');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setUserId(localStorage.getItem('userId') || '');
       setUserName(localStorage.getItem('userName') || '');
-      setUserRole((localStorage.getItem('userRole') as 'student' | 'teacher' | 'admin') || 'student');
+      setUserRole((localStorage.getItem('userRole') as 'student' | 'teacher') || 'student');
     }
   }, []);
 
