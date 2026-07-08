@@ -10,7 +10,7 @@ const features = [
     title: "HD Video CLasses",
     description:
       "Crystal-clear video conferencing with advanced features like screen sharing, breakout rooms, and interactive whiteboards.",
-  },
+  }, 
   {
     icon: <ClipboardList className="w-7 h-7 text-black" />,
     title: "Smart Assignments",
