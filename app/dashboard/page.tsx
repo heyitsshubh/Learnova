@@ -3,13 +3,16 @@
 import { useEffect, useState } from 'react';
 import ProtectedRoute from '../Components/ProtectedRoute';
 import Link from 'next/link';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, PieChart, Pie } from 'recharts';
+import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import {
   HiOutlineBookOpen,
   HiOutlineClipboardList,
   HiOutlineUsers,
   HiOutlineUserGroup,
   HiOutlineCheckCircle,
+  HiOutlineAcademicCap,
+  HiOutlineCalendar,
+  HiOutlineSparkles,
 } from 'react-icons/hi';
 import StatCard from '../Components/Dashboard/StatCard';
 import AssignmentStatusBarChart from '../Components/Dashboard/AssignmentStatusBarChart';
@@ -22,19 +25,6 @@ interface Notification {
   message: string;
   type: string;
   createdAt: string;
-}
-
-interface AttendanceDay {
-  day: string;
-  value: number;
-}
-
-// Backend returns week entries shaped like this from /user/attendance/weekly
-interface WeeklyAttendanceDay {
-  day: string;
-  date: string;
-  attended: boolean;
-  minutes: number;
 }
 
 interface StudentStats {
@@ -65,34 +55,47 @@ interface DashboardData {
   stats: StudentStats | TeacherStats;
 }
 
+type DashboardView = 'teacher' | 'student';
+
 export default function DashboardPage() {
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
-  const [attendance, setAttendance] = useState<AttendanceDay[]>([]);
-  const [attendanceAvg, setAttendanceAvg] = useState(0);
+  const [activeView, setActiveView] = useState<DashboardView | null>(null);
 
   useEffect(() => {
     axiosInstance
       .get('https://bhattanisha.me/user/dashboard')
       .then(res => setDashboard(res.data))
       .catch(err => console.error('Failed to load dashboard:', err));
-
-    axiosInstance
-      .get('https://bhattanisha.me/user/attendance/weekly')
-      .then(res => {
-        const week: WeeklyAttendanceDay[] = res.data.week ?? [];
-        setAttendance(week.map(d => ({ day: d.day, value: d.minutes })));
-        const attendedDays = week.filter(d => d.attended).length;
-        setAttendanceAvg(week.length ? Math.round((attendedDays / week.length) * 100) : 0);
-      })
-      .catch(err => console.error('Failed to load attendance:', err));
   }, []);
 
-  const isTeacher = dashboard?.user.role === 'teacher';
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
 
-  // Role-specific stat cards. The backend now returns a different `stats`
-  // shape depending on user.role (see getDashboard), so we branch on that
-  // instead of assuming the student shape everywhere.
-  const stats = isTeacher
+    const savedView = window.localStorage.getItem('learnova-dashboard-view');
+    if (savedView === 'teacher' || savedView === 'student') {
+      setActiveView(savedView);
+      return;
+    }
+
+    if (dashboard?.user.role === 'teacher') {
+      setActiveView('teacher');
+    } else {
+      setActiveView('student');
+    }
+  }, [dashboard]);
+
+  const isTeacher = dashboard?.user.role === 'teacher';
+  const selectedView = activeView ?? (isTeacher ? 'teacher' : 'student');
+  const isTeacherView = selectedView === 'teacher';
+
+  const handleViewChange = (view: DashboardView) => {
+    setActiveView(view);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('learnova-dashboard-view', view);
+    }
+  };
+
+  const stats = isTeacherView
     ? (() => {
         const s = dashboard?.stats as TeacherStats | undefined;
         return [
@@ -146,8 +149,7 @@ export default function DashboardPage() {
         ];
       })();
 
-  // Donut: completion % for students, grading % for teachers
-  const completionPct = isTeacher
+  const completionPct = isTeacherView
     ? (() => {
         const s = dashboard?.stats as TeacherStats | undefined;
         const created = s?.assignmentsCreated ?? 0;
@@ -166,19 +168,62 @@ export default function DashboardPage() {
     { name: 'Remaining', value: 100 - completionPct },
   ];
 
+  const focusItems = isTeacherView
+    ? [
+        { title: 'Review pending submissions', detail: '6 assignments need feedback today' },
+        { title: 'Prepare your next class', detail: 'Topic outline is ready for review' },
+        { title: 'Check class updates', detail: '2 new announcements were posted' },
+      ]
+    : [
+        { title: 'Continue your study plan', detail: '2 lessons left in your current module' },
+        { title: 'Finish upcoming assignments', detail: '3 tasks are due this week' },
+        { title: 'Join your next session', detail: 'Live class starts in 45 minutes' },
+      ];
+
   return (
     <ProtectedRoute>
       <div className="min-h-screen p-4 sm:p-6 bg-[#fafbfc]">
         <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-6">
-            <h1 className="text-2xl font-semibold text-slate-800">
-              {isTeacher ? 'Teacher Dashboard' : 'Home'}
-            </h1>
-            <p className="text-xs text-gray-500">{dashboard?.user.name ?? '...'} / Home</p>
+          <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-slate-800">
+                {isTeacherView ? 'Teacher Dashboard' : 'Student Dashboard'}
+              </h1>
+              <p className="text-xs text-gray-500">
+                {dashboard?.user.name ?? '...'} / {isTeacherView ? 'Teaching view' : 'Learning view'}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex rounded-full border border-slate-200 bg-white p-1 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => handleViewChange('teacher')}
+                  disabled={!isTeacher}
+                  className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+                    isTeacherView && isTeacher
+                      ? 'bg-blue-600 text-white shadow'
+                      : 'text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50'
+                  }`}
+                >
+                  Teacher
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleViewChange('student')}
+                  className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+                    !isTeacherView ? 'bg-blue-600 text-white shadow' : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  Student
+                </button>
+              </div>
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                {isTeacherView ? 'Pinned: Teacher' : 'Pinned: Student'}
+              </span>
+            </div>
           </div>
 
-          {/* Top stats row */}
           <div className="flex flex-wrap gap-6 mb-6">
             {stats.map(s => (
               <StatCard key={s.id} label={s.label} value={s.value} icon={s.icon} />
@@ -186,48 +231,42 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Left: Assignments status & Attendance */}
             <div className="lg:col-span-2 flex flex-col gap-6 min-w-0">
               <AssignmentStatusBarChart />
 
-              <div className="bg-white rounded-xl shadow p-4 flex flex-col min-w-140">
-                <div className="flex items-center justify-between mb-2">
+              <div className="bg-white rounded-xl shadow p-4 flex flex-col">
+                <div className="flex items-center justify-between mb-3">
                   <h3 className="text-base font-semibold text-gray-700">
-                    {isTeacher ? 'Class Attendance' : 'Attendance'}
+                    {isTeacherView ? 'Teaching focus' : 'Learning focus'}
                   </h3>
-                  <span className="text-xs text-gray-400">This Week</span>
+                  <span className="text-xs text-gray-400">Today</span>
                 </div>
-                <div className="h-36 flex items-center justify-center">
-                  <ResponsiveContainer width="80%" height={180}>
-                    <BarChart data={attendance} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                      <XAxis
-                        dataKey="day"
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: 15, fill: '#374151', fontWeight: 600 }}
-                      />
-                      <YAxis hide />
-                      <Tooltip cursor={{ fill: '#f3f4f6' }} contentStyle={{ borderRadius: 8, fontSize: 30 }} />
-                      <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={44}>
-                        {attendance.map((_entry, index) => (
-                          <Cell key={`cell-${index}`} fill="#3B82F6" />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                <div className="space-y-3">
+                  {focusItems.map(item => (
+                    <div key={item.title} className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+                      <div className="flex items-start gap-2">
+                        <div className="mt-0.5 rounded-full bg-blue-100 p-1.5 text-blue-600">
+                          {isTeacherView ? <HiOutlineAcademicCap className="h-4 w-4" /> : <HiOutlineSparkles className="h-4 w-4" />}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-700">{item.title}</p>
+                          <p className="text-xs text-slate-500">{item.detail}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex justify-between mt-3">
-                  <span className="text-xs text-gray-500">Mon-Sun</span>
-                  <span className="text-xs text-teal-600 font-semibold">Avg: {attendanceAvg}%</span>
+                <div className="mt-4 flex items-center gap-2 text-sm text-slate-500">
+                  <HiOutlineCalendar className="h-4 w-4" />
+                  {isTeacherView ? 'Keep your classes moving forward.' : 'Stay on top of your next milestones.'}
                 </div>
               </div>
             </div>
 
-            {/* Progress & Calendar */}
             <div className="flex flex-col gap-6">
               <div className="bg-white rounded-lg shadow p-4 flex flex-col items-center justify-center relative w-full max-w-xs mx-auto">
                 <h3 className="text-sm font-medium text-gray-700 mb-3">
-                  {isTeacher ? 'GRADING PROGRESS' : 'PROGRESS'}
+                  {isTeacherView ? 'GRADING PROGRESS' : 'PROGRESS'}
                 </h3>
                 <div className="flex items-center justify-center relative w-full">
                   <ResponsiveContainer width={160} height={160}>
@@ -241,17 +280,16 @@ export default function DashboardPage() {
                   </ResponsiveContainer>
                   <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 text-center">
                     <div className="text-3xl font-bold text-blue-600">{completionPct}%</div>
-                    <div className="text-xs text-gray-500">{isTeacher ? 'Graded' : 'Completed'}</div>
+                    <div className="text-xs text-gray-500">{isTeacherView ? 'Graded' : 'Completed'}</div>
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-3">
-                  {isTeacher ? 'Assignments Graded' : 'Assignments Progress'}
+                  {isTeacherView ? 'Assignments Graded' : 'Assignments Progress'}
                 </p>
               </div>
               <Calendar />
             </div>
 
-            {/* Notifications & Todo */}
             <div className="flex flex-col gap-6">
               <div className="bg-white rounded-lg shadow p-4 w-full max-w-xs">
                 <div className="flex items-center justify-between mb-3">
