@@ -1,6 +1,8 @@
 // services/auth.ts
 import axios from '../lib/axios';
 
+export type UserRole = 'teacher' | 'student';
+
 interface SignupPayload {
   name: string;
   email: string;
@@ -19,20 +21,12 @@ interface LoginPayload {
 
 interface forgotpasswordayload {
   email: string;
-
 }
 
 interface VerifyOtpPayload {
   email: string;
   otp: string;
 }
-
-// interface ResetPasswordPayload {
-
-//   newPassword: string;
-//   resetToken: string;
-
-// }
 
 export const signup = async (payload: SignupPayload) => {
   const res = await axios.post('/signup', payload);
@@ -62,7 +56,7 @@ export const verifyOtpp = async (payload: VerifyOtpPayload) => {
 export const resetPassword = async (payload: { newPassword: string }, resetToken: string) => {
   const res = await axios.put('/reset-password', payload, {
     headers: {
-      Authorization: `Bearer ${resetToken}`, 
+      Authorization: `Bearer ${resetToken}`,
     },
   });
   return res.data;
@@ -76,4 +70,46 @@ export const resendOtp = async (payload: { email: string }) => {
 export const resend = async (payload: { email: string }) => {
   const res = await axios.post('/otp-verify', payload);
   return res.data;
+};
+
+export const getCurrentUserProfile = async () => {
+  const endpoints = ['/profile', '/user/profile', '/profile/role', '/user/profile/role'];
+  let lastError: unknown;
+
+  for (const endpoint of endpoints) {
+    try {
+      const res = await axios.get(endpoint);
+      return res.data;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError ?? new Error('Failed to fetch user profile');
+};
+
+export const updateUserRole = async (role: UserRole) => {
+  const payload = { role };
+  const attempts = [
+    () => axios.put('/profile', payload),
+    () => axios.patch('/profile', payload),
+    () => axios.put('/user/profile', payload),
+    () => axios.patch('/user/profile', payload),
+    () => axios.put('/profile/role', payload),
+    () => axios.patch('/profile/role', payload),
+    () => axios.put('/user/profile/role', payload),
+    () => axios.patch('/user/profile/role', payload),
+  ];
+
+  let lastError: unknown;
+  for (const attempt of attempts) {
+    try {
+      const res = await attempt();
+      return res.data;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError ?? new Error('Failed to update user role');
 };

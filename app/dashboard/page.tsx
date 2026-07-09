@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import ProtectedRoute from '../Components/ProtectedRoute';
 import Link from 'next/link';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { toast } from 'react-hot-toast';
 import {
   HiOutlineBookOpen,
   HiOutlineClipboardList,
@@ -19,6 +20,7 @@ import AssignmentStatusBarChart from '../Components/Dashboard/AssignmentStatusBa
 import Calendar from '../Components/Dashboard/Calendar';
 import TodoList from '../Components/Dashboard/TodoList';
 import axiosInstance from '../lib/axios';
+import { getCurrentUserProfile, updateUserRole } from '../services/auth';
 
 interface Notification {
   _id: string;
@@ -41,6 +43,14 @@ interface TeacherStats {
   pendingGrading: number;
 }
 
+interface ClassroomSummary {
+  _id: string;
+  className: string;
+  subject: string;
+  classCode?: string;
+  createdBy?: { name?: string };
+}
+
 interface DashboardData {
   user: {
     name: string;
@@ -48,11 +58,11 @@ interface DashboardData {
     role: 'teacher' | 'student';
     profilePicture?: string;
   };
-  classrooms: unknown[];
+  classrooms: ClassroomSummary[];
   postsCount: number;
   unreadNotifications: number;
   recentNotifications: Notification[];
-  stats: StudentStats | TeacherStats;
+  stats?: StudentStats | TeacherStats;
 }
 
 type DashboardView = 'teacher' | 'student';
@@ -60,12 +70,47 @@ type DashboardView = 'teacher' | 'student';
 export default function DashboardPage() {
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [activeView, setActiveView] = useState<DashboardView | null>(null);
+  const [isUpdatingRole, setIsUpdatingRole] = useState(false);
+
+  const fetchDashboard = async () => {
+    try {
+      const [dashboardRes, profileRes] = await Promise.all([
+        axiosInstance.get('https://bhattanisha.me/user/dashboard'),
+        getCurrentUserProfile().catch(() => null),
+      ]);
+
+      const dashboardPayload = dashboardRes.data ?? {};
+      const role = (profileRes?.data?.role || dashboardPayload?.user?.role || 'student') as DashboardData['user']['role'];
+
+      setDashboard({
+        ...dashboardPayload,
+        user: {
+          ...dashboardPayload?.user,
+          role,
+        },
+        classrooms: Array.isArray(dashboardPayload?.classrooms) ? dashboardPayload.classrooms : [],
+        recentNotifications: Array.isArray(dashboardPayload?.recentNotifications) ? dashboardPayload.recentNotifications : [],
+      });
+
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('userRole', role);
+      }
+    } catch (err) {
+      console.error('Failed to load dashboard:', err);
+    }
+  };
 
   useEffect(() => {
-    axiosInstance
-      .get('https://bhattanisha.me/user/dashboard')
-      .then(res => setDashboard(res.data))
-      .catch(err => console.error('Failed to load dashboard:', err));
+    if (typeof window === 'undefined') return;
+
+    void fetchDashboard();
+
+    const handleRefresh = () => {
+      void fetchDashboard();
+    };
+
+    window.addEventListener('dashboard:refresh', handleRefresh);
+    return () => window.removeEventListener('dashboard:refresh', handleRefresh);
   }, []);
 
   useEffect(() => {
@@ -88,10 +133,41 @@ export default function DashboardPage() {
   const selectedView = activeView ?? (isTeacher ? 'teacher' : 'student');
   const isTeacherView = selectedView === 'teacher';
 
-  const handleViewChange = (view: DashboardView) => {
-    setActiveView(view);
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem('learnova-dashboard-view', view);
+  const handleViewChange = async (view: DashboardView) => {
+    const nextRole = view === 'teacher' ? 'teacher' : 'student';
+    if (dashboard?.user.role === nextRole) {
+      setActiveView(view);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('learnova-dashboard-view', view);
+      }
+      return;
+    }
+
+    setIsUpdatingRole(true);
+    try {
+      await updateUserRole(nextRole);
+      setDashboard(prev =>
+        prev
+          ? {
+              ...prev,
+              user: {
+                ...prev.user,
+                role: nextRole,
+              },
+            }
+          : prev
+      );
+      setActiveView(view);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('learnova-dashboard-view', view);
+        window.localStorage.setItem('userRole', nextRole);
+        window.dispatchEvent(new Event('dashboard:refresh'));
+      }
+    } catch (error) {
+      console.error('Failed to update role:', error);
+      toast.error('Could not update your role right now.');
+    } finally {
+      setIsUpdatingRole(false);
     }
   };
 
@@ -131,7 +207,7 @@ export default function DashboardPage() {
           {
             id: 'classes',
             label: 'My Classes',
-            value: s?.enrolledClasses ?? 0,
+            value: s?.enrolledClasses ?? (dashboard?.classrooms?.length ?? 0),
             icon: <HiOutlineBookOpen className="w-7 h-7 text-blue-500" />,
           },
           {
@@ -180,6 +256,8 @@ export default function DashboardPage() {
         { title: 'Join your next session', detail: 'Live class starts in 45 minutes' },
       ];
 
+  const classrooms = dashboard?.classrooms ?? [];
+
   return (
     <ProtectedRoute>
       <div className="min-h-screen p-4 sm:p-6 bg-[#fafbfc]">
@@ -198,24 +276,25 @@ export default function DashboardPage() {
               <div className="inline-flex rounded-full border border-slate-200 bg-white p-1 shadow-sm">
                 <button
                   type="button"
-                  onClick={() => handleViewChange('teacher')}
-                  disabled={!isTeacher}
+                  onClick={() => void handleViewChange('teacher')}
+                  disabled={isUpdatingRole}
                   className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
                     isTeacherView && isTeacher
                       ? 'bg-blue-600 text-white shadow'
                       : 'text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50'
                   }`}
                 >
-                  Teacher
+                  {isUpdatingRole ? 'Updating...' : 'Teacher'}
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleViewChange('student')}
+                  onClick={() => void handleViewChange('student')}
+                  disabled={isUpdatingRole}
                   className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
                     !isTeacherView ? 'bg-blue-600 text-white shadow' : 'text-slate-600 hover:bg-slate-100'
                   }`}
                 >
-                  Student
+                  {isUpdatingRole ? 'Updating...' : 'Student'}
                 </button>
               </div>
               <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
@@ -317,6 +396,35 @@ export default function DashboardPage() {
                   )}
                 </div>
               </div>
+
+              <div className="bg-white rounded-lg shadow p-4 w-full max-w-xs">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-medium text-gray-700">Your classrooms</h3>
+                  <Link href="/classroom" className="text-xs text-blue-500">
+                    open
+                  </Link>
+                </div>
+                <div className="space-y-2">
+                  {classrooms.length ? (
+                    classrooms.slice(0, 4).map(cls => (
+                      <div key={cls._id} className="rounded-lg border border-slate-100 bg-slate-50 p-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-700">{cls.className}</p>
+                            <p className="text-xs text-slate-500">{cls.subject}</p>
+                          </div>
+                          <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-medium text-blue-600">
+                            {cls.classCode ? 'Code' : 'Joined'}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-gray-400">No classrooms yet</p>
+                  )}
+                </div>
+              </div>
+
               <TodoList />
             </div>
           </div>

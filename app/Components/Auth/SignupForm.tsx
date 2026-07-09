@@ -93,6 +93,10 @@ const SignupForm = () => {
       });
       localStorage.setItem('userName', form.name);
       localStorage.setItem('email', form.email);
+      localStorage.setItem('userRole', 'student');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('dashboard:refresh'));
+      }
       toast.success('Signup successful!');
       setTimeout(() => {
         setShowSpinner(false);

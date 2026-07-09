@@ -82,6 +82,7 @@ const Login = () => {
       localStorage.setItem('userName', res.username || '');
       localStorage.setItem('userEmail', res.userEmail || '');
       localStorage.setItem('userId', res.userId || '');
+      localStorage.setItem('userRole', res.role || 'student');
       toast.success('Logged in successfully!');
       setTimeout(() => {
         setShowSpinner(false);

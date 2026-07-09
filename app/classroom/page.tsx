@@ -20,6 +20,7 @@ import {
   deleteClass,
   leaveClass
 } from '../services/classroom';
+import { getUserId } from '../utils/token';
 
 interface ClassData {
   _id: string;
@@ -39,23 +40,31 @@ export default function ClassroomPage() {
   const [loading, setLoading] = useState(false);
   const [userName, setUserName] = useState('');
   const [search, setSearch] = useState('');
+  const [userId, setUserId] = useState('');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setUserName(localStorage.getItem('userName') || '');
+      setUserId(getUserId() || '');
     }
   }, []);
 
-  const userId = '';
   const filters = ['Join', 'Create'];
+
+  const notifyDashboardRefresh = () => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('dashboard:refresh'));
+    }
+  };
 
   useEffect(() => {
     const fetchClasses = async () => {
       setLoading(true);
       try {
+        const currentUserId = userId || getUserId() || '';
         const [createdRes, joinedRes] = await Promise.all([
-          getCreatedClasses(userId),
-          getJoinedClasses(userId),
+          getCreatedClasses(currentUserId),
+          getJoinedClasses(currentUserId),
         ]);
         setClasses(createdRes.classes || []);
         setJoinedClasses(joinedRes.classes || []);
@@ -65,7 +74,10 @@ export default function ClassroomPage() {
         setLoading(false);
       }
     };
-    fetchClasses();
+
+    if (userId || getUserId()) {
+      void fetchClasses();
+    }
   }, [userId]);
 
   const handleJoinClass = async (classCode: string) => {
@@ -84,6 +96,7 @@ export default function ClassroomPage() {
         setJoinedClasses((prev) => [classObj, ...prev]);
         setJoinModalOpen(false);
         toast.success('Class joined successfully!');
+        notifyDashboardRefresh();
       } else {
         toast.error('Class not found!');
       }
@@ -102,6 +115,7 @@ export default function ClassroomPage() {
       setClasses((prev) => prev.filter((cls) => cls._id !== classId));
       setJoinedClasses((prev) => prev.filter((cls) => cls._id !== classId));
       toast.success('Class deleted successfully!');
+      notifyDashboardRefresh();
     } catch (error) {
       console.error('Delete class error:', error);
     } finally {
@@ -115,6 +129,7 @@ export default function ClassroomPage() {
       await leaveClass(classId);
       setJoinedClasses((prev) => prev.filter((cls) => cls._id !== classId));
       toast.success('Left class successfully!');
+      notifyDashboardRefresh();
     } catch (error) {
       toast.error('Failed to leave class!');
       console.error('Leave class error:', error);
@@ -147,9 +162,12 @@ export default function ClassroomPage() {
           _id: result.class._id || result.class.classCode || Math.random().toString(),
         };
         setClasses((prev) => [classObj, ...prev]);
-        localStorage.setItem('classCode', result.class.classCode);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('classCode', result.class.classCode);
+        }
         setModalOpen(false);
         toast.success('Class created successfully!');
+        notifyDashboardRefresh();
         return result.class.classCode;
       } else {
         throw new Error('Class creation failed.');
@@ -172,14 +190,12 @@ export default function ClassroomPage() {
     displayedClasses = [];
   }
 
-  // Filter classes by search
   const filteredClasses = displayedClasses.filter(
     (cls) =>
       cls.className.toLowerCase().includes(search.toLowerCase()) ||
       cls.subject.toLowerCase().includes(search.toLowerCase())
   );
 
-  // Empty state component
   const EmptyState = ({ type }: { type: 'join' | 'create' }) => {
     const getEmptyStateContent = () => {
       switch (type) {
@@ -222,7 +238,6 @@ export default function ClassroomPage() {
   return (
     <div className="min-h-screen p-2 md:p-6">
       <div className="md:pl-64 md:pr-6 md:pt-6">
-        {/* Header */}
         <div className="flex flex-col gap-3 md:flex-row md:justify-between md:items-center mb-6">
           <div>
             <h1 className="text-2xl font-semibold">Classroom</h1>
@@ -258,7 +273,6 @@ export default function ClassroomPage() {
           </div>
         </div>
 
-        {/* Filters */}
         <div className="flex items-center gap-2 mb-6 flex-wrap">
           {filters.map((filter) => (
             <button

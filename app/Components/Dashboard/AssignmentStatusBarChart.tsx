@@ -16,7 +16,7 @@ export default function AssignmentStatusBarChart() {
     { status: 'Completed', value: 0 }
   ]);
 
-  useEffect(() => {
+  const loadSummary = () => {
     axiosInstance
       .get('https://bhattanisha.me/user/assignments/status-summary')
       .then(res => {
@@ -27,6 +27,17 @@ export default function AssignmentStatusBarChart() {
         ]);
       })
       .catch(err => console.error('Failed to load assignment status summary:', err));
+  };
+
+  useEffect(() => {
+    loadSummary();
+
+    const handleRefresh = () => {
+      loadSummary();
+    };
+
+    window.addEventListener('dashboard:refresh', handleRefresh);
+    return () => window.removeEventListener('dashboard:refresh', handleRefresh);
   }, []);
 
   return (
