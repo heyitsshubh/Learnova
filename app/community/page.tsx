@@ -31,13 +31,11 @@ export default function CommunityPage() {
 
   const [userId, setUserId] = useState('');
   const [userName, setUserName] = useState('');
-  const [userRole, setUserRole] = useState<'student' | 'teacher'>('student');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setUserId(localStorage.getItem('userId') || '');
       setUserName(localStorage.getItem('userName') || '');
-      setUserRole((localStorage.getItem('userRole') as 'student' | 'teacher') || 'student');
     }
   }, []);
 
@@ -146,7 +144,7 @@ export default function CommunityPage() {
 
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
             <div className="min-w-0 space-y-5">
-              <CreatePost userName={userName} userRole={userRole} onPostCreated={handlePostCreated} />
+              <CreatePost userName={userName} onPostCreated={handlePostCreated} />
 
               <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -207,7 +205,6 @@ export default function CommunityPage() {
                       key={post._id}
                       post={post}
                       currentUserId={userId}
-                      currentUserRole={userRole}
                       onUpdated={handlePostUpdated}
                       onDeleted={handlePostDeleted}
                     />

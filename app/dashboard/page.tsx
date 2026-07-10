@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import ProtectedRoute from '../Components/ProtectedRoute';
 import Link from 'next/link';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { toast } from 'react-hot-toast';
 import {
   HiOutlineBookOpen,
   HiOutlineClipboardList,
@@ -20,7 +19,6 @@ import AssignmentStatusBarChart from '../Components/Dashboard/AssignmentStatusBa
 import Calendar from '../Components/Dashboard/Calendar';
 import TodoList from '../Components/Dashboard/TodoList';
 import axiosInstance from '../lib/axios';
-import { getCurrentUserProfile, updateUserRole } from '../services/auth';
 
 interface Notification {
   _id: string;
@@ -29,18 +27,18 @@ interface Notification {
   createdAt: string;
 }
 
-interface StudentStats {
-  enrolledClasses: number;
+// Every user can create classrooms (acting as the "teacher" for those) and
+// join classrooms created by other users (acting as a "student" there) -
+// there is no fixed, account-wide role. The dashboard combines both sides.
+interface DashboardStats {
+  classesCreated: number;
+  totalStudentsTaught: number;
+  assignmentsCreated: number;
+  pendingGrading: number;
+  classesJoined: number;
   totalAssignments: number;
   completedAssignments: number;
   averageGrade: number;
-}
-
-interface TeacherStats {
-  classesTaught: number;
-  totalStudents: number;
-  assignmentsCreated: number;
-  pendingGrading: number;
 }
 
 interface ClassroomSummary {
@@ -55,46 +53,28 @@ interface DashboardData {
   user: {
     name: string;
     email: string;
-    role: 'teacher' | 'student';
     profilePicture?: string;
   };
   classrooms: ClassroomSummary[];
   postsCount: number;
   unreadNotifications: number;
   recentNotifications: Notification[];
-  stats?: StudentStats | TeacherStats;
+  stats?: DashboardStats;
 }
-
-type DashboardView = 'teacher' | 'student';
 
 export default function DashboardPage() {
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
-  const [activeView, setActiveView] = useState<DashboardView | null>(null);
-  const [isUpdatingRole, setIsUpdatingRole] = useState(false);
 
   const fetchDashboard = async () => {
     try {
-      const [dashboardRes, profileRes] = await Promise.all([
-        axiosInstance.get('https://bhattanisha.me/user/dashboard'),
-        getCurrentUserProfile().catch(() => null),
-      ]);
-
+      const dashboardRes = await axiosInstance.get('https://bhattanisha.me/user/dashboard');
       const dashboardPayload = dashboardRes.data ?? {};
-      const role = (profileRes?.data?.role || dashboardPayload?.user?.role || 'student') as DashboardData['user']['role'];
 
       setDashboard({
         ...dashboardPayload,
-        user: {
-          ...dashboardPayload?.user,
-          role,
-        },
         classrooms: Array.isArray(dashboardPayload?.classrooms) ? dashboardPayload.classrooms : [],
         recentNotifications: Array.isArray(dashboardPayload?.recentNotifications) ? dashboardPayload.recentNotifications : [],
       });
-
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem('userRole', role);
-      }
     } catch (err) {
       console.error('Failed to load dashboard:', err);
     }
@@ -113,148 +93,72 @@ export default function DashboardPage() {
     return () => window.removeEventListener('dashboard:refresh', handleRefresh);
   }, []);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
+  const s = dashboard?.stats;
 
-    const savedView = window.localStorage.getItem('learnova-dashboard-view');
-    if (savedView === 'teacher' || savedView === 'student') {
-      setActiveView(savedView);
-      return;
-    }
+  const stats = [
+    {
+      id: 'classes',
+      label: 'My Classes',
+      value: (s?.classesCreated ?? 0) + (s?.classesJoined ?? 0),
+      icon: <HiOutlineBookOpen className="w-7 h-7 text-blue-500" />,
+    },
+    {
+      id: 'students',
+      label: 'Students Across My Classes',
+      value: s?.totalStudentsTaught ?? 0,
+      icon: <HiOutlineUserGroup className="w-7 h-7 text-green-500" />,
+    },
+    {
+      id: 'assignments-created',
+      label: 'Assignments Created',
+      value: s?.assignmentsCreated ?? 0,
+      icon: <HiOutlineClipboardList className="w-7 h-7 text-yellow-500" />,
+    },
+    {
+      id: 'pending',
+      label: 'Pending Grading',
+      value: s?.pendingGrading ?? 0,
+      icon: <HiOutlineCheckCircle className="w-7 h-7 text-red-500" />,
+    },
+    {
+      id: 'assignments-todo',
+      label: 'Assignments To Complete',
+      value: s?.totalAssignments ?? 0,
+      icon: <HiOutlineAcademicCap className="w-7 h-7 text-purple-500" />,
+    },
+    {
+      id: 'posts',
+      label: 'My Posts',
+      value: dashboard?.postsCount ?? 0,
+      icon: <HiOutlineUsers className="w-7 h-7 text-teal-500" />,
+    },
+  ];
 
-    if (dashboard?.user.role === 'teacher') {
-      setActiveView('teacher');
-    } else {
-      setActiveView('student');
-    }
-  }, [dashboard]);
+  // Combined completion: graded-out-of-created assignments plus
+  // completed-out-of-assigned work, blended into one progress ring.
+  const completionPct = (() => {
+    const createdTotal = s?.assignmentsCreated ?? 0;
+    const gradedDone = createdTotal > 0 ? createdTotal - (s?.pendingGrading ?? 0) : 0;
 
-  const isTeacher = dashboard?.user.role === 'teacher';
-  const selectedView = activeView ?? (isTeacher ? 'teacher' : 'student');
-  const isTeacherView = selectedView === 'teacher';
+    const todoTotal = s?.totalAssignments ?? 0;
+    const todoDone = s?.completedAssignments ?? 0;
 
-  const handleViewChange = async (view: DashboardView) => {
-    const nextRole = view === 'teacher' ? 'teacher' : 'student';
-    if (dashboard?.user.role === nextRole) {
-      setActiveView(view);
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem('learnova-dashboard-view', view);
-      }
-      return;
-    }
+    const combinedTotal = createdTotal + todoTotal;
+    const combinedDone = gradedDone + todoDone;
 
-    setIsUpdatingRole(true);
-    try {
-      await updateUserRole(nextRole);
-      setDashboard(prev =>
-        prev
-          ? {
-              ...prev,
-              user: {
-                ...prev.user,
-                role: nextRole,
-              },
-            }
-          : prev
-      );
-      setActiveView(view);
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem('learnova-dashboard-view', view);
-        window.localStorage.setItem('userRole', nextRole);
-        window.dispatchEvent(new Event('dashboard:refresh'));
-      }
-    } catch (error) {
-      console.error('Failed to update role:', error);
-      toast.error('Could not update your role right now.');
-    } finally {
-      setIsUpdatingRole(false);
-    }
-  };
-
-  const stats = isTeacherView
-    ? (() => {
-        const s = dashboard?.stats as TeacherStats | undefined;
-        return [
-          {
-            id: 'classes',
-            label: 'Classes Taught',
-            value: s?.classesTaught ?? 0,
-            icon: <HiOutlineBookOpen className="w-7 h-7 text-blue-500" />,
-          },
-          {
-            id: 'students',
-            label: 'Total Students',
-            value: s?.totalStudents ?? 0,
-            icon: <HiOutlineUserGroup className="w-7 h-7 text-green-500" />,
-          },
-          {
-            id: 'assignments',
-            label: 'Assignments Created',
-            value: s?.assignmentsCreated ?? 0,
-            icon: <HiOutlineClipboardList className="w-7 h-7 text-yellow-500" />,
-          },
-          {
-            id: 'pending',
-            label: 'Pending Grading',
-            value: s?.pendingGrading ?? 0,
-            icon: <HiOutlineCheckCircle className="w-7 h-7 text-red-500" />,
-          },
-        ];
-      })()
-    : (() => {
-        const s = dashboard?.stats as StudentStats | undefined;
-        return [
-          {
-            id: 'classes',
-            label: 'My Classes',
-            value: s?.enrolledClasses ?? (dashboard?.classrooms?.length ?? 0),
-            icon: <HiOutlineBookOpen className="w-7 h-7 text-blue-500" />,
-          },
-          {
-            id: 'assignments',
-            label: 'Assignments',
-            value: s?.totalAssignments ?? 0,
-            icon: <HiOutlineClipboardList className="w-7 h-7 text-yellow-500" />,
-          },
-          {
-            id: 'posts',
-            label: 'My Posts',
-            value: dashboard?.postsCount ?? 0,
-            icon: <HiOutlineUsers className="w-7 h-7 text-green-500" />,
-          },
-        ];
-      })();
-
-  const completionPct = isTeacherView
-    ? (() => {
-        const s = dashboard?.stats as TeacherStats | undefined;
-        const created = s?.assignmentsCreated ?? 0;
-        const pending = s?.pendingGrading ?? 0;
-        return created > 0 ? Math.round(((created - pending) / created) * 100) : 0;
-      })()
-    : (() => {
-        const s = dashboard?.stats as StudentStats | undefined;
-        const total = s?.totalAssignments ?? 0;
-        const completed = s?.completedAssignments ?? 0;
-        return total > 0 ? Math.round((completed / total) * 100) : 0;
-      })();
+    return combinedTotal > 0 ? Math.round((combinedDone / combinedTotal) * 100) : 0;
+  })();
 
   const donutData = [
     { name: 'Completed', value: completionPct },
     { name: 'Remaining', value: 100 - completionPct },
   ];
 
-  const focusItems = isTeacherView
-    ? [
-        { title: 'Review pending submissions', detail: '6 assignments need feedback today' },
-        { title: 'Prepare your next class', detail: 'Topic outline is ready for review' },
-        { title: 'Check class updates', detail: '2 new announcements were posted' },
-      ]
-    : [
-        { title: 'Continue your study plan', detail: '2 lessons left in your current module' },
-        { title: 'Finish upcoming assignments', detail: '3 tasks are due this week' },
-        { title: 'Join your next session', detail: 'Live class starts in 45 minutes' },
-      ];
+  const focusItems = [
+    { title: 'Review pending submissions', detail: `${s?.pendingGrading ?? 0} submissions need feedback in classes you created` },
+    { title: 'Finish upcoming assignments', detail: `${s?.totalAssignments ?? 0} tasks pending in classes you've joined` },
+    { title: 'Share or use a class code', detail: 'Create a classroom to share, or join one with a code' },
+  ];
 
   const classrooms = dashboard?.classrooms ?? [];
 
@@ -264,48 +168,16 @@ export default function DashboardPage() {
         <div className="max-w-7xl mx-auto">
           <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <h1 className="text-2xl font-semibold text-slate-800">
-                {isTeacherView ? 'Teacher Dashboard' : 'Student Dashboard'}
-              </h1>
+              <h1 className="text-2xl font-semibold text-slate-800">Dashboard</h1>
               <p className="text-xs text-gray-500">
-                {dashboard?.user.name ?? '...'} / {isTeacherView ? 'Teaching view' : 'Learning view'}
+                {dashboard?.user.name ?? '...'} &middot; classes you created and classes you joined, together
               </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex rounded-full border border-slate-200 bg-white p-1 shadow-sm">
-                <button
-                  type="button"
-                  onClick={() => void handleViewChange('teacher')}
-                  disabled={isUpdatingRole}
-                  className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                    isTeacherView && isTeacher
-                      ? 'bg-blue-600 text-white shadow'
-                      : 'text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50'
-                  }`}
-                >
-                  {isUpdatingRole ? 'Updating...' : 'Teacher'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleViewChange('student')}
-                  disabled={isUpdatingRole}
-                  className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                    !isTeacherView ? 'bg-blue-600 text-white shadow' : 'text-slate-600 hover:bg-slate-100'
-                  }`}
-                >
-                  {isUpdatingRole ? 'Updating...' : 'Student'}
-                </button>
-              </div>
-              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
-                {isTeacherView ? 'Pinned: Teacher' : 'Pinned: Student'}
-              </span>
             </div>
           </div>
 
           <div className="flex flex-wrap gap-6 mb-6">
-            {stats.map(s => (
-              <StatCard key={s.id} label={s.label} value={s.value} icon={s.icon} />
+            {stats.map(st => (
+              <StatCard key={st.id} label={st.label} value={st.value} icon={st.icon} />
             ))}
           </div>
 
@@ -315,9 +187,7 @@ export default function DashboardPage() {
 
               <div className="bg-white rounded-xl shadow p-4 flex flex-col">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-base font-semibold text-gray-700">
-                    {isTeacherView ? 'Teaching focus' : 'Learning focus'}
-                  </h3>
+                  <h3 className="text-base font-semibold text-gray-700">Focus</h3>
                   <span className="text-xs text-gray-400">Today</span>
                 </div>
                 <div className="space-y-3">
@@ -325,7 +195,7 @@ export default function DashboardPage() {
                     <div key={item.title} className="rounded-lg border border-slate-100 bg-slate-50 p-3">
                       <div className="flex items-start gap-2">
                         <div className="mt-0.5 rounded-full bg-blue-100 p-1.5 text-blue-600">
-                          {isTeacherView ? <HiOutlineAcademicCap className="h-4 w-4" /> : <HiOutlineSparkles className="h-4 w-4" />}
+                          <HiOutlineSparkles className="h-4 w-4" />
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-slate-700">{item.title}</p>
@@ -337,16 +207,14 @@ export default function DashboardPage() {
                 </div>
                 <div className="mt-4 flex items-center gap-2 text-sm text-slate-500">
                   <HiOutlineCalendar className="h-4 w-4" />
-                  {isTeacherView ? 'Keep your classes moving forward.' : 'Stay on top of your next milestones.'}
+                  Stay on top of what you&apos;re teaching and what you&apos;re learning.
                 </div>
               </div>
             </div>
 
             <div className="flex flex-col gap-6">
               <div className="bg-white rounded-lg shadow p-4 flex flex-col items-center justify-center relative w-full max-w-xs mx-auto">
-                <h3 className="text-sm font-medium text-gray-700 mb-3">
-                  {isTeacherView ? 'GRADING PROGRESS' : 'PROGRESS'}
-                </h3>
+                <h3 className="text-sm font-medium text-gray-700 mb-3">PROGRESS</h3>
                 <div className="flex items-center justify-center relative w-full">
                   <ResponsiveContainer width={160} height={160}>
                     <PieChart>
@@ -359,12 +227,10 @@ export default function DashboardPage() {
                   </ResponsiveContainer>
                   <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 text-center">
                     <div className="text-3xl font-bold text-blue-600">{completionPct}%</div>
-                    <div className="text-xs text-gray-500">{isTeacherView ? 'Graded' : 'Completed'}</div>
+                    <div className="text-xs text-gray-500">Completed</div>
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-3">
-                  {isTeacherView ? 'Assignments Graded' : 'Assignments Progress'}
-                </p>
+                <p className="text-xs text-gray-500 mt-3">Grading + assignment progress, combined</p>
               </div>
               <Calendar />
             </div>

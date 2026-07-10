@@ -29,7 +29,6 @@ import { timeAgo, getInitials } from './timeUtils';
 interface PostCardProps {
   post: CommunityPost;
   currentUserId: string;
-  currentUserRole: 'student' | 'teacher';
   onUpdated: (post: CommunityPost) => void;
   onDeleted: (postId: string) => void;
 }
@@ -46,7 +45,6 @@ const CATEGORY_STYLES: Record<string, string> = {
 export default function PostCard({
   post,
   currentUserId,
-  currentUserRole,
   onUpdated,
   onDeleted,
 }: PostCardProps) {
@@ -59,7 +57,9 @@ export default function PostCard({
   const [liking, setLiking] = useState(false);
 
   const isAuthor = post.author?._id === currentUserId;
-  const canModerate = currentUserRole === 'teacher';
+  // Every authenticated user has the same permissions here - no fixed
+  // teacher/student roles gate pinning or moderation.
+  const canModerate = true;
   const authorName = post.author?.name || 'Unknown user';
 
   const handleLike = async () => {
@@ -178,11 +178,6 @@ export default function PostCard({
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm font-semibold text-slate-800">{authorName}</span>
-                {post.author?.role && (
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-500">
-                    {post.author.role}
-                  </span>
-                )}
               </div>
               <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-400">
                 <span>{timeAgo(post.createdAt)}</span>

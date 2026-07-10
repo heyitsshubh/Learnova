@@ -8,7 +8,6 @@ import { getInitials } from './timeUtils';
 
 interface CreatePostProps {
   userName: string;
-  userRole: 'student' | 'teacher';
   onPostCreated: (post: CommunityPost) => void;
 }
 
@@ -23,7 +22,7 @@ const CATEGORY_OPTIONS: CommunityCategory[] = [
 
 const MAX_FILES = 4;
 
-export default function CreatePost({ userName, userRole, onPostCreated }: CreatePostProps) {
+export default function CreatePost({ userName, onPostCreated }: CreatePostProps) {
   const [content, setContent] = useState('');
   const [category, setCategory] = useState<CommunityCategory>('Discussion');
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
@@ -31,8 +30,9 @@ export default function CreatePost({ userName, userRole, onPostCreated }: Create
   const [posting, setPosting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const availableCategories =
-    userRole === 'student' ? CATEGORY_OPTIONS.filter((item) => item !== 'Announcement') : CATEGORY_OPTIONS;
+  // Every authenticated user has the same permissions - no fixed role
+  // restricts which categories (including Announcement) they can post in.
+  const availableCategories = CATEGORY_OPTIONS;
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files || []);
@@ -87,9 +87,6 @@ export default function CreatePost({ userName, userRole, onPostCreated }: Create
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-sm font-semibold text-slate-800">Start a conversation</h2>
-              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">
-                {userRole}
-              </span>
             </div>
             <p className="mt-0.5 text-xs text-slate-500">
               Share a question, upload a resource, or post an update for the community.

@@ -73,7 +73,7 @@ export const resend = async (payload: { email: string }) => {
 };
 
 export const getCurrentUserProfile = async () => {
-  const endpoints = ['/profile', '/user/profile', '/profile/role', '/user/profile/role'];
+  const endpoints = ['/profile', '/user/profile'];
   let lastError: unknown;
 
   for (const endpoint of endpoints) {
@@ -86,30 +86,4 @@ export const getCurrentUserProfile = async () => {
   }
 
   throw lastError ?? new Error('Failed to fetch user profile');
-};
-
-export const updateUserRole = async (role: UserRole) => {
-  const payload = { role };
-  const attempts = [
-    () => axios.put('/profile', payload),
-    () => axios.patch('/profile', payload),
-    () => axios.put('/user/profile', payload),
-    () => axios.patch('/user/profile', payload),
-    () => axios.put('/profile/role', payload),
-    () => axios.patch('/profile/role', payload),
-    () => axios.put('/user/profile/role', payload),
-    () => axios.patch('/user/profile/role', payload),
-  ];
-
-  let lastError: unknown;
-  for (const attempt of attempts) {
-    try {
-      const res = await attempt();
-      return res.data;
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  throw lastError ?? new Error('Failed to update user role');
 };
